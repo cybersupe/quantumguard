@@ -1,8 +1,8 @@
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from scanner.scan import scan_directory, calculate_score
-import os, shutil, uuid, requests, zipfile, io
+import os, shutil, uuid, zipfile, io
 
 app = FastAPI()
 
@@ -19,9 +19,6 @@ API_KEY = os.getenv("API_KEY", "quantumguard-secret-2026")
 class ScanRequest(BaseModel):
     directory: str
 
-class GitScanRequest(BaseModel):
-    github_url: str
-
 @app.get("/")
 def root():
     return {"message": "QuantumGuard API is running!"}
@@ -34,43 +31,28 @@ def scan(request: ScanRequest, x_api_key: str = Header(...)):
     score = calculate_score(findings)
     return {"quantum_readiness_score": score, "total_findings": len(findings), "findings": findings}
 
-@app.post("/scan-github")
-def scan_github(request: GitScanRequest, x_api_key: str = Header(...)):
+@app.post("/scan-zip")
+async def scan_zip(file: UploadFile = File(...), x_api_key: str = Header(...)):
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
-    if "github.com" not in request.github_url:
-        raise HTTPException(status_code=400, detail="Only GitHub URLs allowed")
-    
+    if not file.filename.endswith(".zip"):
+        raise HTTPException(status_code=400, detail="Only ZIP files allowed")
+    temp_dir = f"/tmp/qg-{uuid.uuid4().hex[:8]}"
     try:
-        parts = request.github_url.rstrip("/").split("/")
-        owner = parts[-2]
-        repo = parts[-1].replace(".git", "")
-        zip_url = f"https://api.github.com/repos/{owner}/{repo}/zipball/main"
-        
-        response = requests.get(zip_url, timeout=30)
-        if response.status_code != 200:
-            zip_url = f"https://api.github.com/repos/{owner}/{repo}/zipball/master"
-            response = requests.get(zip_url, timeout=30)
-        if response.status_code != 200:
-            raise HTTPException(status_code=400, detail="Could not download repo")
-        
-        temp_dir = f"/tmp/qg-{uuid.uuid4().hex[:8]}"
         os.makedirs(temp_dir, exist_ok=True)
-        
-        with zipfile.ZipFile(io.BytesIO(response.content)) as z:
+        contents = await file.read()
+        with zipfile.ZipFile(io.BytesIO(contents)) as z:
             z.extractall(temp_dir)
-        
         findings = scan_directory(temp_dir)
         score = calculate_score(findings)
-        
         return {
-            "github_url": request.github_url,
+            "filename": file.filename,
             "quantum_readiness_score": score,
             "total_findings": len(findings),
             "findings": findings
         }
-    except HTTPException:
-        raise
+    except zipfile.BadZipFile:
+        raise HTTPException(status_code=400, detail="Invalid ZIP file")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
     finally:
