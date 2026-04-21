@@ -1,26 +1,38 @@
 import { useState } from "react";
 
+const API = "https://web-production-16177f.up.railway.app";
+const KEY = "quantumguard-secret-2026";
+
 function App() {
-  const [directory, setDirectory] = useState("");
+  const [mode, setMode] = useState("github");
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
 
   const handleScan = async () => {
-    if (!directory) return;
+    if (!input) return;
     setLoading(true);
+    setError(null);
+    setResult(null);
     try {
-     const res = await fetch("https://web-production-16177f.up.railway.app/scan", {
+      const endpoint = mode === "github" ? "/scan-github" : "/scan";
+      const body = mode === "github"
+        ? { github_url: input }
+        : { directory: input };
+      const res = await fetch(`${API}${endpoint}`, {
         method: "POST",
-        headers: { 
-  "Content-Type": "application/json",
-  "x-api-key": "quantumguard-secret-2026"
-},
-        body: JSON.stringify({ directory }),
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": KEY
+        },
+        body: JSON.stringify(body),
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Scan failed");
       setResult(data);
     } catch (e) {
-      alert("API not running! Start uvicorn first.");
+      setError(e.message);
     }
     setLoading(false);
   };
@@ -35,23 +47,41 @@ function App() {
     <div style={{ minHeight: "100vh", background: "#0f0f1a", color: "#fff", fontFamily: "sans-serif", padding: "40px 20px" }}>
       <div style={{ maxWidth: 800, margin: "0 auto" }}>
         <h1 style={{ fontSize: 32, color: "#7F77DD", marginBottom: 8 }}>QuantumGuard</h1>
-        <p style={{ color: "#888", marginBottom: 32 }}>AI-powered quantum cryptography vulnerability scanner</p>
+        <p style={{ color: "#888", marginBottom: 24 }}>AI-powered quantum cryptography vulnerability scanner</p>
+
+        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          <button
+            onClick={() => setMode("github")}
+            style={{ padding: "8px 20px", borderRadius: 8, border: "none", cursor: "pointer", background: mode === "github" ? "#534AB7" : "#1a1a2e", color: "#fff", fontSize: 13 }}>
+            GitHub URL
+          </button>
+          <button
+            onClick={() => setMode("path")}
+            style={{ padding: "8px 20px", borderRadius: 8, border: "none", cursor: "pointer", background: mode === "path" ? "#534AB7" : "#1a1a2e", color: "#fff", fontSize: 13 }}>
+            Server Path
+          </button>
+        </div>
 
         <div style={{ display: "flex", gap: 12, marginBottom: 32 }}>
           <input
-            value={directory}
-            onChange={(e) => setDirectory(e.target.value)}
-            placeholder="Enter directory path e.g. C:\Users\thisi\quantumguard\tests"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={mode === "github" ? "https://github.com/username/repo" : "/app/tests"}
             style={{ flex: 1, padding: "12px 16px", borderRadius: 8, border: "1px solid #333", background: "#1a1a2e", color: "#fff", fontSize: 14 }}
           />
           <button
             onClick={handleScan}
             disabled={loading}
-            style={{ padding: "12px 24px", borderRadius: 8, background: "#534AB7", color: "#fff", border: "none", cursor: "pointer", fontSize: 14, fontWeight: 500 }}
-          >
+            style={{ padding: "12px 24px", borderRadius: 8, background: "#534AB7", color: "#fff", border: "none", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>
             {loading ? "Scanning..." : "Scan"}
           </button>
         </div>
+
+        {error && (
+          <div style={{ background: "#E24B4A22", border: "1px solid #E24B4A", borderRadius: 8, padding: 16, marginBottom: 24, color: "#E24B4A" }}>
+            {error}
+          </div>
+        )}
 
         {result && (
           <div>
