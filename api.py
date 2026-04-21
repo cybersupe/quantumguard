@@ -1,5 +1,4 @@
 from fastapi import FastAPI, HTTPException, Header, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from scanner.scan import scan_directory, calculate_score
@@ -10,24 +9,15 @@ import uuid
 
 app = FastAPI(title="QuantumGuard API")
 
-@app.middleware("http")
-async def add_cors_headers(request: Request, call_next):
-    response = await call_next(request)
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "*"
-    return response
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, x-api-key",
+}
 
-@app.options("/{rest_of_path:path}")
-async def preflight(rest_of_path: str):
-    return JSONResponse(
-        content={},
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-        }
-    )
+@app.options("/{path:path}")
+async def options_handler(path: str):
+    return JSONResponse(content={}, headers=CORS_HEADERS)
 
 API_KEY = os.getenv("API_KEY", "quantumguard-secret-2026")
 
@@ -37,29 +27,29 @@ class ScanRequest(BaseModel):
 class GitScanRequest(BaseModel):
     github_url: str
 
-def verify_key(x_api_key: str):
-    if x_api_key != API_KEY:
+def verify_key(key: str):
+    if key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
 @app.get("/")
-def root():
-    return {"message": "QuantumGuard API is running!"}
+async def root():
+    return JSONResponse({"message": "QuantumGuard API is running!"}, headers=CORS_HEADERS)
 
 @app.post("/scan")
-def scan(request: ScanRequest, x_api_key: str = Header(...)):
+async def scan(request: ScanRequest, x_api_key: str = Header(...)):
     verify_key(x_api_key)
     if not os.path.exists(request.directory):
         raise HTTPException(status_code=404, detail="Directory not found")
     findings = scan_directory(request.directory)
     score = calculate_score(findings)
-    return {
+    return JSONResponse({
         "quantum_readiness_score": score,
         "total_findings": len(findings),
         "findings": findings
-    }
+    }, headers=CORS_HEADERS)
 
 @app.post("/scan-github")
-def scan_github(request: GitScanRequest, x_api_key: str = Header(...)):
+async def scan_github(request: GitScanRequest, x_api_key: str = Header(...)):
     verify_key(x_api_key)
     if "github.com" not in request.github_url:
         raise HTTPException(status_code=400, detail="Only GitHub URLs allowed")
@@ -71,12 +61,12 @@ def scan_github(request: GitScanRequest, x_api_key: str = Header(...)):
         )
         findings = scan_directory(temp_dir)
         score = calculate_score(findings)
-        return {
+        return JSONResponse({
             "github_url": request.github_url,
             "quantum_readiness_score": score,
             "total_findings": len(findings),
             "findings": findings
-        }
+        }, headers=CORS_HEADERS)
     except subprocess.TimeoutExpired:
         raise HTTPException(status_code=408, detail="Clone timeout")
     except subprocess.CalledProcessError:
@@ -86,5 +76,5 @@ def scan_github(request: GitScanRequest, x_api_key: str = Header(...)):
             shutil.rmtree(temp_dir)
 
 @app.get("/health")
-def health():
-    return {"status": "healthy"}
+async def health():
+    return JSONResponse({"status": "healthy"}, headers=CORS_HEADERS)
