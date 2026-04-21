@@ -21,7 +21,7 @@ app.add_middleware(
 )
 
 API_KEY = os.getenv("API_KEY", "quantumguard-secret-2026")
-MAX_ZIP_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_ZIP_SIZE = 10 * 1024 * 1024
 
 class ScanRequest(BaseModel):
     directory: str
@@ -43,6 +43,35 @@ def scan(request: Request, body: ScanRequest, x_api_key: str = Header(...)):
     findings = scan_directory(body.directory)
     score = calculate_score(findings)
     return {"quantum_readiness_score": score, "total_findings": len(findings), "findings": findings}
+
+@app.post("/public-scan-zip")
+@limiter.limit("3/minute")
+async def public_scan_zip(request: Request, file: UploadFile = File(...)):
+    if not file.filename.endswith(".zip"):
+        raise HTTPException(status_code=400, detail="Only ZIP files allowed")
+    contents = await file.read()
+    if len(contents) > MAX_ZIP_SIZE:
+        raise HTTPException(status_code=400, detail="ZIP file too large. Maximum 10MB allowed")
+    temp_dir = f"/tmp/qg-{uuid.uuid4().hex[:8]}"
+    try:
+        os.makedirs(temp_dir, exist_ok=True)
+        with zipfile.ZipFile(io.BytesIO(contents)) as z:
+            z.extractall(temp_dir)
+        findings = scan_directory(temp_dir)
+        score = calculate_score(findings)
+        return {
+            "filename": file.filename,
+            "quantum_readiness_score": score,
+            "total_findings": len(findings),
+            "findings": findings
+        }
+    except zipfile.BadZipFile:
+        raise HTTPException(status_code=400, detail="Invalid ZIP file")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+    finally:
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
 
 @app.post("/scan-zip")
 @limiter.limit("5/minute")

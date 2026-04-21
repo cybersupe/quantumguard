@@ -1,7 +1,6 @@
 import { useState } from "react";
 
 const API = "https://web-production-16177f.up.railway.app";
-const KEY = "quantumguard-secret-2026";
 
 function Navbar({ darkMode, setDarkMode }) {
   return (
@@ -56,16 +55,15 @@ function Scanner({ darkMode }) {
         if (!file) throw new Error("Please select a ZIP file");
         const formData = new FormData();
         formData.append("file", file);
-        res = await fetch(`${API}/scan-zip`, {
+        res = await fetch(`${API}/public-scan-zip`, {
           method: "POST",
-          headers: { "x-api-key": KEY },
           body: formData,
         });
       } else {
         if (!input) throw new Error("Please enter a path");
         res = await fetch(`${API}/scan`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-api-key": KEY },
+          headers: { "Content-Type": "application/json", "x-api-key": "quantumguard-secret-2026" },
           body: JSON.stringify({ directory: input }),
         });
       }
@@ -140,7 +138,7 @@ function Scanner({ darkMode }) {
   return (
     <div id="scan" style={{ maxWidth: 860, margin: "0 auto", padding: "60px 20px", background: bg }}>
       <h2 style={{ fontSize: 28, textAlign: "center", marginBottom: 8, color: text }}>Scan Your Code</h2>
-      <p style={{ color: muted, textAlign: "center", marginBottom: 32, fontSize: 14 }}>Upload a ZIP file or use server path</p>
+      <p style={{ color: muted, textAlign: "center", marginBottom: 32, fontSize: 14 }}>Upload a ZIP file of your project — free, instant, secure</p>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16, justifyContent: "center" }}>
         <button onClick={() => setMode("zip")} style={{ padding: "8px 20px", borderRadius: 8, border: "none", cursor: "pointer", background: mode === "zip" ? "#534AB7" : card, color: mode === "zip" ? "#fff" : muted, fontSize: 13 }}>Upload ZIP</button>
@@ -162,7 +160,7 @@ function Scanner({ darkMode }) {
       {loading && (
         <div style={{ marginBottom: 24 }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: muted, marginBottom: 6 }}>
-            <span>Scanning...</span>
+            <span>Scanning your code...</span>
             <span>{progress}%</span>
           </div>
           <div style={{ background: border, borderRadius: 4, height: 6 }}>
@@ -186,13 +184,8 @@ function Scanner({ darkMode }) {
             </div>
           </div>
 
-          {/* Severity counts */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 16 }}>
-            {[
-              { key: "CRITICAL", color: "#E24B4A" },
-              { key: "HIGH", color: "#BA7517" },
-              { key: "MEDIUM", color: "#1D9E75" },
-            ].map(s => (
+            {[{ key: "CRITICAL", color: "#E24B4A" }, { key: "HIGH", color: "#BA7517" }, { key: "MEDIUM", color: "#1D9E75" }].map(s => (
               <div key={s.key} style={{ background: card, borderRadius: 8, padding: "12px 16px", textAlign: "center", border: `1px solid ${border}` }}>
                 <div style={{ fontSize: 24, fontWeight: 700, color: s.color }}>{severityCounts[s.key]}</div>
                 <div style={{ fontSize: 11, color: muted }}>{s.key}</div>
@@ -200,7 +193,6 @@ function Scanner({ darkMode }) {
             ))}
           </div>
 
-          {/* Languages detected */}
           {detectedLanguages.length > 0 && (
             <div style={{ background: card, borderRadius: 8, padding: "12px 16px", marginBottom: 16, border: `1px solid ${border}` }}>
               <span style={{ fontSize: 13, color: muted, marginRight: 8 }}>Languages detected:</span>
@@ -210,7 +202,6 @@ function Scanner({ darkMode }) {
             </div>
           )}
 
-          {/* File breakdown */}
           {fileBreakdown && Object.keys(fileBreakdown).length > 0 && (
             <div style={{ background: card, borderRadius: 8, padding: "16px", marginBottom: 16, border: `1px solid ${border}` }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: text, marginBottom: 10 }}>File Breakdown</div>
@@ -235,7 +226,9 @@ function Scanner({ darkMode }) {
 
             <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
               {["ALL", "CRITICAL", "HIGH", "MEDIUM"].map(f => (
-                <button key={f} onClick={() => setFilter(f)} style={{ padding: "4px 12px", borderRadius: 20, border: `1px solid ${border}`, background: filter === f ? "#534AB7" : "transparent", color: filter === f ? "#fff" : muted, cursor: "pointer", fontSize: 12 }}>{f} {f !== "ALL" && severityCounts ? `(${severityCounts[f]})` : ""}</button>
+                <button key={f} onClick={() => setFilter(f)} style={{ padding: "4px 12px", borderRadius: 20, border: `1px solid ${border}`, background: filter === f ? "#534AB7" : "transparent", color: filter === f ? "#fff" : muted, cursor: "pointer", fontSize: 12 }}>
+                  {f} {f !== "ALL" && severityCounts ? `(${severityCounts[f]})` : ""}
+                </button>
               ))}
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search files..." style={{ padding: "4px 12px", borderRadius: 20, border: `1px solid ${border}`, background: bg, color: text, fontSize: 12, width: 150 }} />
             </div>
@@ -276,7 +269,6 @@ export default function App() {
     <div style={{ minHeight: "100vh", background: bg, color: text, fontFamily: "sans-serif" }}>
       <Navbar darkMode={darkMode} setDarkMode={setDarkMode} />
 
-      {/* Hero */}
       <div style={{ textAlign: "center", padding: "80px 20px 60px" }}>
         <div style={{ display: "inline-flex", gap: 8, marginBottom: 20 }}>
           <span style={{ background: "#534AB722", border: "1px solid #534AB7", borderRadius: 20, padding: "4px 14px", fontSize: 12, color: "#7F77DD" }}>NIST PQC 2024</span>
@@ -296,7 +288,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, maxWidth: 800, margin: "0 auto 80px", padding: "0 20px" }}>
         {[{ num: "6+", label: "Algorithms Detected" }, { num: "4", label: "Languages Supported" }, { num: "2030", label: "Quantum Deadline" }, { num: "100%", label: "Open Source" }].map((s, i) => (
           <div key={i} style={{ background: card, borderRadius: 12, padding: 20, textAlign: "center", border: `1px solid ${border}` }}>
@@ -306,23 +297,20 @@ export default function App() {
         ))}
       </div>
 
-      {/* How it works */}
       <div id="how" style={{ maxWidth: 700, margin: "0 auto 80px", padding: "0 20px" }}>
         <h2 style={{ textAlign: "center", fontSize: 32, marginBottom: 8, color: text }}>How it works</h2>
         <p style={{ textAlign: "center", color: muted, marginBottom: 48, fontSize: 15 }}>Five simple steps to quantum-proof your code</p>
         <div style={{ position: "relative" }}>
           <div style={{ position: "absolute", left: 20, top: 0, bottom: 0, width: 2, background: border }}></div>
           {[
-            { step: "1", icon: "📁", title: "Upload Your Code", desc: "Upload a ZIP of your project or paste a directory path. Supports Python, JavaScript, Java and TypeScript." },
+            { step: "1", icon: "📁", title: "Upload Your Code", desc: "Upload a ZIP of your project. Supports Python, JavaScript, Java and TypeScript." },
             { step: "2", icon: "🔍", title: "Scanner Runs", desc: "Our engine scans every file line by line — detecting RSA, ECC, DH, DSA, MD5 and SHA-1 patterns instantly." },
             { step: "3", icon: "⚠️", title: "Vulnerabilities Found", desc: "Every vulnerable line is flagged with file name, line number, severity level and the exact code snippet." },
             { step: "4", icon: "📊", title: "Review Findings", desc: "Filter by CRITICAL, HIGH or MEDIUM. Search specific files. See your Quantum Readiness Score from 0 to 100." },
-            { step: "5", icon: "📄", title: "Download Your Report", desc: "Download a PDF report or copy findings. Share on Twitter or present to your board." },
+            { step: "5", icon: "📄", title: "Download Your Report", desc: "Download a PDF report or copy findings. Share with your security team or present to your board." },
           ].map((s, i) => (
             <div key={i} style={{ display: "flex", gap: 24, marginBottom: 32, position: "relative" }}>
-              <div style={{ width: 42, height: 42, borderRadius: "50%", background: "#534AB7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0, zIndex: 1 }}>
-                {s.icon}
-              </div>
+              <div style={{ width: 42, height: 42, borderRadius: "50%", background: "#534AB7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0, zIndex: 1 }}>{s.icon}</div>
               <div style={{ background: card, borderRadius: 16, padding: "20px 24px", flex: 1, border: `1px solid ${border}` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                   <span style={{ background: "#534AB722", color: "#7F77DD", padding: "2px 10px", borderRadius: 20, fontSize: 12, fontWeight: 600 }}>Step {s.step}</span>
@@ -335,7 +323,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* What We Detect */}
       <div style={{ maxWidth: 900, margin: "0 auto 80px", padding: "0 20px" }}>
         <h2 style={{ textAlign: "center", fontSize: 32, marginBottom: 8, color: text }}>What We Detect</h2>
         <p style={{ textAlign: "center", color: muted, marginBottom: 40, fontSize: 15 }}>All algorithms flagged by NIST as quantum-vulnerable</p>
@@ -348,7 +335,7 @@ export default function App() {
             { name: "MD5", severity: "MEDIUM", fix: "SHA-3 / SPHINCS+" },
             { name: "SHA-1", severity: "MEDIUM", fix: "SHA-3 / SPHINCS+" },
           ].map((v, i) => (
-            <div key={i} style={{ background: card, borderRadius: 12, padding: 16, borderLeft: `3px solid ${v.severity === "CRITICAL" ? "#E24B4A" : v.severity === "HIGH" ? "#BA7517" : "#1D9E75"}`, border: `1px solid ${border}` }}>
+            <div key={i} style={{ background: card, borderRadius: 12, padding: 16, borderLeft: `3px solid ${v.severity === "CRITICAL" ? "#E24B4A" : v.severity === "HIGH" ? "#BA7517" : "#1D9E75"}` }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <span style={{ fontWeight: 600, fontSize: 15, color: text }}>{v.name}</span>
                 <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: v.severity === "CRITICAL" ? "#E24B4A22" : v.severity === "HIGH" ? "#BA751722" : "#1D9E7522", color: v.severity === "CRITICAL" ? "#E24B4A" : v.severity === "HIGH" ? "#BA7517" : "#1D9E75" }}>{v.severity}</span>
@@ -359,7 +346,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Pricing */}
       <div id="pricing" style={{ maxWidth: 900, margin: "0 auto 80px", padding: "0 20px" }}>
         <h2 style={{ textAlign: "center", fontSize: 32, marginBottom: 8, color: text }}>Pricing</h2>
         <p style={{ textAlign: "center", color: muted, marginBottom: 40, fontSize: 15 }}>Start free, upgrade when you need more</p>
@@ -381,7 +367,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* FAQ */}
       <div style={{ maxWidth: 700, margin: "0 auto 80px", padding: "0 20px" }}>
         <h2 style={{ textAlign: "center", fontSize: 32, marginBottom: 40, color: text }}>FAQ</h2>
         {[
@@ -397,7 +382,6 @@ export default function App() {
         ))}
       </div>
 
-      {/* CTA */}
       <div style={{ textAlign: "center", padding: "60px 20px", background: card }}>
         <h2 style={{ fontSize: 32, marginBottom: 16, color: text }}>Ready to quantum-proof your code?</h2>
         <p style={{ color: muted, marginBottom: 32, fontSize: 15 }}>Join developers and security teams protecting their code from quantum threats.</p>
@@ -406,7 +390,6 @@ export default function App() {
 
       <Scanner darkMode={darkMode} />
 
-      {/* Footer */}
       <div style={{ textAlign: "center", padding: "24px 20px", borderTop: `1px solid ${border}`, color: muted, fontSize: 13 }}>
         <div style={{ marginBottom: 8 }}>
           <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer" style={{ color: muted, textDecoration: "none", marginRight: 20 }}>GitHub</a>
