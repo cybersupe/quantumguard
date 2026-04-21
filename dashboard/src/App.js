@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const API = "";
+const API = "https://web-production-16177f.up.railway.app";
 const KEY = "quantumguard-secret-2026";
 
 function App() {
@@ -16,16 +16,11 @@ function App() {
     setError(null);
     setResult(null);
     try {
-      const endpoint = mode === "github" ? "/api/scan-github" : "/api/scan";
-      const body = mode === "github"
-        ? { github_url: input }
-        : { directory: input };
+      const endpoint = mode === "github" ? "/scan-github" : "/scan";
+      const body = mode === "github" ? { github_url: input } : { directory: input };
       const res = await fetch(`${API}${endpoint}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": KEY
-        },
+        headers: { "Content-Type": "application/json", "x-api-key": KEY },
         body: JSON.stringify(body),
       });
       const data = await res.json();
@@ -50,14 +45,10 @@ function App() {
         <p style={{ color: "#888", marginBottom: 24 }}>AI-powered quantum cryptography vulnerability scanner</p>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-          <button
-            onClick={() => setMode("github")}
-            style={{ padding: "8px 20px", borderRadius: 8, border: "none", cursor: "pointer", background: mode === "github" ? "#534AB7" : "#1a1a2e", color: "#fff", fontSize: 13 }}>
+          <button onClick={() => setMode("github")} style={{ padding: "8px 20px", borderRadius: 8, border: "none", cursor: "pointer", background: mode === "github" ? "#534AB7" : "#1a1a2e", color: "#fff", fontSize: 13 }}>
             GitHub URL
           </button>
-          <button
-            onClick={() => setMode("path")}
-            style={{ padding: "8px 20px", borderRadius: 8, border: "none", cursor: "pointer", background: mode === "path" ? "#534AB7" : "#1a1a2e", color: "#fff", fontSize: 13 }}>
+          <button onClick={() => setMode("path")} style={{ padding: "8px 20px", borderRadius: 8, border: "none", cursor: "pointer", background: mode === "path" ? "#534AB7" : "#1a1a2e", color: "#fff", fontSize: 13 }}>
             Server Path
           </button>
         </div>
@@ -69,10 +60,7 @@ function App() {
             placeholder={mode === "github" ? "https://github.com/username/repo" : "/app/tests"}
             style={{ flex: 1, padding: "12px 16px", borderRadius: 8, border: "1px solid #333", background: "#1a1a2e", color: "#fff", fontSize: 14 }}
           />
-          <button
-            onClick={handleScan}
-            disabled={loading}
-            style={{ padding: "12px 24px", borderRadius: 8, background: "#534AB7", color: "#fff", border: "none", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>
+          <button onClick={handleScan} disabled={loading} style={{ padding: "12px 24px", borderRadius: 8, background: "#534AB7", color: "#fff", border: "none", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>
             {loading ? "Scanning..." : "Scan"}
           </button>
         </div>
