@@ -53,6 +53,15 @@ JS_PATTERNS = {
     "MD5": ["crypto.createHash.*md5", "md5("],
     "SHA1": ["crypto.createHash.*sha1", "sha1("],
 }
+
+TS_PATTERNS = {
+    "RSA": ["generateKeyPairSync.*rsa", "new NodeRSA", "forge.pki.rsa"],
+    "ECC": ["createECDH", "elliptic", "secp256k1"],
+    "DH": ["getDiffieHellman", "createDiffieHellman"],
+    "MD5": ["createHash.*md5", "md5("],
+    "SHA1": ["createHash.*sha1", "sha1("],
+}
+
 JAVA_PATTERNS = {
     "RSA": ["KeyPairGenerator.*RSA", "RSAPublicKeySpec", "java.security.interfaces.RSAKey"],
     "ECC": ["KeyPairGenerator.*EC", "ECPublicKeySpec", "java.security.interfaces.ECKey"],
@@ -60,6 +69,7 @@ JAVA_PATTERNS = {
     "MD5": ["MessageDigest.*MD5", "DigestUtils.md5"],
     "SHA1": ["MessageDigest.*SHA-1", "DigestUtils.sha1"],
 }
+
 SEVERITY_SCORE = {
     "CRITICAL": 10,
     "HIGH": 6,
