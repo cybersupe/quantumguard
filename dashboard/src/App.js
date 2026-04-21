@@ -1,6 +1,5 @@
 import { useState } from "react";
-
-const API = "https://web-production-16177f.up.railway.app";
+const API = process.env.REACT_APP_API_URL || "https://web-production-16177f.up.railway.app";
 const KEY = "quantumguard-secret-2026";
 
 function App() {
