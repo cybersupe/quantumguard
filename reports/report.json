@@ -1,0 +1,304 @@
+{
+  "scanned_at": "2026-04-20T23:52:34.425938",
+  "directory": "scanner",
+  "quantum_readiness_score": 0,
+  "total_findings": 37,
+  "findings": [
+    {
+      "file": "scanner\\patterns.py",
+      "line": 2,
+      "code": "\"RSA\": {",
+      "vulnerability": "RSA",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 6,
+      "code": "\"RSA\", \"rsa\", \"RSAKey\", \"RSA.new\",",
+      "vulnerability": "RSA",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 6,
+      "code": "\"RSA\", \"rsa\", \"RSAKey\", \"RSA.new\",",
+      "vulnerability": "RSA",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 6,
+      "code": "\"RSA\", \"rsa\", \"RSAKey\", \"RSA.new\",",
+      "vulnerability": "RSA",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 6,
+      "code": "\"RSA\", \"rsa\", \"RSAKey\", \"RSA.new\",",
+      "vulnerability": "RSA",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 7,
+      "code": "\"RSA.generate\", \"PKCS1_OAEP\", \"PKCS1_v1_5\",",
+      "vulnerability": "RSA",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 7,
+      "code": "\"RSA.generate\", \"PKCS1_OAEP\", \"PKCS1_v1_5\",",
+      "vulnerability": "RSA",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 7,
+      "code": "\"RSA.generate\", \"PKCS1_OAEP\", \"PKCS1_v1_5\",",
+      "vulnerability": "RSA",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 7,
+      "code": "\"RSA.generate\", \"PKCS1_OAEP\", \"PKCS1_v1_5\",",
+      "vulnerability": "RSA",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 10,
+      "code": "\"ECC\": {",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 10,
+      "code": "\"ECC\": {",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 14,
+      "code": "\"EC\", \"ECC\", \"ECDSA\", \"ECDH\",",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 14,
+      "code": "\"EC\", \"ECC\", \"ECDSA\", \"ECDH\",",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 14,
+      "code": "\"EC\", \"ECC\", \"ECDSA\", \"ECDH\",",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 14,
+      "code": "\"EC\", \"ECC\", \"ECDSA\", \"ECDH\",",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 14,
+      "code": "\"EC\", \"ECC\", \"ECDSA\", \"ECDH\",",
+      "vulnerability": "DH",
+      "severity": "HIGH",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 14,
+      "code": "\"EC\", \"ECC\", \"ECDSA\", \"ECDH\",",
+      "vulnerability": "DSA",
+      "severity": "HIGH",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 15,
+      "code": "\"elliptic\", \"secp256k1\", \"prime256v1\",",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 15,
+      "code": "\"elliptic\", \"secp256k1\", \"prime256v1\",",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 15,
+      "code": "\"elliptic\", \"secp256k1\", \"prime256v1\",",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 18,
+      "code": "\"DH\": {",
+      "vulnerability": "DH",
+      "severity": "HIGH",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 22,
+      "code": "\"DH\", \"DHE\", \"DiffieHellman\",",
+      "vulnerability": "DH",
+      "severity": "HIGH",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 22,
+      "code": "\"DH\", \"DHE\", \"DiffieHellman\",",
+      "vulnerability": "DH",
+      "severity": "HIGH",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 22,
+      "code": "\"DH\", \"DHE\", \"DiffieHellman\",",
+      "vulnerability": "DH",
+      "severity": "HIGH",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 23,
+      "code": "\"diffie-hellman\",",
+      "vulnerability": "DH",
+      "severity": "HIGH",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 26,
+      "code": "\"DSA\": {",
+      "vulnerability": "DSA",
+      "severity": "HIGH",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 30,
+      "code": "\"DSA\", \"DSAKey\", \"DSS\",",
+      "vulnerability": "DSA",
+      "severity": "HIGH",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 30,
+      "code": "\"DSA\", \"DSAKey\", \"DSS\",",
+      "vulnerability": "DSA",
+      "severity": "HIGH",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 30,
+      "code": "\"DSA\", \"DSAKey\", \"DSS\",",
+      "vulnerability": "DSA",
+      "severity": "HIGH",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 33,
+      "code": "\"MD5\": {",
+      "vulnerability": "MD5",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 37,
+      "code": "\"MD5\", \"md5\", \"hashlib.md5\",",
+      "vulnerability": "MD5",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 37,
+      "code": "\"MD5\", \"md5\", \"hashlib.md5\",",
+      "vulnerability": "MD5",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 37,
+      "code": "\"MD5\", \"md5\", \"hashlib.md5\",",
+      "vulnerability": "MD5",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 40,
+      "code": "\"SHA1\": {",
+      "vulnerability": "SHA1",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 44,
+      "code": "\"SHA1\", \"sha1\", \"hashlib.sha1\",",
+      "vulnerability": "SHA1",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 44,
+      "code": "\"SHA1\", \"sha1\", \"hashlib.sha1\",",
+      "vulnerability": "SHA1",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
+    {
+      "file": "scanner\\patterns.py",
+      "line": 44,
+      "code": "\"SHA1\", \"sha1\", \"hashlib.sha1\",",
+      "vulnerability": "SHA1",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    }
+  ]
+}
