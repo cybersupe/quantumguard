@@ -16,7 +16,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-API_KEY = "quantumguard-secret-2026"
+API_KEY = os.getenv("API_KEY", "quantumguard-secret-2026")
 
 class ScanRequest(BaseModel):
     directory: str
