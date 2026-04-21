@@ -1,9 +1,121 @@
 {
-  "scanned_at": "2026-04-21T00:54:19.062272",
+  "scanned_at": "2026-04-21T00:56:48.930246",
   "directory": "tests",
   "quantum_readiness_score": 0,
-  "total_findings": 34,
+  "total_findings": 48,
   "findings": [
+    {
+      "file": "tests\\TestVulnerable.java",
+      "line": 8,
+      "code": "// RSA - QUANTUM VULNERABLE",
+      "vulnerability": "RSA",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "tests\\TestVulnerable.java",
+      "line": 9,
+      "code": "KeyPairGenerator rsaGen = KeyPairGenerator.getInstance(\"RSA\");",
+      "vulnerability": "RSA",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "tests\\TestVulnerable.java",
+      "line": 9,
+      "code": "KeyPairGenerator rsaGen = KeyPairGenerator.getInstance(\"RSA\");",
+      "vulnerability": "RSA",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "tests\\TestVulnerable.java",
+      "line": 10,
+      "code": "rsaGen.initialize(2048);",
+      "vulnerability": "RSA",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "tests\\TestVulnerable.java",
+      "line": 12,
+      "code": "// ECC - QUANTUM VULNERABLE",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "tests\\TestVulnerable.java",
+      "line": 12,
+      "code": "// ECC - QUANTUM VULNERABLE",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "tests\\TestVulnerable.java",
+      "line": 13,
+      "code": "KeyPairGenerator ecGen = KeyPairGenerator.getInstance(\"EC\");",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "tests\\TestVulnerable.java",
+      "line": 15,
+      "code": "// DH - QUANTUM VULNERABLE",
+      "vulnerability": "DH",
+      "severity": "HIGH",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "tests\\TestVulnerable.java",
+      "line": 16,
+      "code": "KeyPairGenerator dhGen = KeyPairGenerator.getInstance(\"DH\");",
+      "vulnerability": "DH",
+      "severity": "HIGH",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "tests\\TestVulnerable.java",
+      "line": 18,
+      "code": "// MD5 - QUANTUM VULNERABLE",
+      "vulnerability": "MD5",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
+    {
+      "file": "tests\\TestVulnerable.java",
+      "line": 19,
+      "code": "MessageDigest md5 = MessageDigest.getInstance(\"MD5\");",
+      "vulnerability": "MD5",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
+    {
+      "file": "tests\\TestVulnerable.java",
+      "line": 19,
+      "code": "MessageDigest md5 = MessageDigest.getInstance(\"MD5\");",
+      "vulnerability": "MD5",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
+    {
+      "file": "tests\\TestVulnerable.java",
+      "line": 21,
+      "code": "// SHA1 - QUANTUM VULNERABLE",
+      "vulnerability": "SHA1",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
+    {
+      "file": "tests\\TestVulnerable.java",
+      "line": 22,
+      "code": "MessageDigest sha1 = MessageDigest.getInstance(\"SHA-1\");",
+      "vulnerability": "SHA1",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
     {
       "file": "tests\\test_vulnerable.js",
       "line": 2,
