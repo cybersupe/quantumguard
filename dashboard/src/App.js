@@ -1,5 +1,6 @@
 import { useState } from "react";
-const API = process.env.REACT_APP_API_URL || "https://web-production-16177f.up.railway.app";
+
+const API = "";
 const KEY = "quantumguard-secret-2026";
 
 function App() {
@@ -15,7 +16,7 @@ function App() {
     setError(null);
     setResult(null);
     try {
-      const endpoint = mode === "github" ? "/scan-github" : "/scan";
+      const endpoint = mode === "github" ? "/api/scan-github" : "/api/scan";
       const body = mode === "github"
         ? { github_url: input }
         : { directory: input };
