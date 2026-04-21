@@ -1,304 +1,160 @@
 {
-  "scanned_at": "2026-04-21T00:00:13.076685",
-  "directory": ".",
+  "scanned_at": "2026-04-21T00:13:27.099968",
+  "directory": "tests",
   "quantum_readiness_score": 0,
-  "total_findings": 37,
+  "total_findings": 19,
   "findings": [
     {
-      "file": ".\\scanner\\patterns.py",
+      "file": "tests\\test_vulnerable.py",
+      "line": 1,
+      "code": "from Crypto.PublicKey import RSA",
+      "vulnerability": "RSA",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "tests\\test_vulnerable.py",
       "line": 2,
-      "code": "\"RSA\": {",
+      "code": "from Crypto.Cipher import PKCS1_OAEP",
       "vulnerability": "RSA",
       "severity": "CRITICAL",
       "replacement": "CRYSTALS-Kyber"
     },
     {
-      "file": ".\\scanner\\patterns.py",
+      "file": "tests\\test_vulnerable.py",
       "line": 6,
-      "code": "\"RSA\", \"rsa\", \"RSAKey\", \"RSA.new\",",
+      "code": "# RSA key generation - QUANTUM VULNERABLE",
       "vulnerability": "RSA",
       "severity": "CRITICAL",
       "replacement": "CRYSTALS-Kyber"
     },
     {
-      "file": ".\\scanner\\patterns.py",
-      "line": 6,
-      "code": "\"RSA\", \"rsa\", \"RSAKey\", \"RSA.new\",",
-      "vulnerability": "RSA",
-      "severity": "CRITICAL",
-      "replacement": "CRYSTALS-Kyber"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 6,
-      "code": "\"RSA\", \"rsa\", \"RSAKey\", \"RSA.new\",",
-      "vulnerability": "RSA",
-      "severity": "CRITICAL",
-      "replacement": "CRYSTALS-Kyber"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 6,
-      "code": "\"RSA\", \"rsa\", \"RSAKey\", \"RSA.new\",",
-      "vulnerability": "RSA",
-      "severity": "CRITICAL",
-      "replacement": "CRYSTALS-Kyber"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
+      "file": "tests\\test_vulnerable.py",
       "line": 7,
-      "code": "\"RSA.generate\", \"PKCS1_OAEP\", \"PKCS1_v1_5\",",
+      "code": "key = RSA.generate(2048)",
       "vulnerability": "RSA",
       "severity": "CRITICAL",
       "replacement": "CRYSTALS-Kyber"
     },
     {
-      "file": ".\\scanner\\patterns.py",
+      "file": "tests\\test_vulnerable.py",
       "line": 7,
-      "code": "\"RSA.generate\", \"PKCS1_OAEP\", \"PKCS1_v1_5\",",
+      "code": "key = RSA.generate(2048)",
       "vulnerability": "RSA",
       "severity": "CRITICAL",
       "replacement": "CRYSTALS-Kyber"
     },
     {
-      "file": ".\\scanner\\patterns.py",
-      "line": 7,
-      "code": "\"RSA.generate\", \"PKCS1_OAEP\", \"PKCS1_v1_5\",",
+      "file": "tests\\test_vulnerable.py",
+      "line": 8,
+      "code": "cipher = PKCS1_OAEP.new(key)",
       "vulnerability": "RSA",
       "severity": "CRITICAL",
       "replacement": "CRYSTALS-Kyber"
     },
     {
-      "file": ".\\scanner\\patterns.py",
-      "line": 7,
-      "code": "\"RSA.generate\", \"PKCS1_OAEP\", \"PKCS1_v1_5\",",
-      "vulnerability": "RSA",
-      "severity": "CRITICAL",
-      "replacement": "CRYSTALS-Kyber"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
+      "file": "tests\\test_vulnerable.py",
       "line": 10,
-      "code": "\"ECC\": {",
+      "code": "# MD5 hashing - QUANTUM VULNERABLE",
+      "vulnerability": "MD5",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
+    {
+      "file": "tests\\test_vulnerable.py",
+      "line": 12,
+      "code": "md5_hash = hashlib.md5(data).hexdigest()",
+      "vulnerability": "MD5",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
+    {
+      "file": "tests\\test_vulnerable.py",
+      "line": 12,
+      "code": "md5_hash = hashlib.md5(data).hexdigest()",
+      "vulnerability": "MD5",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
+    {
+      "file": "tests\\test_vulnerable.py",
+      "line": 14,
+      "code": "# SHA1 hashing - QUANTUM VULNERABLE",
+      "vulnerability": "SHA1",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
+    {
+      "file": "tests\\test_vulnerable.py",
+      "line": 15,
+      "code": "sha1_hash = hashlib.sha1(data).hexdigest()",
+      "vulnerability": "SHA1",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
+    {
+      "file": "tests\\test_vulnerable.py",
+      "line": 15,
+      "code": "sha1_hash = hashlib.sha1(data).hexdigest()",
+      "vulnerability": "SHA1",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
+    {
+      "file": "tests\\test_vulnerable.py",
+      "line": 17,
+      "code": "# ECDSA - QUANTUM VULNERABLE",
       "vulnerability": "ECC",
       "severity": "CRITICAL",
       "replacement": "CRYSTALS-Dilithium"
     },
     {
-      "file": ".\\scanner\\patterns.py",
-      "line": 10,
-      "code": "\"ECC\": {",
+      "file": "tests\\test_vulnerable.py",
+      "line": 17,
+      "code": "# ECDSA - QUANTUM VULNERABLE",
       "vulnerability": "ECC",
       "severity": "CRITICAL",
       "replacement": "CRYSTALS-Dilithium"
     },
     {
-      "file": ".\\scanner\\patterns.py",
-      "line": 14,
-      "code": "\"EC\", \"ECC\", \"ECDSA\", \"ECDH\",",
-      "vulnerability": "ECC",
-      "severity": "CRITICAL",
-      "replacement": "CRYSTALS-Dilithium"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 14,
-      "code": "\"EC\", \"ECC\", \"ECDSA\", \"ECDH\",",
-      "vulnerability": "ECC",
-      "severity": "CRITICAL",
-      "replacement": "CRYSTALS-Dilithium"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 14,
-      "code": "\"EC\", \"ECC\", \"ECDSA\", \"ECDH\",",
-      "vulnerability": "ECC",
-      "severity": "CRITICAL",
-      "replacement": "CRYSTALS-Dilithium"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 14,
-      "code": "\"EC\", \"ECC\", \"ECDSA\", \"ECDH\",",
-      "vulnerability": "ECC",
-      "severity": "CRITICAL",
-      "replacement": "CRYSTALS-Dilithium"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 14,
-      "code": "\"EC\", \"ECC\", \"ECDSA\", \"ECDH\",",
-      "vulnerability": "DH",
-      "severity": "HIGH",
-      "replacement": "CRYSTALS-Kyber"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 14,
-      "code": "\"EC\", \"ECC\", \"ECDSA\", \"ECDH\",",
+      "file": "tests\\test_vulnerable.py",
+      "line": 17,
+      "code": "# ECDSA - QUANTUM VULNERABLE",
       "vulnerability": "DSA",
       "severity": "HIGH",
       "replacement": "CRYSTALS-Dilithium"
     },
     {
-      "file": ".\\scanner\\patterns.py",
-      "line": 15,
-      "code": "\"elliptic\", \"secp256k1\", \"prime256v1\",",
-      "vulnerability": "ECC",
-      "severity": "CRITICAL",
-      "replacement": "CRYSTALS-Dilithium"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 15,
-      "code": "\"elliptic\", \"secp256k1\", \"prime256v1\",",
-      "vulnerability": "ECC",
-      "severity": "CRITICAL",
-      "replacement": "CRYSTALS-Dilithium"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 15,
-      "code": "\"elliptic\", \"secp256k1\", \"prime256v1\",",
-      "vulnerability": "ECC",
-      "severity": "CRITICAL",
-      "replacement": "CRYSTALS-Dilithium"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
+      "file": "tests\\test_vulnerable.py",
       "line": 18,
-      "code": "\"DH\": {",
-      "vulnerability": "DH",
-      "severity": "HIGH",
-      "replacement": "CRYSTALS-Kyber"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 22,
-      "code": "\"DH\", \"DHE\", \"DiffieHellman\",",
-      "vulnerability": "DH",
-      "severity": "HIGH",
-      "replacement": "CRYSTALS-Kyber"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 22,
-      "code": "\"DH\", \"DHE\", \"DiffieHellman\",",
-      "vulnerability": "DH",
-      "severity": "HIGH",
-      "replacement": "CRYSTALS-Kyber"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 22,
-      "code": "\"DH\", \"DHE\", \"DiffieHellman\",",
-      "vulnerability": "DH",
-      "severity": "HIGH",
-      "replacement": "CRYSTALS-Kyber"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 23,
-      "code": "\"diffie-hellman\",",
-      "vulnerability": "DH",
-      "severity": "HIGH",
-      "replacement": "CRYSTALS-Kyber"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 26,
-      "code": "\"DSA\": {",
-      "vulnerability": "DSA",
-      "severity": "HIGH",
+      "code": "from Crypto.PublicKey import ECC",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
       "replacement": "CRYSTALS-Dilithium"
     },
     {
-      "file": ".\\scanner\\patterns.py",
-      "line": 30,
-      "code": "\"DSA\", \"DSAKey\", \"DSS\",",
-      "vulnerability": "DSA",
-      "severity": "HIGH",
+      "file": "tests\\test_vulnerable.py",
+      "line": 18,
+      "code": "from Crypto.PublicKey import ECC",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
       "replacement": "CRYSTALS-Dilithium"
     },
     {
-      "file": ".\\scanner\\patterns.py",
-      "line": 30,
-      "code": "\"DSA\", \"DSAKey\", \"DSS\",",
-      "vulnerability": "DSA",
-      "severity": "HIGH",
+      "file": "tests\\test_vulnerable.py",
+      "line": 19,
+      "code": "ecc_key = ECC.generate(curve='P-256')",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
       "replacement": "CRYSTALS-Dilithium"
     },
     {
-      "file": ".\\scanner\\patterns.py",
-      "line": 30,
-      "code": "\"DSA\", \"DSAKey\", \"DSS\",",
-      "vulnerability": "DSA",
-      "severity": "HIGH",
+      "file": "tests\\test_vulnerable.py",
+      "line": 19,
+      "code": "ecc_key = ECC.generate(curve='P-256')",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
       "replacement": "CRYSTALS-Dilithium"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 33,
-      "code": "\"MD5\": {",
-      "vulnerability": "MD5",
-      "severity": "MEDIUM",
-      "replacement": "SHA-3 or SPHINCS+"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 37,
-      "code": "\"MD5\", \"md5\", \"hashlib.md5\",",
-      "vulnerability": "MD5",
-      "severity": "MEDIUM",
-      "replacement": "SHA-3 or SPHINCS+"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 37,
-      "code": "\"MD5\", \"md5\", \"hashlib.md5\",",
-      "vulnerability": "MD5",
-      "severity": "MEDIUM",
-      "replacement": "SHA-3 or SPHINCS+"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 37,
-      "code": "\"MD5\", \"md5\", \"hashlib.md5\",",
-      "vulnerability": "MD5",
-      "severity": "MEDIUM",
-      "replacement": "SHA-3 or SPHINCS+"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 40,
-      "code": "\"SHA1\": {",
-      "vulnerability": "SHA1",
-      "severity": "MEDIUM",
-      "replacement": "SHA-3 or SPHINCS+"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 44,
-      "code": "\"SHA1\", \"sha1\", \"hashlib.sha1\",",
-      "vulnerability": "SHA1",
-      "severity": "MEDIUM",
-      "replacement": "SHA-3 or SPHINCS+"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 44,
-      "code": "\"SHA1\", \"sha1\", \"hashlib.sha1\",",
-      "vulnerability": "SHA1",
-      "severity": "MEDIUM",
-      "replacement": "SHA-3 or SPHINCS+"
-    },
-    {
-      "file": ".\\scanner\\patterns.py",
-      "line": 44,
-      "code": "\"SHA1\", \"sha1\", \"hashlib.sha1\",",
-      "vulnerability": "SHA1",
-      "severity": "MEDIUM",
-      "replacement": "SHA-3 or SPHINCS+"
     }
   ]
 }
