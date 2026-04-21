@@ -53,6 +53,13 @@ JS_PATTERNS = {
     "MD5": ["crypto.createHash.*md5", "md5("],
     "SHA1": ["crypto.createHash.*sha1", "sha1("],
 }
+JAVA_PATTERNS = {
+    "RSA": ["KeyPairGenerator.*RSA", "RSAPublicKeySpec", "java.security.interfaces.RSAKey"],
+    "ECC": ["KeyPairGenerator.*EC", "ECPublicKeySpec", "java.security.interfaces.ECKey"],
+    "DH": ["KeyPairGenerator.*DH", "DHPublicKeySpec", "javax.crypto.interfaces.DHKey"],
+    "MD5": ["MessageDigest.*MD5", "DigestUtils.md5"],
+    "SHA1": ["MessageDigest.*SHA-1", "DigestUtils.sha1"],
+}
 SEVERITY_SCORE = {
     "CRITICAL": 10,
     "HIGH": 6,
