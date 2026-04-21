@@ -1,0 +1,28 @@
+🔐 I just built QuantumGuard — an open-source quantum 
+cryptography vulnerability scanner.
+
+After completing my Master's in CS & Cybersecurity, 
+I spent one night building a tool that solves a real problem:
+
+Most enterprise codebases use RSA, ECC, and DH encryption.
+Quantum computers will break all of these within this decade.
+Companies need to migrate NOW — but don't know where to start.
+
+QuantumGuard solves this by:
+✅ Scanning your entire codebase automatically
+✅ Detecting every quantum-vulnerable algorithm
+✅ Giving your project a Quantum Readiness Score (0-100)
+✅ Suggesting NIST-approved PQC replacements for every finding
+
+Built with Python, tree-sitter, and Claude AI.
+
+This is just the beginning — AI-powered reports and 
+a web dashboard coming soon.
+
+🔗 GitHub: github.com/cybersupe/quantumguard
+
+If you work in enterprise security or know someone who does,
+I'd love to hear your thoughts.
+
+#CyberSecurity #QuantumComputing #PostQuantum #OpenSource
+#Python #SecurityTools #PQC #NIST

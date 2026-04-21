@@ -46,6 +46,13 @@ VULNERABLE_PATTERNS = {
     },
 }
 
+JS_PATTERNS = {
+    "RSA": ["crypto.generateKeyPairSync.*rsa", "new NodeRSA", "forge.pki.rsa"],
+    "ECC": ["crypto.createECDH", "elliptic", "secp256k1"],
+    "DH": ["crypto.getDiffieHellman", "crypto.createDiffieHellman"],
+    "MD5": ["crypto.createHash.*md5", "md5("],
+    "SHA1": ["crypto.createHash.*sha1", "sha1("],
+}
 SEVERITY_SCORE = {
     "CRITICAL": 10,
     "HIGH": 6,
