@@ -4,7 +4,6 @@ const API = "https://web-production-16177f.up.railway.app";
 
 function Navbar({ darkMode, setDarkMode }) {
   const bg = darkMode ? "#0f0f1a" : "#ffffff";
-  const text = darkMode ? "#ffffff" : "#111111";
   const muted = darkMode ? "#888" : "#666";
   const border = darkMode ? "#1a1a2e" : "#e5e5e5";
   return (
@@ -173,7 +172,7 @@ function Scanner({ darkMode }) {
           <div style={{ background: card, borderRadius: 12, padding: 24, border: `1px solid ${border}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
               <h3 style={{ color: "#7F77DD", margin: 0 }}>Findings</h3>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={handleCopy} style={{ padding: "6px 14px", borderRadius: 6, background: copied ? "#1D9E75" : "transparent", color: copied ? "#fff" : muted, border: `1px solid ${border}`, cursor: "pointer", fontSize: 12 }}>{copied ? "Copied!" : "Copy"}</button>
                 <button onClick={handlePDF} style={{ padding: "6px 14px", borderRadius: 6, background: "#534AB7", color: "#fff", border: "none", cursor: "pointer", fontSize: 12 }}>PDF</button>
                 <button onClick={handleShare} style={{ padding: "6px 14px", borderRadius: 6, background: "#1DA1F2", color: "#fff", border: "none", cursor: "pointer", fontSize: 12 }}>Share</button>
@@ -243,7 +242,7 @@ export default function App() {
           <a href="#scan" style={{ background: "#534AB7", color: "#fff", padding: "16px 36px", borderRadius: 10, textDecoration: "none", fontSize: 16, fontWeight: 600 }}>Start Free Scan →</a>
           <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer" style={{ background: card, color: text, padding: "16px 36px", borderRadius: 10, textDecoration: "none", fontSize: 16, border: `1px solid ${border}` }}>View on GitHub</a>
         </div>
-        <p style={{ color: muted, fontSize: 13, marginTop: 16 }}>No signup required. No credit card. Upload ZIP and scan instantly.</p>
+        <p style={{ color: muted, fontSize: 13, marginTop: 16 }}>No signup. No credit card. Upload ZIP and scan instantly.</p>
       </div>
 
       {/* Stats */}
@@ -289,7 +288,7 @@ export default function App() {
             { icon: "🔍", title: "Scanner runs", desc: "Line-by-line analysis detects RSA, ECC, DH, DSA, MD5, SHA-1, RC4, DES, ECB, weak TLS, hardcoded secrets." },
             { icon: "⚠️", title: "Vulnerabilities flagged", desc: "Every issue shown with exact file, line number, severity and vulnerable code." },
             { icon: "📊", title: "Review findings", desc: "Filter by severity, search files, see Quantum Readiness Score 0-100." },
-            { icon: "📄", title: "Get your report", desc: "Download PDF, copy to clipboard, or share on social. Present to your board." },
+            { icon: "📄", title: "Get your report", desc: "Download PDF, copy to clipboard, or share. Present to your board." },
           ].map((s, i) => (
             <div key={i} style={{ display: "flex", gap: 24, marginBottom: 32 }}>
               <div style={{ width: 42, height: 42, borderRadius: "50%", background: "#534AB7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0, zIndex: 1 }}>{s.icon}</div>
@@ -340,9 +339,9 @@ export default function App() {
         <p style={{ textAlign: "center", color: muted, marginBottom: 48, fontSize: 16 }}>Start free. Upgrade when you're ready.</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20 }}>
           {[
-            { name: "Free", price: "$0", period: "forever", desc: "For individual developers", features: ["CLI tool", "Web dashboard", "ZIP upload", "PDF reports", "Basic scan — up to 10MB", "GitHub open source"], cta: "Start Free", highlight: false },
+            { name: "Free", price: "$0", period: "forever", desc: "For individual developers", features: ["CLI tool", "Web dashboard", "ZIP upload", "PDF reports", "Basic scan up to 10MB", "GitHub open source"], cta: "Start Free", highlight: false },
             { name: "Pro", price: "$299", period: "/month", desc: "For security teams", features: ["Everything in Free", "AI-powered reports", "Unlimited file size", "Priority support", "Scan history", "API access"], cta: "Coming Soon", highlight: true },
-            { name: "Enterprise", price: "Custom", period: "", desc: "For large organizations", features: ["Everything in Pro", "CI/CD integration", "SSO login", "Custom reports", "Dedicated support", "Compliance exports — SOC2, ISO27001"], cta: "Contact Us", highlight: false },
+            { name: "Enterprise", price: "Custom", period: "", desc: "For large organizations", features: ["Everything in Pro", "CI/CD integration", "SSO login", "Custom reports", "Dedicated support", "SOC2 compliance exports"], cta: "Contact Us", highlight: false },
           ].map((p, i) => (
             <div key={i} style={{ background: card, borderRadius: 20, padding: 32, border: p.highlight ? "2px solid #534AB7" : `1px solid ${border}`, position: "relative" }}>
               {p.highlight && <div style={{ position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)", background: "#534AB7", color: "#fff", padding: "4px 20px", borderRadius: 20, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>Most Popular</div>}
@@ -354,7 +353,7 @@ export default function App() {
               <div style={{ fontSize: 13, color: muted, marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${border}` }}>{p.desc}</div>
               {p.features.map((f, j) => (
                 <div key={j} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 10 }}>
-                  <span style={{ color: "#1D9E75", fontSize: 14, marginTop: 1 }}>✓</span>
+                  <span style={{ color: "#1D9E75", fontSize: 14 }}>✓</span>
                   <span style={{ fontSize: 13, color: muted }}>{f}</span>
                 </div>
               ))}
@@ -369,10 +368,10 @@ export default function App() {
         <h2 style={{ textAlign: "center", fontSize: 36, marginBottom: 48, color: text }}>FAQ</h2>
         {[
           { q: "Is my code safe when I upload it?", a: "Yes. Your code is scanned in memory and immediately deleted after scanning. We never store, log, or share your code." },
-          { q: "What languages are supported?", a: "Python, JavaScript, Java and TypeScript. More languages including Go, Rust and C++ are coming soon." },
+          { q: "What languages are supported?", a: "Python, JavaScript, Java and TypeScript. Go, Rust and C++ coming soon." },
           { q: "What is the Quantum Readiness Score?", a: "A score from 0-100. CRITICAL findings reduce score by 10, HIGH by 6, MEDIUM by 3. Score 80+ is good, below 40 needs immediate attention." },
-          { q: "Why should I care about quantum computers now?", a: "NIST finalized post-quantum standards in 2024. Migration takes years. Companies that start now will be ready when quantum computers arrive around 2030." },
-          { q: "Is QuantumGuard really free?", a: "Yes! The CLI tool and web scanner are completely free and open source forever. Pro features are coming soon for teams that need more." },
+          { q: "Why should I care about quantum computers now?", a: "NIST finalized post-quantum standards in 2024. Migration takes years. Start now to be ready when quantum computers arrive around 2030." },
+          { q: "Is QuantumGuard really free?", a: "Yes! CLI tool and web scanner are completely free and open source forever. Pro features coming soon for teams." },
         ].map((f, i) => (
           <div key={i} style={{ background: card, borderRadius: 12, padding: 24, marginBottom: 12, border: `1px solid ${border}` }}>
             <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 15, color: text }}>{f.q}</div>
