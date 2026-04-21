@@ -2,7 +2,8 @@ from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from scanner.scan import scan_directory, calculate_score
-import os, subprocess, shutil, uuid
+import os, shutil, uuid
+import git
 
 app = FastAPI()
 
@@ -42,18 +43,7 @@ def scan_github(request: GitScanRequest, x_api_key: str = Header(...)):
         raise HTTPException(status_code=400, detail="Only GitHub URLs allowed")
     temp_dir = f"/tmp/qg-{uuid.uuid4().hex[:8]}"
     try:
-        result = subprocess.run(
-            ["git", "clone", "--depth", "1", request.github_url, temp_dir],
-            capture_output=True,
-            timeout=60
-        )
-        stdout = result.stdout.decode() if result.stdout else ""
-        stderr = result.stderr.decode() if result.stderr else ""
-        if result.returncode != 0:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Clone failed: stdout={stdout} stderr={stderr} returncode={result.returncode}"
-            )
+        git.Repo.clone_from(request.github_url, temp_dir, depth=1)
         findings = scan_directory(temp_dir)
         score = calculate_score(findings)
         return {
@@ -62,12 +52,10 @@ def scan_github(request: GitScanRequest, x_api_key: str = Header(...)):
             "total_findings": len(findings),
             "findings": findings
         }
-    except HTTPException:
-        raise
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=408, detail="Clone timeout")
+    except git.GitCommandError as e:
+        raise HTTPException(status_code=400, detail=f"Clone failed: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
     finally:
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)

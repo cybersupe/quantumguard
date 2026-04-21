@@ -1,7 +1,7 @@
 [phases.setup]
-nixPkgs = ["git", "python311", "openssh"]
+nixPkgs = ["git", "python311"]
 
-[phases.build]
+[phases.install]
 cmds = ["pip install -r requirements.txt"]
 
 [start]
