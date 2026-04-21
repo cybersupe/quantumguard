@@ -9,7 +9,7 @@ function App() {
     if (!directory) return;
     setLoading(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/scan", {
+     const res = await fetch("https://web-production-16177f.up.railway.app/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ directory }),
