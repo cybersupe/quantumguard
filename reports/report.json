@@ -1,9 +1,129 @@
 {
-  "scanned_at": "2026-04-21T00:13:27.099968",
+  "scanned_at": "2026-04-21T00:54:19.062272",
   "directory": "tests",
   "quantum_readiness_score": 0,
-  "total_findings": 19,
+  "total_findings": 34,
   "findings": [
+    {
+      "file": "tests\\test_vulnerable.js",
+      "line": 2,
+      "code": "const NodeRSA = require('node-rsa');",
+      "vulnerability": "RSA",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "tests\\test_vulnerable.js",
+      "line": 2,
+      "code": "const NodeRSA = require('node-rsa');",
+      "vulnerability": "RSA",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "tests\\test_vulnerable.js",
+      "line": 3,
+      "code": "const elliptic = require('elliptic');",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "tests\\test_vulnerable.js",
+      "line": 5,
+      "code": "// RSA - QUANTUM VULNERABLE",
+      "vulnerability": "RSA",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "tests\\test_vulnerable.js",
+      "line": 6,
+      "code": "const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {",
+      "vulnerability": "RSA",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "tests\\test_vulnerable.js",
+      "line": 10,
+      "code": "// ECC - QUANTUM VULNERABLE",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "tests\\test_vulnerable.js",
+      "line": 10,
+      "code": "// ECC - QUANTUM VULNERABLE",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "tests\\test_vulnerable.js",
+      "line": 11,
+      "code": "const ec = new elliptic.ec('secp256k1');",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "tests\\test_vulnerable.js",
+      "line": 11,
+      "code": "const ec = new elliptic.ec('secp256k1');",
+      "vulnerability": "ECC",
+      "severity": "CRITICAL",
+      "replacement": "CRYSTALS-Dilithium"
+    },
+    {
+      "file": "tests\\test_vulnerable.js",
+      "line": 14,
+      "code": "// DH - QUANTUM VULNERABLE",
+      "vulnerability": "DH",
+      "severity": "HIGH",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "tests\\test_vulnerable.js",
+      "line": 15,
+      "code": "const dh = crypto.createDiffieHellman(2048);",
+      "vulnerability": "DH",
+      "severity": "HIGH",
+      "replacement": "CRYSTALS-Kyber"
+    },
+    {
+      "file": "tests\\test_vulnerable.js",
+      "line": 18,
+      "code": "// MD5 - QUANTUM VULNERABLE",
+      "vulnerability": "MD5",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
+    {
+      "file": "tests\\test_vulnerable.js",
+      "line": 19,
+      "code": "const md5Hash = crypto.createHash('md5').update('password').digest('hex');",
+      "vulnerability": "MD5",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
+    {
+      "file": "tests\\test_vulnerable.js",
+      "line": 21,
+      "code": "// SHA1 - QUANTUM VULNERABLE",
+      "vulnerability": "SHA1",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
+    {
+      "file": "tests\\test_vulnerable.js",
+      "line": 22,
+      "code": "const sha1Hash = crypto.createHash('sha1').update('data').digest('hex');",
+      "vulnerability": "SHA1",
+      "severity": "MEDIUM",
+      "replacement": "SHA-3 or SPHINCS+"
+    },
     {
       "file": "tests\\test_vulnerable.py",
       "line": 1,
