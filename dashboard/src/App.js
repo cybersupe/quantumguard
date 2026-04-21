@@ -11,7 +11,10 @@ function App() {
     try {
      const res = await fetch("https://web-production-16177f.up.railway.app/scan", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+  "Content-Type": "application/json",
+  "x-api-key": "quantumguard-secret-2026"
+},
         body: JSON.stringify({ directory }),
       });
       const data = await res.json();
