@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
+import emailjs from "@emailjs/browser";
 import { auth, db, signInWithGoogle, logOut, canUserScan, incrementScanCount, getUserProfile } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, addDoc, getDocs, query, where, orderBy } from "firebase/firestore";
@@ -238,6 +239,9 @@ function Scanner({ darkMode, user }) {
   const [copied, setCopied] = useState(false);
   const [checklist, setChecklist] = useState({});
   const [saved, setSaved] = useState(false);
+  const [emailInput, setEmailInput] = useState("");
+  const [emailSent, setEmailSent] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const intervalRef = useRef(null);
 
   const bg = darkMode ? "#0f0f1a" : "#f5f5f5";
@@ -304,6 +308,30 @@ function Scanner({ darkMode, user }) {
     setLoading(false);
   };
 
+  const handleEmail = async () => {
+    if (!emailInput || !result) return;
+    setSendingEmail(true);
+    try {
+      await emailjs.send(
+        "service_vy8yxbq",
+        "template_mgydwpx",
+        {
+          to_email: emailInput,
+          score: result.quantum_readiness_score,
+          total: result.total_findings,
+          filename: file?.name || input || "scan",
+        },
+        "vATUvI1IlAtH0ooKaQlY9"
+      );
+      setEmailSent(true);
+      setTimeout(() => setEmailSent(false), 3000);
+    } catch (e) {
+      console.error(e);
+      alert("Email failed. Please try again.");
+    }
+    setSendingEmail(false);
+  };
+
   const getScoreColor = (s) => s >= 70 ? "#1D9E75" : s >= 40 ? "#BA7517" : "#E24B4A";
 
   const severityCounts = result ? {
@@ -312,7 +340,7 @@ function Scanner({ darkMode, user }) {
     MEDIUM: result.findings.filter(f => f.severity === "MEDIUM").length,
   } : null;
 
-  const detectedLanguages = result ? [...new Set(result.findings.map(f => ({ py: "Python", js: "JavaScript", java: "Java", ts: "TypeScript" })[f.file.split(".").pop()] || f.file.split(".").pop()))] : [];
+  const detectedLanguages = result ? [...new Set(result.findings.map(f => ({ py: "Python", js: "JavaScript", java: "Java", ts: "TypeScript", go: "Go", rs: "Rust" })[f.file.split(".").pop()] || f.file.split(".").pop()))] : [];
   const fileBreakdown = result ? result.findings.reduce((acc, f) => { const n = f.file.split("/").pop(); acc[n] = (acc[n] || 0) + 1; return acc; }, {}) : null;
 
   const handleCopy = () => {
@@ -417,7 +445,7 @@ function Scanner({ darkMode, user }) {
 
           <SeverityChart severityCounts={severityCounts} darkMode={darkMode} />
 
-          {result && severityCounts && (
+          {severityCounts && (
             <div style={{ background: card, borderRadius: 12, padding: 20, marginBottom: 16, border: `1px solid ${border}` }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: muted, marginBottom: 16 }}>Score Breakdown</div>
               {[
@@ -472,6 +500,13 @@ function Scanner({ darkMode, user }) {
                 <button onClick={handlePDF} style={{ padding: "6px 14px", borderRadius: 6, background: "#534AB7", color: "#fff", border: "none", cursor: "pointer", fontSize: 12 }}>PDF</button>
                 <button onClick={handleShare} style={{ padding: "6px 14px", borderRadius: 6, background: "#1DA1F2", color: "#fff", border: "none", cursor: "pointer", fontSize: 12 }}>Share</button>
               </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
+              <input value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="Email report to..." type="email" style={{ flex: 1, minWidth: 200, padding: "6px 12px", borderRadius: 6, border: `1px solid ${border}`, background: bg, color: text, fontSize: 12 }} />
+              <button onClick={handleEmail} disabled={sendingEmail || !emailInput} style={{ padding: "6px 14px", borderRadius: 6, background: emailSent ? "#1D9E75" : "#534AB7", color: "#fff", border: "none", cursor: "pointer", fontSize: 12 }}>
+                {emailSent ? "Sent! ✓" : sendingEmail ? "Sending..." : "📧 Email Report"}
+              </button>
             </div>
 
             <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
@@ -541,7 +576,7 @@ export default function App() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, maxWidth: 860, margin: "0 auto 80px", padding: "0 20px" }}>
-        {[{ num: "15+", label: "Vulnerabilities Detected" }, { num: "4", label: "Languages Supported" }, { num: "2030", label: "Quantum Deadline" }, { num: "100%", label: "Free & Open Source" }].map((s, i) => (
+        {[{ num: "15+", label: "Vulnerabilities Detected" }, { num: "6", label: "Languages Supported" }, { num: "2030", label: "Quantum Deadline" }, { num: "100%", label: "Free & Open Source" }].map((s, i) => (
           <div key={i} style={{ background: card, borderRadius: 12, padding: 24, textAlign: "center", border: `1px solid ${border}` }}>
             <div style={{ fontSize: 32, fontWeight: 700, color: "#7F77DD" }}>{s.num}</div>
             <div style={{ color: muted, fontSize: 13, marginTop: 6 }}>{s.label}</div>
@@ -554,10 +589,10 @@ export default function App() {
         <p style={{ textAlign: "center", color: muted, marginBottom: 48, fontSize: 16 }}>Built for developers and security teams who need to act now</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20 }}>
           {[
-            { icon: "🔍", title: "Deep scanning", desc: "Scans every file line by line across Python, JS, Java, TypeScript codebases" },
+            { icon: "🔍", title: "Deep scanning", desc: "Scans every file line by line across Python, JS, Java, TypeScript, Go and Rust codebases" },
             { icon: "📊", title: "Readiness score", desc: "Get a clear 0-100 Quantum Readiness Score with severity breakdown chart" },
             { icon: "🛡️", title: "15+ vulnerabilities", desc: "Detects RSA, ECC, DH, DSA, MD5, SHA-1, RC4, DES, ECB, weak TLS, hardcoded secrets" },
-            { icon: "📄", title: "3 export formats", desc: "Download PDF reports, export CSV for spreadsheets, or copy to clipboard" },
+            { icon: "📄", title: "3 export formats", desc: "Download PDF reports, export CSV, copy to clipboard or email directly" },
             { icon: "🎯", title: "NIST approved fixes", desc: "Every finding comes with CRYSTALS-Kyber or Dilithium migration recommendation" },
             { icon: "🔒", title: "Private repo support", desc: "Scan private GitHub repos securely using your Personal Access Token" },
           ].map((f, i) => (
@@ -576,11 +611,11 @@ export default function App() {
         <div style={{ position: "relative" }}>
           <div style={{ position: "absolute", left: 20, top: 0, bottom: 0, width: 2, background: border }}></div>
           {[
-            { icon: "📁", title: "Upload or paste URL", desc: "ZIP your project or paste a GitHub URL — public or private. Supports Python, JavaScript, Java and TypeScript." },
+            { icon: "📁", title: "Upload or paste URL", desc: "ZIP your project or paste a GitHub URL — public or private. Supports Python, JavaScript, Java, TypeScript, Go and Rust." },
             { icon: "🔍", title: "Scanner runs", desc: "Line-by-line analysis detects 15+ vulnerability types including RSA, ECC, DES, JWT flaws and weak TLS." },
             { icon: "⚠️", title: "Vulnerabilities flagged", desc: "Every issue shown with exact file, line number, severity and vulnerable code snippet." },
             { icon: "📊", title: "Review findings", desc: "Filter by severity, search files, see grouped findings per file with score breakdown." },
-            { icon: "📄", title: "Export your report", desc: "Download PDF or CSV, copy to clipboard, or share on Twitter." },
+            { icon: "📄", title: "Export your report", desc: "Download PDF or CSV, copy to clipboard, email directly, or share on Twitter." },
           ].map((s, i) => (
             <div key={i} style={{ display: "flex", gap: 24, marginBottom: 32 }}>
               <div style={{ width: 42, height: 42, borderRadius: "50%", background: "#534AB7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0, zIndex: 1 }}>{s.icon}</div>
@@ -601,7 +636,7 @@ export default function App() {
         <p style={{ textAlign: "center", color: muted, marginBottom: 48, fontSize: 16 }}>Start free. Upgrade when you're ready.</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20 }}>
           {[
-            { name: "Free", price: "$0", period: "forever", desc: "For individual developers", features: ["CLI tool", "Web dashboard", "ZIP upload", "GitHub URL scan", "Private repo support", "PDF & CSV reports", "10 scans/day"], cta: "Start Free", highlight: false },
+            { name: "Free", price: "$0", period: "forever", desc: "For individual developers", features: ["CLI tool", "Web dashboard", "ZIP upload", "GitHub URL scan", "Private repo support", "PDF & CSV reports", "Email reports", "10 scans/day"], cta: "Start Free", highlight: false },
             { name: "Pro", price: "$29", period: "/month", desc: "For security teams", features: ["Everything in Free", "Unlimited scans", "AI-powered reports", "Unlimited file size", "Priority support", "Team members", "API access"], cta: "Coming Soon", highlight: true },
             { name: "Enterprise", price: "Custom", period: "", desc: "For large organizations", features: ["Everything in Pro", "CI/CD integration", "SSO login", "Custom reports", "Dedicated support", "SOC2 compliance"], cta: "Contact Us", highlight: false },
           ].map((p, i) => (
@@ -630,7 +665,7 @@ export default function App() {
         {[
           { q: "Is my code safe when I upload it?", a: "Yes. Your code is scanned in memory and immediately deleted after scanning. We never store, log, or share your code." },
           { q: "Can I scan private repositories?", a: "Yes! Add your GitHub Personal Access Token in the GitHub URL mode. Your token is used only for that scan and never stored." },
-          { q: "What languages are supported?", a: "Python, JavaScript, Java and TypeScript. Go, Rust and C++ coming soon." },
+          { q: "What languages are supported?", a: "Python, JavaScript, Java, TypeScript, Go and Rust. C++ coming soon." },
           { q: "What is the Quantum Readiness Score?", a: "A score from 0-100. CRITICAL findings reduce score by 10, HIGH by 6, MEDIUM by 3. Score 80+ is good, below 40 needs immediate attention." },
           { q: "Is QuantumGuard really free?", a: "Yes! CLI tool and web scanner are completely free and open source forever. Pro features coming soon for teams." },
         ].map((f, i) => (
