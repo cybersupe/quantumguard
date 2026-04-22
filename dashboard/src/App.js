@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
+import { auth, db, signInWithGoogle, logOut, googleProvider } from "./firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { collection, addDoc, getDocs, query, where, orderBy } from "firebase/firestore";
 
 const API = "https://web-production-16177f.up.railway.app";
 
-function Navbar({ darkMode, setDarkMode }) {
+function Navbar({ darkMode, setDarkMode, user, onLogin, onLogout }) {
   const bg = darkMode ? "#0f0f1a" : "#ffffff";
   const muted = darkMode ? "#888" : "#666";
   const border = darkMode ? "#1a1a2e" : "#e5e5e5";
@@ -18,13 +21,75 @@ function Navbar({ darkMode, setDarkMode }) {
         <button onClick={() => setDarkMode(!darkMode)} style={{ background: "transparent", border: `1px solid ${border}`, borderRadius: 8, padding: "6px 12px", cursor: "pointer", color: muted, fontSize: 13 }}>
           {darkMode ? "☀️" : "🌙"}
         </button>
-        <a href="#scan" style={{ background: "#534AB7", color: "#fff", padding: "8px 20px", borderRadius: 8, textDecoration: "none", fontSize: 14, fontWeight: 500 }}>Start Free Scan</a>
+        {user ? (
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <img src={user.photoURL} alt="avatar" style={{ width: 32, height: 32, borderRadius: "50%" }} />
+            <span style={{ color: muted, fontSize: 13 }}>{user.displayName?.split(" ")[0]}</span>
+            <button onClick={onLogout} style={{ background: "transparent", border: `1px solid ${border}`, borderRadius: 8, padding: "6px 12px", cursor: "pointer", color: muted, fontSize: 13 }}>Logout</button>
+          </div>
+        ) : (
+          <button onClick={onLogin} style={{ background: "#534AB7", color: "#fff", padding: "8px 20px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>Sign in with Google</button>
+        )}
       </div>
     </nav>
   );
 }
 
-function Scanner({ darkMode }) {
+function ScanHistory({ user, darkMode }) {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const card = darkMode ? "#1a1a2e" : "#ffffff";
+  const text = darkMode ? "#ffffff" : "#111111";
+  const muted = darkMode ? "#888" : "#666";
+  const border = darkMode ? "#333" : "#e5e5e5";
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchHistory = async () => {
+      try {
+        const q = query(collection(db, "scans"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+        setHistory(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } catch (e) { console.error(e); }
+      setLoading(false);
+    };
+    fetchHistory();
+  }, [user]);
+
+  if (!user) return null;
+
+  return (
+    <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 20px 40px" }}>
+      <h3 style={{ color: "#7F77DD", marginBottom: 16 }}>Your Scan History</h3>
+      {loading ? (
+        <div style={{ color: muted }}>Loading...</div>
+      ) : history.length === 0 ? (
+        <div style={{ color: muted, fontSize: 14 }}>No scans yet — upload a ZIP to get started!</div>
+      ) : (
+        history.map((scan, i) => (
+          <div key={i} style={{ background: card, borderRadius: 12, padding: 16, marginBottom: 12, border: `1px solid ${border}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            <div>
+              <div style={{ fontWeight: 600, color: text, fontSize: 14 }}>{scan.filename || "Scan"}</div>
+              <div style={{ color: muted, fontSize: 12 }}>{scan.createdAt?.toDate?.()?.toLocaleString() || "Just now"}</div>
+            </div>
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: scan.score >= 70 ? "#1D9E75" : scan.score >= 40 ? "#BA7517" : "#E24B4A" }}>{scan.score}</div>
+                <div style={{ fontSize: 10, color: muted }}>Score</div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: "#E24B4A" }}>{scan.findings}</div>
+                <div style={{ fontSize: 10, color: muted }}>Issues</div>
+              </div>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+function Scanner({ darkMode, user }) {
   const [mode, setMode] = useState("zip");
   const [input, setInput] = useState("");
   const [file, setFile] = useState(null);
@@ -59,7 +124,19 @@ function Scanner({ darkMode }) {
       }
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Scan failed");
-      setProgress(100); setResult(data);
+      setProgress(100);
+      setResult(data);
+
+      if (user) {
+        await addDoc(collection(db, "scans"), {
+          userId: user.uid,
+          userEmail: user.email,
+          filename: file?.name || input || "scan",
+          score: data.quantum_readiness_score,
+          findings: data.total_findings,
+          createdAt: new Date(),
+        });
+      }
     } catch (e) { setError(e.message); }
     clearInterval(interval); setLoading(false);
   };
@@ -91,22 +168,48 @@ function Scanner({ darkMode }) {
   return (
     <div id="scan" style={{ maxWidth: 860, margin: "0 auto", padding: "60px 20px", background: bg }}>
       <h2 style={{ fontSize: 28, textAlign: "center", marginBottom: 8, color: text }}>Scan Your Code</h2>
-      <p style={{ color: muted, textAlign: "center", marginBottom: 32, fontSize: 14 }}>Upload a ZIP — free, instant, secure. No signup required.</p>
+      <p style={{ color: muted, textAlign: "center", marginBottom: user ? 8 : 32, fontSize: 14 }}>Upload a ZIP — free, instant, secure. No signup required.</p>
+
+      {!user && (
+        <div style={{ background: "#534AB722", border: "1px solid #534AB7", borderRadius: 8, padding: 12, marginBottom: 24, textAlign: "center" }}>
+          <span style={{ color: "#7F77DD", fontSize: 13 }}>💡 Sign in to save your scan history!</span>
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16, justifyContent: "center", flexWrap: "wrap" }}>
         <button onClick={() => setMode("zip")} style={{ padding: "8px 20px", borderRadius: 8, border: "none", cursor: "pointer", background: mode === "zip" ? "#534AB7" : card, color: mode === "zip" ? "#fff" : muted, fontSize: 13 }}>Upload ZIP</button>
         <button onClick={() => setMode("path")} style={{ padding: "8px 20px", borderRadius: 8, border: "none", cursor: "pointer", background: mode === "path" ? "#534AB7" : card, color: mode === "path" ? "#fff" : muted, fontSize: 13 }}>Server Path</button>
+        <button onClick={() => setMode("github")} style={{ padding: "8px 20px", borderRadius: 8, border: "none", cursor: "pointer", background: mode === "github" ? "#534AB7" : card, color: mode === "github" ? "#fff" : muted, fontSize: 13 }}>GitHub URL</button>
       </div>
 
-      {mode === "zip" ? (
-        <div className="scan-input" style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
+      {mode === "zip" && (
+        <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
           <input type="file" accept=".zip" onChange={(e) => setFile(e.target.files[0])} style={{ flex: 1, minWidth: 200, padding: "12px 16px", borderRadius: 8, border: `1px solid ${border}`, background: card, color: text, fontSize: 14 }} />
           <button onClick={handleScan} disabled={loading} style={{ padding: "12px 24px", borderRadius: 8, background: "#534AB7", color: "#fff", border: "none", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>{loading ? "Scanning..." : "Scan"}</button>
         </div>
-      ) : (
-        <div className="scan-input" style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
+      )}
+
+      {mode === "path" && (
+        <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
           <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="/app/tests" style={{ flex: 1, minWidth: 200, padding: "12px 16px", borderRadius: 8, border: `1px solid ${border}`, background: card, color: text, fontSize: 14 }} />
           <button onClick={handleScan} disabled={loading} style={{ padding: "12px 24px", borderRadius: 8, background: "#534AB7", color: "#fff", border: "none", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>{loading ? "Scanning..." : "Scan"}</button>
+        </div>
+      )}
+
+      {mode === "github" && (
+        <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
+          <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="https://github.com/username/repo" style={{ flex: 1, minWidth: 200, padding: "12px 16px", borderRadius: 8, border: `1px solid ${border}`, background: card, color: text, fontSize: 14 }} />
+          <button onClick={async () => {
+            setLoading(true); setProgress(0); setError(null); setResult(null);
+            const interval = setInterval(() => setProgress(p => p < 90 ? p + 10 : p), 300);
+            try {
+              const res = await fetch(`${API}/scan-github`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ github_url: input }) });
+              const data = await res.json();
+              if (!res.ok) throw new Error(data.detail || "Scan failed");
+              setProgress(100); setResult(data);
+            } catch (e) { setError(e.message); }
+            clearInterval(interval); setLoading(false);
+          }} disabled={loading} style={{ padding: "12px 24px", borderRadius: 8, background: "#534AB7", color: "#fff", border: "none", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>{loading ? "Scanning..." : "Scan"}</button>
         </div>
       )}
 
@@ -125,7 +228,7 @@ function Scanner({ darkMode }) {
 
       {result && (
         <div>
-          <div className="grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
             <div style={{ background: card, borderRadius: 12, padding: 24, textAlign: "center", border: `1px solid ${border}` }}>
               <div style={{ fontSize: 48, fontWeight: 700, color: getScoreColor(result.quantum_readiness_score) }}>{result.quantum_readiness_score}</div>
               <div style={{ color: muted, fontSize: 14 }}>Quantum Readiness Score</div>
@@ -136,7 +239,7 @@ function Scanner({ darkMode }) {
             </div>
           </div>
 
-          <div className="grid-3" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 16 }}>
             {[{ key: "CRITICAL", color: "#E24B4A" }, { key: "HIGH", color: "#BA7517" }, { key: "MEDIUM", color: "#1D9E75" }].map(s => (
               <div key={s.key} style={{ background: card, borderRadius: 8, padding: "12px 16px", textAlign: "center", border: `1px solid ${border}` }}>
                 <div style={{ fontSize: 24, fontWeight: 700, color: s.color }}>{severityCounts[s.key]}</div>
@@ -209,6 +312,20 @@ function Scanner({ darkMode }) {
 
 export default function App() {
   const [darkMode, setDarkMode] = useState(true);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    onAuthStateChanged(auth, (u) => setUser(u));
+  }, []);
+
+  const handleLogin = async () => {
+    try { await signInWithGoogle(); } catch (e) { console.error(e); }
+  };
+
+  const handleLogout = async () => {
+    try { await logOut(); } catch (e) { console.error(e); }
+  };
+
   const bg = darkMode ? "#0f0f1a" : "#f5f5f5";
   const card = darkMode ? "#1a1a2e" : "#ffffff";
   const text = darkMode ? "#ffffff" : "#111111";
@@ -217,7 +334,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", background: bg, color: text, fontFamily: "sans-serif" }}>
-      <Navbar darkMode={darkMode} setDarkMode={setDarkMode} />
+      <Navbar darkMode={darkMode} setDarkMode={setDarkMode} user={user} onLogin={handleLogin} onLogout={handleLogout} />
 
       {/* Hero */}
       <div style={{ textAlign: "center", padding: "80px 20px 60px" }}>
@@ -233,15 +350,15 @@ export default function App() {
         <p style={{ fontSize: "clamp(15px, 2vw, 19px)", color: muted, maxWidth: 600, margin: "0 auto 40px", lineHeight: 1.7 }}>
           QuantumGuard scans your codebase and finds every encryption algorithm that quantum computers will break. Get a clear migration plan aligned with NIST 2024 standards.
         </p>
-        <div className="hero-buttons" style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
           <a href="#scan" style={{ background: "#534AB7", color: "#fff", padding: "16px 36px", borderRadius: 10, textDecoration: "none", fontSize: 16, fontWeight: 600 }}>Start Free Scan →</a>
           <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer" style={{ background: card, color: text, padding: "16px 36px", borderRadius: 10, textDecoration: "none", fontSize: 16, border: `1px solid ${border}` }}>View on GitHub</a>
         </div>
-        <p style={{ color: muted, fontSize: 13, marginTop: 16 }}>No signup. No credit card. Upload ZIP and scan instantly.</p>
+        <p style={{ color: muted, fontSize: 13, marginTop: 16 }}>No credit card. Upload ZIP and scan instantly.</p>
       </div>
 
       {/* Stats */}
-      <div className="grid-4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, maxWidth: 860, margin: "0 auto 80px", padding: "0 20px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, maxWidth: 860, margin: "0 auto 80px", padding: "0 20px" }}>
         {[{ num: "11+", label: "Vulnerabilities Detected" }, { num: "4", label: "Languages Supported" }, { num: "2030", label: "Quantum Deadline" }, { num: "100%", label: "Free & Open Source" }].map((s, i) => (
           <div key={i} style={{ background: card, borderRadius: 12, padding: 24, textAlign: "center", border: `1px solid ${border}` }}>
             <div style={{ fontSize: 32, fontWeight: 700, color: "#7F77DD" }}>{s.num}</div>
@@ -254,14 +371,14 @@ export default function App() {
       <div id="features" style={{ maxWidth: 900, margin: "0 auto 80px", padding: "0 20px" }}>
         <h2 style={{ textAlign: "center", fontSize: "clamp(24px, 4vw, 36px)", marginBottom: 8, color: text }}>Everything you need</h2>
         <p style={{ textAlign: "center", color: muted, marginBottom: 48, fontSize: 16 }}>Built for developers and security teams who need to act now</p>
-        <div className="grid-3" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20 }}>
           {[
             { icon: "🔍", title: "Deep scanning", desc: "Scans every file line by line across Python, JS, Java, TypeScript codebases" },
             { icon: "📊", title: "Readiness score", desc: "Get a clear 0-100 Quantum Readiness Score with severity breakdown" },
             { icon: "🛡️", title: "11+ vulnerabilities", desc: "Detects RSA, ECC, DH, DSA, MD5, SHA-1, RC4, DES, ECB mode, weak TLS, hardcoded secrets" },
             { icon: "📄", title: "PDF reports", desc: "Download professional PDF reports to share with your team or board" },
             { icon: "🎯", title: "NIST approved fixes", desc: "Every finding comes with CRYSTALS-Kyber or Dilithium migration recommendation" },
-            { icon: "⚡", title: "Instant results", desc: "Upload ZIP and get results in seconds. No waiting, no queues" },
+            { icon: "💾", title: "Scan history", desc: "Sign in with Google to save and track all your past scans" },
           ].map((f, i) => (
             <div key={i} style={{ background: card, borderRadius: 16, padding: 28, border: `1px solid ${border}` }}>
               <div style={{ fontSize: 28, marginBottom: 12 }}>{f.icon}</div>
@@ -299,44 +416,15 @@ export default function App() {
         </div>
       </div>
 
-      {/* What we detect */}
-      <div style={{ maxWidth: 900, margin: "0 auto 80px", padding: "0 20px" }}>
-        <h2 style={{ textAlign: "center", fontSize: "clamp(24px, 4vw, 36px)", marginBottom: 8, color: text }}>What we detect</h2>
-        <p style={{ textAlign: "center", color: muted, marginBottom: 48, fontSize: 16 }}>11+ vulnerability types across all major encryption algorithms</p>
-        <div className="grid-3" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
-          {[
-            { name: "RSA", severity: "CRITICAL", fix: "CRYSTALS-Kyber" },
-            { name: "ECC / ECDSA", severity: "CRITICAL", fix: "CRYSTALS-Dilithium" },
-            { name: "RC4", severity: "CRITICAL", fix: "AES-256-GCM" },
-            { name: "DES / 3DES", severity: "CRITICAL", fix: "AES-256-GCM" },
-            { name: "Diffie-Hellman", severity: "HIGH", fix: "CRYSTALS-Kyber" },
-            { name: "DSA", severity: "HIGH", fix: "CRYSTALS-Dilithium" },
-            { name: "ECB Mode", severity: "HIGH", fix: "AES-GCM" },
-            { name: "Weak TLS", severity: "HIGH", fix: "TLS 1.3" },
-            { name: "Hardcoded Secrets", severity: "HIGH", fix: "Secret Manager" },
-            { name: "MD5", severity: "MEDIUM", fix: "SHA-3 / SPHINCS+" },
-            { name: "SHA-1", severity: "MEDIUM", fix: "SHA-3 / SPHINCS+" },
-          ].map((v, i) => (
-            <div key={i} style={{ background: card, borderRadius: 12, padding: 16, borderLeft: `3px solid ${v.severity === "CRITICAL" ? "#E24B4A" : v.severity === "HIGH" ? "#BA7517" : "#1D9E75"}` }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <span style={{ fontWeight: 600, fontSize: 14, color: text }}>{v.name}</span>
-                <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: v.severity === "CRITICAL" ? "#E24B4A22" : v.severity === "HIGH" ? "#BA751722" : "#1D9E7522", color: v.severity === "CRITICAL" ? "#E24B4A" : v.severity === "HIGH" ? "#BA7517" : "#1D9E75" }}>{v.severity}</span>
-              </div>
-              <div style={{ fontSize: 11, color: muted }}>→ <span style={{ color: "#7F77DD" }}>{v.fix}</span></div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Pricing */}
       <div id="pricing" style={{ maxWidth: 900, margin: "0 auto 80px", padding: "0 20px" }}>
         <h2 style={{ textAlign: "center", fontSize: "clamp(24px, 4vw, 36px)", marginBottom: 8, color: text }}>Simple pricing</h2>
         <p style={{ textAlign: "center", color: muted, marginBottom: 48, fontSize: 16 }}>Start free. Upgrade when you're ready.</p>
-        <div className="pricing-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20 }}>
           {[
-            { name: "Free", price: "$0", period: "forever", desc: "For individual developers", features: ["CLI tool", "Web dashboard", "ZIP upload", "PDF reports", "Basic scan up to 10MB", "GitHub open source"], cta: "Start Free", highlight: false },
-            { name: "Pro", price: "$299", period: "/month", desc: "For security teams", features: ["Everything in Free", "AI-powered reports", "Unlimited file size", "Priority support", "Scan history", "API access"], cta: "Coming Soon", highlight: true },
-            { name: "Enterprise", price: "Custom", period: "", desc: "For large organizations", features: ["Everything in Pro", "CI/CD integration", "SSO login", "Custom reports", "Dedicated support", "SOC2 compliance exports"], cta: "Contact Us", highlight: false },
+            { name: "Free", price: "$0", period: "forever", desc: "For individual developers", features: ["CLI tool", "Web dashboard", "ZIP upload", "PDF reports", "GitHub URL scan", "Scan history"], cta: "Start Free", highlight: false },
+            { name: "Pro", price: "$299", period: "/month", desc: "For security teams", features: ["Everything in Free", "AI-powered reports", "Unlimited file size", "Priority support", "Team members", "API access"], cta: "Coming Soon", highlight: true },
+            { name: "Enterprise", price: "Custom", period: "", desc: "For large organizations", features: ["Everything in Pro", "CI/CD integration", "SSO login", "Custom reports", "Dedicated support", "SOC2 compliance"], cta: "Contact Us", highlight: false },
           ].map((p, i) => (
             <div key={i} style={{ background: card, borderRadius: 20, padding: 32, border: p.highlight ? "2px solid #534AB7" : `1px solid ${border}`, position: "relative" }}>
               {p.highlight && <div style={{ position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)", background: "#534AB7", color: "#fff", padding: "4px 20px", borderRadius: 20, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>Most Popular</div>}
@@ -379,17 +467,18 @@ export default function App() {
       <div style={{ textAlign: "center", padding: "80px 20px", background: card, borderTop: `1px solid ${border}`, borderBottom: `1px solid ${border}` }}>
         <h2 style={{ fontSize: "clamp(24px, 4vw, 40px)", marginBottom: 16, color: text }}>Ready to quantum-proof your code?</h2>
         <p style={{ color: muted, marginBottom: 40, fontSize: 16, maxWidth: 500, margin: "0 auto 40px" }}>Join developers and security teams protecting their code from the quantum threat.</p>
-        <div className="hero-buttons" style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
           <a href="#scan" style={{ background: "#534AB7", color: "#fff", padding: "16px 40px", borderRadius: 10, textDecoration: "none", fontSize: 16, fontWeight: 600 }}>Start Free Scan →</a>
           <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer" style={{ background: "transparent", color: text, padding: "16px 40px", borderRadius: 10, textDecoration: "none", fontSize: 16, border: `1px solid ${border}` }}>GitHub</a>
         </div>
       </div>
 
-      <Scanner darkMode={darkMode} />
+      <Scanner darkMode={darkMode} user={user} />
+      <ScanHistory user={user} darkMode={darkMode} />
 
       {/* Footer */}
       <div style={{ textAlign: "center", padding: "32px 20px", borderTop: `1px solid ${border}`, color: muted, fontSize: 13 }}>
-        <div style={{ marginBottom: 12, flexWrap: "wrap", display: "flex", justifyContent: "center", gap: 16 }}>
+        <div style={{ marginBottom: 12, display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap" }}>
           <a href="#features" style={{ color: muted, textDecoration: "none" }}>Features</a>
           <a href="#how" style={{ color: muted, textDecoration: "none" }}>How it works</a>
           <a href="#pricing" style={{ color: muted, textDecoration: "none" }}>Pricing</a>
