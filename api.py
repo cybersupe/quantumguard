@@ -28,6 +28,7 @@ class ScanRequest(BaseModel):
 
 class GitScanRequest(BaseModel):
     github_url: str
+    github_token: str = None
 
 def verify_key(key: str):
     if key != API_KEY:
@@ -80,7 +81,14 @@ async def scan_github(request: Request, body: GitScanRequest):
         parts = body.github_url.rstrip("/").split("/")
         owner = parts[-2]
         repo = parts[-1].replace(".git", "")
-        headers = {"Accept": "application/vnd.github+json", "User-Agent": "QuantumGuard"}
+
+        headers = {
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "QuantumGuard"
+        }
+
+        if body.github_token:
+            headers["Authorization"] = f"token {body.github_token}"
 
         zip_url = f"https://api.github.com/repos/{owner}/{repo}/zipball/main"
         response = requests.get(zip_url, headers=headers, timeout=30, allow_redirects=True)
@@ -90,7 +98,7 @@ async def scan_github(request: Request, body: GitScanRequest):
             response = requests.get(zip_url, headers=headers, timeout=30, allow_redirects=True)
 
         if response.status_code != 200:
-            raise HTTPException(status_code=400, detail="Could not download repo. Make sure it is public.")
+            raise HTTPException(status_code=400, detail="Could not download repo. Make sure it is public or token is valid.")
 
         temp_dir = f"/tmp/qg-{uuid.uuid4().hex[:8]}"
         os.makedirs(temp_dir, exist_ok=True)
@@ -103,6 +111,7 @@ async def scan_github(request: Request, body: GitScanRequest):
         return {
             "github_url": body.github_url,
             "repo": f"{owner}/{repo}",
+            "private": bool(body.github_token),
             "quantum_readiness_score": score,
             "total_findings": len(findings),
             "findings": findings
