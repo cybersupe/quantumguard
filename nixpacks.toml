@@ -1,5 +1,8 @@
 [phases.setup]
 nixPkgs = ["git", "python312"]
 
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
 [start]
-cmd = "uvicorn api:app --host 0.0.0.0 --port $PORT"
+cmd = "uvicorn api:app --host 0.0.0.0 --port 8000"
