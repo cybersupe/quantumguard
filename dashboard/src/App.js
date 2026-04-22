@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
-import { auth, db, signInWithGoogle, logOut } from "./firebase";
+import { auth, db, signInWithGoogle, logOut, canUserScan, incrementScanCount, getUserProfile } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, addDoc, getDocs, query, where, orderBy } from "firebase/firestore";
 
@@ -98,13 +98,11 @@ function SeverityChart({ severityCounts, darkMode }) {
   const muted = darkMode ? "#888" : "#666";
   const total = (severityCounts.CRITICAL || 0) + (severityCounts.HIGH || 0) + (severityCounts.MEDIUM || 0);
   if (total === 0) return null;
-
   const bars = [
     { key: "CRITICAL", color: "#E24B4A", count: severityCounts.CRITICAL || 0 },
     { key: "HIGH", color: "#BA7517", count: severityCounts.HIGH || 0 },
     { key: "MEDIUM", color: "#1D9E75", count: severityCounts.MEDIUM || 0 },
   ];
-
   return (
     <div style={{ background: card, borderRadius: 12, padding: 20, marginBottom: 16, border: `1px solid ${border}` }}>
       <div style={{ fontSize: 13, fontWeight: 600, color: muted, marginBottom: 16 }}>Severity Breakdown</div>
@@ -137,9 +135,8 @@ function GroupedFindings({ findings, darkMode, filter, search, checklist, setChe
   );
 
   const grouped = filtered.reduce((acc, f) => {
-    const key = f.file;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(f);
+    if (!acc[f.file]) acc[f.file] = [];
+    acc[f.file].push(f);
     return acc;
   }, {});
 
@@ -152,10 +149,7 @@ function GroupedFindings({ findings, darkMode, filter, search, checklist, setChe
       </div>
       {Object.entries(grouped).map(([file, filefindings], gi) => (
         <div key={gi} style={{ marginBottom: 12, border: `1px solid ${border}`, borderRadius: 10, overflow: "hidden" }}>
-          <div
-            onClick={() => toggleCollapse(file)}
-            style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: card, cursor: "pointer", userSelect: "none" }}
-          >
+          <div onClick={() => toggleCollapse(file)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: card, cursor: "pointer", userSelect: "none" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span style={{ fontFamily: "monospace", fontSize: 13, color: text }}>{file.split("/").pop()}</span>
               <span style={{ fontSize: 11, color: muted, fontFamily: "monospace" }}>{file}</span>
@@ -186,6 +180,59 @@ function GroupedFindings({ findings, darkMode, filter, search, checklist, setChe
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+function UserProfile({ user, darkMode }) {
+  const [profile, setProfile] = useState(null);
+  const card = darkMode ? "#1a1a2e" : "#ffffff";
+  const text = darkMode ? "#ffffff" : "#111111";
+  const muted = darkMode ? "#888" : "#666";
+  const border = darkMode ? "#333" : "#e5e5e5";
+  const bg = darkMode ? "#0f0f1a" : "#f5f5f5";
+
+  useEffect(() => {
+    if (!user) return;
+    getUserProfile(user.uid).then(setProfile);
+  }, [user]);
+
+  if (!user || !profile) return null;
+
+  return (
+    <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 20px 40px" }}>
+      <h3 style={{ color: "#7F77DD", marginBottom: 16 }}>Your Profile</h3>
+      <div style={{ background: card, borderRadius: 12, padding: 24, border: `1px solid ${border}` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
+          <img src={user.photoURL} alt="avatar" style={{ width: 56, height: 56, borderRadius: "50%" }} />
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 600, color: text }}>{user.displayName}</div>
+            <div style={{ fontSize: 13, color: muted }}>{user.email}</div>
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+          {[
+            { label: "Total Scans", value: profile.totalScans, color: "#7F77DD" },
+            { label: "Avg Score", value: profile.avgScore, color: profile.avgScore >= 70 ? "#1D9E75" : profile.avgScore >= 40 ? "#BA7517" : "#E24B4A" },
+            { label: "Total Issues", value: profile.totalFindings, color: "#E24B4A" },
+            { label: "Scans Left Today", value: profile.remainingToday, color: "#1D9E75" },
+          ].map((s, i) => (
+            <div key={i} style={{ background: bg, borderRadius: 10, padding: 16, textAlign: "center" }}>
+              <div style={{ fontSize: 28, fontWeight: 700, color: s.color }}>{s.value}</div>
+              <div style={{ fontSize: 11, color: muted, marginTop: 4 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ background: bg, borderRadius: 8, padding: "12px 16px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
+            <span style={{ color: muted }}>Daily scan limit</span>
+            <span style={{ color: "#7F77DD" }}>{profile.scansToday} / 10 used</span>
+          </div>
+          <div style={{ background: border, borderRadius: 4, height: 6 }}>
+            <div style={{ background: profile.remainingToday > 3 ? "#1D9E75" : "#E24B4A", height: 6, borderRadius: 4, width: `${(profile.scansToday / 10) * 100}%`, transition: "width 0.4s" }}></div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -257,6 +304,7 @@ function Scanner({ darkMode, user }) {
   const [search, setSearch] = useState("");
   const [copied, setCopied] = useState(false);
   const [checklist, setChecklist] = useState({});
+  const [saved, setSaved] = useState(false);
   const intervalRef = useRef(null);
 
   const bg = darkMode ? "#0f0f1a" : "#f5f5f5";
@@ -266,16 +314,13 @@ function Scanner({ darkMode, user }) {
   const border = darkMode ? "#333" : "#e5e5e5";
 
   const startProgress = () => {
-    setProgress(0);
-    setStepIndex(0);
+    setProgress(0); setStepIndex(0);
     let p = 0;
-    let s = 0;
     intervalRef.current = setInterval(() => {
       p += Math.random() * 8 + 2;
       if (p > 92) p = 92;
       setProgress(Math.round(p));
-      s = Math.min(SCAN_STEPS.length - 1, Math.floor(p / (100 / SCAN_STEPS.length)));
-      setStepIndex(s);
+      setStepIndex(Math.min(SCAN_STEPS.length - 1, Math.floor(p / (100 / SCAN_STEPS.length))));
     }, 400);
   };
 
@@ -286,7 +331,12 @@ function Scanner({ darkMode, user }) {
   };
 
   const handleScan = async () => {
-    setLoading(true); setError(null); setResult(null); setChecklist({});
+    const { allowed } = await canUserScan(user?.uid);
+    if (!allowed) {
+      setError("Daily scan limit reached (10/day). Upgrade to Pro for unlimited scans.");
+      return;
+    }
+    setLoading(true); setError(null); setResult(null); setChecklist({}); setSaved(false);
     startProgress();
     try {
       let res;
@@ -297,33 +347,19 @@ function Scanner({ darkMode, user }) {
         res = await fetch(`${API}/public-scan-zip`, { method: "POST", body: formData });
       } else if (mode === "github") {
         if (!input) throw new Error("Please enter a GitHub URL");
-        res = await fetch(`${API}/scan-github`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ github_url: input })
-        });
+        res = await fetch(`${API}/scan-github`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ github_url: input }) });
       } else {
         if (!input) throw new Error("Please enter a path");
-        res = await fetch(`${API}/scan`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-api-key": "quantumguard-secret-2026" },
-          body: JSON.stringify({ directory: input })
-        });
+        res = await fetch(`${API}/scan`, { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": "quantumguard-secret-2026" }, body: JSON.stringify({ directory: input }) });
       }
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Scan failed");
       stopProgress();
       setResult(data);
-
       if (user) {
-        await addDoc(collection(db, "scans"), {
-          userId: user.uid,
-          userEmail: user.email,
-          filename: file?.name || input || "scan",
-          score: data.quantum_readiness_score,
-          findings: data.total_findings,
-          createdAt: new Date(),
-        });
+        await addDoc(collection(db, "scans"), { userId: user.uid, userEmail: user.email, filename: file?.name || input || "scan", score: data.quantum_readiness_score, findings: data.total_findings, createdAt: new Date() });
+        await incrementScanCount(user.uid);
+        setSaved(true);
       }
     } catch (e) {
       stopProgress();
@@ -340,96 +376,47 @@ function Scanner({ darkMode, user }) {
     MEDIUM: result.findings.filter(f => f.severity === "MEDIUM").length,
   } : null;
 
-  const detectedLanguages = result ? [...new Set(result.findings.map(f => ({
-    py: "Python", js: "JavaScript", java: "Java", ts: "TypeScript"
-  })[f.file.split(".").pop()] || f.file.split(".").pop()))] : [];
+  const detectedLanguages = result ? [...new Set(result.findings.map(f => ({ py: "Python", js: "JavaScript", java: "Java", ts: "TypeScript" })[f.file.split(".").pop()] || f.file.split(".").pop()))] : [];
 
-  const fileBreakdown = result ? result.findings.reduce((acc, f) => {
-    const n = f.file.split("/").pop();
-    acc[n] = (acc[n] || 0) + 1;
-    return acc;
-  }, {}) : null;
+  const fileBreakdown = result ? result.findings.reduce((acc, f) => { const n = f.file.split("/").pop(); acc[n] = (acc[n] || 0) + 1; return acc; }, {}) : null;
 
   const handleCopy = () => {
     if (!result) return;
-    navigator.clipboard.writeText(
-      `QuantumGuard Scan Report\nScore: ${result.quantum_readiness_score}/100\nVulnerabilities: ${result.total_findings}\n\n` +
-      result.findings.map(f => `[${f.severity}] ${f.file}:${f.line}\n${f.code}\nFix: ${f.replacement}`).join("\n\n")
-    );
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    navigator.clipboard.writeText(`QuantumGuard Scan Report\nScore: ${result.quantum_readiness_score}/100\nVulnerabilities: ${result.total_findings}\n\n` + result.findings.map(f => `[${f.severity}] ${f.file}:${f.line}\n${f.code}\nFix: ${f.replacement}`).join("\n\n"));
+    setCopied(true); setTimeout(() => setCopied(false), 2000);
   };
 
   const handleCSV = () => {
     if (!result) return;
     const header = "Severity,File,Line,Code,Vulnerability,Fix\n";
-    const rows = result.findings.map(f =>
-      `"${f.severity}","${f.file}","${f.line}","${f.code.replace(/"/g, "'")}","${f.vulnerability || ""}","${f.replacement}"`
-    ).join("\n");
+    const rows = result.findings.map(f => `"${f.severity}","${f.file}","${f.line}","${f.code.replace(/"/g, "'")}","${f.vulnerability || ""}","${f.replacement}"`).join("\n");
     const blob = new Blob([header + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = "quantumguard-report.csv";
-    a.click();
+    a.href = url; a.download = "quantumguard-report.csv"; a.click();
     URL.revokeObjectURL(url);
   };
 
   const handlePDF = () => {
     if (!result) return;
     const win = window.open("", "_blank");
-    win.document.write(`
-      <html><head><title>QuantumGuard Report</title>
-      <style>
-        body{font-family:Arial,sans-serif;padding:40px;color:#333;}
-        h1{color:#534AB7;}
-        .score{font-size:48px;font-weight:bold;color:${getScoreColor(result.quantum_readiness_score)};}
-        .finding{border-left:3px solid #E24B4A;padding:10px 16px;margin:12px 0;background:#f9f9f9;}
-        .high{border-color:#BA7517;}
-        .medium{border-color:#1D9E75;}
-        code{background:#f0f0f0;padding:2px 6px;border-radius:3px;font-size:12px;}
-        .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:bold;}
-        .CRITICAL{background:#E24B4A22;color:#E24B4A;}
-        .HIGH{background:#BA751722;color:#BA7517;}
-        .MEDIUM{background:#1D9E7522;color:#1D9E75;}
-      </style></head><body>
-      <h1>⚛ QuantumGuard Security Report</h1>
-      <p>Generated: ${new Date().toLocaleString()}</p>
-      ${result.github_url ? `<p>Repository: ${result.github_url}</p>` : ""}
-      <hr/>
-      <div class="score">${result.quantum_readiness_score}/100</div>
-      <p>Quantum Readiness Score</p>
-      <p><strong>Total Vulnerabilities: ${result.total_findings}</strong></p>
-      <p>Critical: ${severityCounts.CRITICAL} | High: ${severityCounts.HIGH} | Medium: ${severityCounts.MEDIUM}</p>
-      <hr/><h2>Findings</h2>
-      ${result.findings.map(f => `
-        <div class="finding ${f.severity}">
-          <span class="badge ${f.severity}">${f.severity}</span>
-          <strong>${f.file}:${f.line}</strong><br/>
-          <code>${f.code}</code><br/>
-          Fix: <strong>${f.replacement}</strong>
-        </div>`).join("")}
-      </body></html>
-    `);
-    win.document.close();
-    win.print();
+    win.document.write(`<html><head><title>QuantumGuard Report</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#333;}h1{color:#534AB7;}.score{font-size:48px;font-weight:bold;color:${getScoreColor(result.quantum_readiness_score)};}.finding{border-left:3px solid #E24B4A;padding:10px 16px;margin:12px 0;background:#f9f9f9;}.high{border-color:#BA7517;}.medium{border-color:#1D9E75;}code{background:#f0f0f0;padding:2px 6px;border-radius:3px;font-size:12px;}.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:bold;}.CRITICAL{background:#E24B4A22;color:#E24B4A;}.HIGH{background:#BA751722;color:#BA7517;}.MEDIUM{background:#1D9E7522;color:#1D9E75;}</style></head><body><h1>⚛ QuantumGuard Security Report</h1><p>Generated: ${new Date().toLocaleString()}</p>${result.github_url ? `<p>Repository: ${result.github_url}</p>` : ""}<hr/><div class="score">${result.quantum_readiness_score}/100</div><p>Quantum Readiness Score</p><p><strong>Total Vulnerabilities: ${result.total_findings}</strong></p><p>Critical: ${severityCounts.CRITICAL} | High: ${severityCounts.HIGH} | Medium: ${severityCounts.MEDIUM}</p><hr/><h2>Findings</h2>${result.findings.map(f => `<div class="finding ${f.severity}"><span class="badge ${f.severity}">${f.severity}</span> <strong>${f.file}:${f.line}</strong><br/><code>${f.code}</code><br/>Fix: <strong>${f.replacement}</strong></div>`).join("")}</body></html>`);
+    win.document.close(); win.print();
   };
 
   const handleShare = () => {
     if (!result) return;
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-      `I scanned my codebase with QuantumGuard!\n\nQuantum Readiness Score: ${result.quantum_readiness_score}/100\nVulnerabilities: ${result.total_findings}\n\nquantumguard-one.vercel.app\n\n#QuantumSecurity #CyberSecurity`
-    )}`, "_blank");
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`I scanned my codebase with QuantumGuard!\n\nQuantum Readiness Score: ${result.quantum_readiness_score}/100\nVulnerabilities: ${result.total_findings}\n\nquantumguard-one.vercel.app\n\n#QuantumSecurity #CyberSecurity`)}`, "_blank");
   };
 
   return (
     <div id="scan" style={{ maxWidth: 860, margin: "0 auto", padding: "60px 20px", background: bg }}>
       <h2 style={{ fontSize: 28, textAlign: "center", marginBottom: 8, color: text }}>Scan Your Code</h2>
-      <p style={{ color: muted, textAlign: "center", marginBottom: user ? 8 : 32, fontSize: 14 }}>Upload a ZIP or paste a GitHub URL — free, instant, secure.</p>
+      <p style={{ color: muted, textAlign: "center", marginBottom: 32, fontSize: 14 }}>Upload a ZIP or paste a GitHub URL — free, instant, secure.</p>
 
       {!user && (
         <div style={{ background: "#534AB722", border: "1px solid #534AB7", borderRadius: 8, padding: 12, marginBottom: 24, textAlign: "center" }}>
-          <span style={{ color: "#7F77DD", fontSize: 13 }}>💡 Sign in to save your scan history!</span>
+          <span style={{ color: "#7F77DD", fontSize: 13 }}>💡 Sign in to save your scan history and track your daily limit!</span>
         </div>
       )}
 
@@ -445,13 +432,7 @@ function Scanner({ darkMode, user }) {
         {mode === "zip" ? (
           <input type="file" accept=".zip" onChange={(e) => setFile(e.target.files[0])} style={{ flex: 1, minWidth: 200, padding: "12px 16px", borderRadius: 8, border: `1px solid ${border}`, background: card, color: text, fontSize: 14 }} />
         ) : (
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleScan()}
-            placeholder={mode === "github" ? "https://github.com/username/repo" : "/app/src"}
-            style={{ flex: 1, minWidth: 200, padding: "12px 16px", borderRadius: 8, border: `1px solid ${border}`, background: card, color: text, fontSize: 14 }}
-          />
+          <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleScan()} placeholder={mode === "github" ? "https://github.com/username/repo" : "/app/src"} style={{ flex: 1, minWidth: 200, padding: "12px 16px", borderRadius: 8, border: `1px solid ${border}`, background: card, color: text, fontSize: 14 }} />
         )}
         <button onClick={handleScan} disabled={loading} style={{ padding: "12px 28px", borderRadius: 8, background: loading ? "#534AB788" : "#534AB7", color: "#fff", border: "none", cursor: loading ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600 }}>
           {loading ? "Scanning..." : "Scan →"}
@@ -461,16 +442,19 @@ function Scanner({ darkMode, user }) {
       <ScanProgressBar loading={loading} progress={progress} stepIndex={stepIndex} darkMode={darkMode} />
       <ErrorBox error={error} darkMode={darkMode} />
 
+      {saved && (
+        <div style={{ background: "#1D9E7522", border: "1px solid #1D9E75", borderRadius: 8, padding: "10px 16px", marginBottom: 16, color: "#1D9E75", fontSize: 13 }}>
+          ✓ Scan saved to your history!
+        </div>
+      )}
+
       {result && (
         <div>
-          {/* Score cards */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
             <div style={{ background: card, borderRadius: 12, padding: 24, textAlign: "center", border: `1px solid ${border}` }}>
               <div style={{ fontSize: 56, fontWeight: 700, color: getScoreColor(result.quantum_readiness_score), lineHeight: 1 }}>{result.quantum_readiness_score}</div>
               <div style={{ color: muted, fontSize: 14, marginTop: 8 }}>Quantum Readiness Score</div>
-              <div style={{ fontSize: 12, color: result.quantum_readiness_score >= 70 ? "#1D9E75" : result.quantum_readiness_score >= 40 ? "#BA7517" : "#E24B4A", marginTop: 4 }}>
-                {result.quantum_readiness_score >= 70 ? "✓ Good" : result.quantum_readiness_score >= 40 ? "⚠ Needs work" : "✗ Critical risk"}
-              </div>
+              <div style={{ fontSize: 12, color: getScoreColor(result.quantum_readiness_score), marginTop: 4 }}>{result.quantum_readiness_score >= 70 ? "✓ Good" : result.quantum_readiness_score >= 40 ? "⚠ Needs work" : "✗ Critical risk"}</div>
             </div>
             <div style={{ background: card, borderRadius: 12, padding: 24, textAlign: "center", border: `1px solid ${border}` }}>
               <div style={{ fontSize: 56, fontWeight: 700, color: "#E24B4A", lineHeight: 1 }}>{result.total_findings}</div>
@@ -479,20 +463,15 @@ function Scanner({ darkMode, user }) {
             </div>
           </div>
 
-          {/* Severity chart */}
           <SeverityChart severityCounts={severityCounts} darkMode={darkMode} />
 
-          {/* Languages */}
           {detectedLanguages.length > 0 && (
             <div style={{ background: card, borderRadius: 8, padding: "12px 16px", marginBottom: 16, border: `1px solid ${border}`, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span style={{ fontSize: 13, color: muted }}>Languages detected:</span>
-              {detectedLanguages.map((l, i) => (
-                <span key={i} style={{ background: "#534AB722", color: "#7F77DD", padding: "2px 10px", borderRadius: 20, fontSize: 12 }}>{l}</span>
-              ))}
+              {detectedLanguages.map((l, i) => <span key={i} style={{ background: "#534AB722", color: "#7F77DD", padding: "2px 10px", borderRadius: 20, fontSize: 12 }}>{l}</span>)}
             </div>
           )}
 
-          {/* File breakdown */}
           {fileBreakdown && (
             <div style={{ background: card, borderRadius: 8, padding: 16, marginBottom: 16, border: `1px solid ${border}` }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: text, marginBottom: 10 }}>Top affected files</div>
@@ -510,7 +489,6 @@ function Scanner({ darkMode, user }) {
             </div>
           )}
 
-          {/* Findings */}
           <div style={{ background: card, borderRadius: 12, padding: 24, border: `1px solid ${border}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
               <h3 style={{ color: "#7F77DD", margin: 0 }}>Findings</h3>
@@ -528,22 +506,10 @@ function Scanner({ darkMode, user }) {
                   {f}{f !== "ALL" && severityCounts ? ` (${severityCounts[f]})` : ""}
                 </button>
               ))}
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search files or code..."
-                style={{ padding: "4px 12px", borderRadius: 20, border: `1px solid ${border}`, background: bg, color: text, fontSize: 12, flex: 1, minWidth: 140 }}
-              />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search files or code..." style={{ padding: "4px 12px", borderRadius: 20, border: `1px solid ${border}`, background: bg, color: text, fontSize: 12, flex: 1, minWidth: 140 }} />
             </div>
 
-            <GroupedFindings
-              findings={result.findings}
-              darkMode={darkMode}
-              filter={filter}
-              search={search}
-              checklist={checklist}
-              setChecklist={setChecklist}
-            />
+            <GroupedFindings findings={result.findings} darkMode={darkMode} filter={filter} search={search} checklist={checklist} setChecklist={setChecklist} />
           </div>
         </div>
       )}
@@ -577,14 +543,13 @@ export default function App() {
     <div style={{ minHeight: "100vh", background: bg, color: text, fontFamily: "sans-serif" }}>
       <Navbar darkMode={darkMode} setDarkMode={setDarkMode} user={user} onLogin={handleLogin} onLogout={handleLogout} />
 
-      {/* Hero */}
       <div style={{ textAlign: "center", padding: "80px 20px 60px" }}>
         <div style={{ display: "inline-flex", gap: 8, marginBottom: 24, flexWrap: "wrap", justifyContent: "center" }}>
           <span style={{ background: "#534AB722", border: "1px solid #534AB7", borderRadius: 20, padding: "4px 14px", fontSize: 12, color: "#7F77DD" }}>NIST PQC 2024</span>
           <span style={{ background: "#1D9E7522", border: "1px solid #1D9E75", borderRadius: 20, padding: "4px 14px", fontSize: 12, color: "#1D9E75" }}>Open Source</span>
           <span style={{ background: "#E24B4A22", border: "1px solid #E24B4A", borderRadius: 20, padding: "4px 14px", fontSize: 12, color: "#E24B4A" }}>Free Forever</span>
         </div>
-        <h1 style={{ fontSize: "clamp(32px, 6vw, 56px)", fontWeight: 700, lineHeight: 1.15, marginBottom: 24, maxWidth: 800, margin: "0 auto 24px", color: text }}>
+        <h1 style={{ fontSize: "clamp(32px, 6vw, 56px)", fontWeight: 700, lineHeight: 1.15, maxWidth: 800, margin: "0 auto 24px", color: text }}>
           Find Weak Encryption<br />
           <span style={{ color: "#7F77DD" }}>Before Quantum Computers Do</span>
         </h1>
@@ -598,14 +563,8 @@ export default function App() {
         <p style={{ color: muted, fontSize: 13, marginTop: 16 }}>No credit card. Paste a GitHub URL and scan instantly.</p>
       </div>
 
-      {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, maxWidth: 860, margin: "0 auto 80px", padding: "0 20px" }}>
-        {[
-          { num: "15+", label: "Vulnerabilities Detected" },
-          { num: "4", label: "Languages Supported" },
-          { num: "2030", label: "Quantum Deadline" },
-          { num: "100%", label: "Free & Open Source" },
-        ].map((s, i) => (
+        {[{ num: "15+", label: "Vulnerabilities Detected" }, { num: "4", label: "Languages Supported" }, { num: "2030", label: "Quantum Deadline" }, { num: "100%", label: "Free & Open Source" }].map((s, i) => (
           <div key={i} style={{ background: card, borderRadius: 12, padding: 24, textAlign: "center", border: `1px solid ${border}` }}>
             <div style={{ fontSize: 32, fontWeight: 700, color: "#7F77DD" }}>{s.num}</div>
             <div style={{ color: muted, fontSize: 13, marginTop: 6 }}>{s.label}</div>
@@ -613,7 +572,6 @@ export default function App() {
         ))}
       </div>
 
-      {/* Features */}
       <div id="features" style={{ maxWidth: 900, margin: "0 auto 80px", padding: "0 20px" }}>
         <h2 style={{ textAlign: "center", fontSize: "clamp(24px, 4vw, 36px)", marginBottom: 8, color: text }}>Everything you need</h2>
         <p style={{ textAlign: "center", color: muted, marginBottom: 48, fontSize: 16 }}>Built for developers and security teams who need to act now</p>
@@ -621,7 +579,7 @@ export default function App() {
           {[
             { icon: "🔍", title: "Deep scanning", desc: "Scans every file line by line across Python, JS, Java, TypeScript codebases" },
             { icon: "📊", title: "Readiness score", desc: "Get a clear 0-100 Quantum Readiness Score with severity breakdown chart" },
-            { icon: "🛡️", title: "15+ vulnerabilities", desc: "Detects RSA, ECC, DH, DSA, MD5, SHA-1, RC4, DES, ECB, weak TLS, JWT flaws, weak random, hardcoded secrets and more" },
+            { icon: "🛡️", title: "15+ vulnerabilities", desc: "Detects RSA, ECC, DH, DSA, MD5, SHA-1, RC4, DES, ECB, weak TLS, JWT flaws, weak random and more" },
             { icon: "📄", title: "3 export formats", desc: "Download PDF reports, export CSV for spreadsheets, or copy to clipboard" },
             { icon: "🎯", title: "NIST approved fixes", desc: "Every finding comes with CRYSTALS-Kyber or Dilithium migration recommendation" },
             { icon: "💾", title: "Scan history", desc: "Sign in with Google to save and track all your past scans over time" },
@@ -635,7 +593,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* How it works */}
       <div id="how" style={{ maxWidth: 700, margin: "0 auto 80px", padding: "0 20px" }}>
         <h2 style={{ textAlign: "center", fontSize: "clamp(24px, 4vw, 36px)", marginBottom: 8, color: text }}>How it works</h2>
         <p style={{ textAlign: "center", color: muted, marginBottom: 48, fontSize: 16 }}>Five steps to quantum-proof your codebase</p>
@@ -646,7 +603,7 @@ export default function App() {
             { icon: "🔍", title: "Scanner runs", desc: "Line-by-line analysis detects 15+ vulnerability types including RSA, ECC, DES, JWT flaws and weak random." },
             { icon: "⚠️", title: "Vulnerabilities flagged", desc: "Every issue shown with exact file, line number, severity and vulnerable code snippet." },
             { icon: "📊", title: "Review findings", desc: "Filter by severity, search files, see grouped findings per file with severity chart." },
-            { icon: "📄", title: "Export your report", desc: "Download PDF or CSV, copy to clipboard, or share on Twitter. Present to your board." },
+            { icon: "📄", title: "Export your report", desc: "Download PDF or CSV, copy to clipboard, or share on Twitter." },
           ].map((s, i) => (
             <div key={i} style={{ display: "flex", gap: 24, marginBottom: 32 }}>
               <div style={{ width: 42, height: 42, borderRadius: "50%", background: "#534AB7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0, zIndex: 1 }}>{s.icon}</div>
@@ -662,14 +619,13 @@ export default function App() {
         </div>
       </div>
 
-      {/* Pricing */}
       <div id="pricing" style={{ maxWidth: 900, margin: "0 auto 80px", padding: "0 20px" }}>
         <h2 style={{ textAlign: "center", fontSize: "clamp(24px, 4vw, 36px)", marginBottom: 8, color: text }}>Simple pricing</h2>
         <p style={{ textAlign: "center", color: muted, marginBottom: 48, fontSize: 16 }}>Start free. Upgrade when you're ready.</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20 }}>
           {[
-            { name: "Free", price: "$0", period: "forever", desc: "For individual developers", features: ["CLI tool", "Web dashboard", "ZIP upload", "GitHub URL scan", "PDF & CSV reports", "Scan history"], cta: "Start Free", highlight: false },
-            { name: "Pro", price: "$29", period: "/month", desc: "For security teams", features: ["Everything in Free", "AI-powered reports", "Unlimited file size", "Priority support", "Team members", "API access"], cta: "Coming Soon", highlight: true },
+            { name: "Free", price: "$0", period: "forever", desc: "For individual developers", features: ["CLI tool", "Web dashboard", "ZIP upload", "GitHub URL scan", "PDF & CSV reports", "Scan history", "10 scans/day"], cta: "Start Free", highlight: false },
+            { name: "Pro", price: "$29", period: "/month", desc: "For security teams", features: ["Everything in Free", "Unlimited scans", "AI-powered reports", "Unlimited file size", "Priority support", "Team members", "API access"], cta: "Coming Soon", highlight: true },
             { name: "Enterprise", price: "Custom", period: "", desc: "For large organizations", features: ["Everything in Pro", "CI/CD integration", "SSO login", "Custom reports", "Dedicated support", "SOC2 compliance"], cta: "Contact Us", highlight: false },
           ].map((p, i) => (
             <div key={i} style={{ background: card, borderRadius: 20, padding: 32, border: p.highlight ? "2px solid #534AB7" : `1px solid ${border}`, position: "relative" }}>
@@ -692,7 +648,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* FAQ */}
       <div style={{ maxWidth: 700, margin: "0 auto 80px", padding: "0 20px" }}>
         <h2 style={{ textAlign: "center", fontSize: "clamp(24px, 4vw, 36px)", marginBottom: 48, color: text }}>FAQ</h2>
         {[
@@ -709,7 +664,6 @@ export default function App() {
         ))}
       </div>
 
-      {/* CTA */}
       <div style={{ textAlign: "center", padding: "80px 20px", background: card, borderTop: `1px solid ${border}`, borderBottom: `1px solid ${border}` }}>
         <h2 style={{ fontSize: "clamp(24px, 4vw, 40px)", marginBottom: 16, color: text }}>Ready to quantum-proof your code?</h2>
         <p style={{ color: muted, marginBottom: 40, fontSize: 16, maxWidth: 500, margin: "0 auto 40px" }}>Join developers and security teams protecting their code from the quantum threat.</p>
@@ -720,9 +674,9 @@ export default function App() {
       </div>
 
       <Scanner darkMode={darkMode} user={user} />
+      <UserProfile user={user} darkMode={darkMode} />
       <ScanHistory user={user} darkMode={darkMode} />
 
-      {/* Footer */}
       <div style={{ textAlign: "center", padding: "32px 20px", borderTop: `1px solid ${border}`, color: muted, fontSize: 13 }}>
         <div style={{ marginBottom: 12, display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap" }}>
           <a href="#features" style={{ color: muted, textDecoration: "none" }}>Features</a>
