@@ -1,108 +1,74 @@
-from fastapi import FastAPI, HTTPException, Header, UploadFile, File, Request
+from fastapi import FastAPI, HTTPException, Header
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 from pydantic import BaseModel
-from scanner.scan import scan_directory, calculate_score
-import os, shutil, uuid, zipfile, io
+import os
+import subprocess
+import shutil
+import uuid
 
-limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="QuantumGuard API")
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://quantumguard-one.vercel.app", "http://localhost:3000"],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 API_KEY = os.getenv("API_KEY", "quantumguard-secret-2026")
-MAX_ZIP_SIZE = 10 * 1024 * 1024
 
 class ScanRequest(BaseModel):
     directory: str
+
+class GitScanRequest(BaseModel):
+    github_url: str
 
 def verify_key(key: str):
     if key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
 @app.get("/")
-def root():
+async def root():
     return {"message": "QuantumGuard API is running!"}
 
 @app.post("/scan")
-@limiter.limit("10/minute")
-def scan(request: Request, body: ScanRequest, x_api_key: str = Header(...)):
+async def scan(request: ScanRequest, x_api_key: str = Header(...)):
     verify_key(x_api_key)
-    if not os.path.exists(body.directory):
+    from scanner.scan import scan_directory, calculate_score
+    if not os.path.exists(request.directory):
         raise HTTPException(status_code=404, detail="Directory not found")
-    findings = scan_directory(body.directory)
+    findings = scan_directory(request.directory)
     score = calculate_score(findings)
     return {"quantum_readiness_score": score, "total_findings": len(findings), "findings": findings}
 
-@app.post("/public-scan-zip")
-@limiter.limit("3/minute")
-async def public_scan_zip(request: Request, file: UploadFile = File(...)):
-    if not file.filename.endswith(".zip"):
-        raise HTTPException(status_code=400, detail="Only ZIP files allowed")
-    contents = await file.read()
-    if len(contents) > MAX_ZIP_SIZE:
-        raise HTTPException(status_code=400, detail="ZIP file too large. Maximum 10MB allowed")
+@app.post("/scan-github")
+async def scan_github(request: GitScanRequest):
+    if "github.com" not in request.github_url:
+        raise HTTPException(status_code=400, detail="Only GitHub URLs allowed")
     temp_dir = f"/tmp/qg-{uuid.uuid4().hex[:8]}"
     try:
-        os.makedirs(temp_dir, exist_ok=True)
-        with zipfile.ZipFile(io.BytesIO(contents)) as z:
-            z.extractall(temp_dir)
+        from scanner.scan import scan_directory, calculate_score
+        subprocess.run(
+            ["git", "clone", "--depth", "1", request.github_url, temp_dir],
+            check=True, capture_output=True, timeout=60
+        )
         findings = scan_directory(temp_dir)
         score = calculate_score(findings)
-        return {
-            "filename": file.filename,
-            "quantum_readiness_score": score,
-            "total_findings": len(findings),
-            "findings": findings
-        }
-    except zipfile.BadZipFile:
-        raise HTTPException(status_code=400, detail="Invalid ZIP file")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+        return {"github_url": request.github_url, "quantum_readiness_score": score, "total_findings": len(findings), "findings": findings}
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=408, detail="Clone timeout")
+    except subprocess.CalledProcessError:
+        raise HTTPException(status_code=400, detail="Invalid GitHub URL or clone failed")
     finally:
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
 
-@app.post("/scan-zip")
-@limiter.limit("5/minute")
-async def scan_zip(request: Request, file: UploadFile = File(...), x_api_key: str = Header(...)):
-    verify_key(x_api_key)
-    if not file.filename.endswith(".zip"):
-        raise HTTPException(status_code=400, detail="Only ZIP files allowed")
-    contents = await file.read()
-    if len(contents) > MAX_ZIP_SIZE:
-        raise HTTPException(status_code=400, detail="ZIP file too large. Maximum 10MB allowed")
-    temp_dir = f"/tmp/qg-{uuid.uuid4().hex[:8]}"
-    try:
-        os.makedirs(temp_dir, exist_ok=True)
-        with zipfile.ZipFile(io.BytesIO(contents)) as z:
-            z.extractall(temp_dir)
-        findings = scan_directory(temp_dir)
-        score = calculate_score(findings)
-        return {
-            "filename": file.filename,
-            "quantum_readiness_score": score,
-            "total_findings": len(findings),
-            "findings": findings
-        }
-    except zipfile.BadZipFile:
-        raise HTTPException(status_code=400, detail="Invalid ZIP file")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-    finally:
-        if os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir)
+@app.post("/public-scan-zip")
+async def public_scan_zip(file: bytes = None):
+    raise HTTPException(status_code=501, detail="ZIP scanning coming soon")
 
 @app.get("/health")
-def health():
+async def health():
     return {"status": "healthy"}
