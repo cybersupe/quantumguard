@@ -117,4 +117,4 @@ async def scan_github(request: Request, body: GitScanRequest):
 
 @app.get("/health")
 def health():
-    return {"status": "healthy"}
+    return {"status": "healthy"}" " 
