@@ -464,6 +464,30 @@ function Scanner({ darkMode, user }) {
           </div>
 
           <SeverityChart severityCounts={severityCounts} darkMode={darkMode} />
+          <div style={{ background: card, borderRadius: 12, padding: 20, marginBottom: 16, border: `1px solid ${border}` }}>
+  <div style={{ fontSize: 13, fontWeight: 600, color: muted, marginBottom: 16 }}>Score Breakdown</div>
+  {[
+    { label: "Crypto Issues", desc: "RSA, ECC, DH, DSA, RC4, DES", color: "#E24B4A", pct: Math.round((severityCounts.CRITICAL / Math.max(result.total_findings, 1)) * 100) },
+    { label: "TLS / Protocol", desc: "Weak TLS, SSL versions", color: "#BA7517", pct: Math.round((severityCounts.HIGH / Math.max(result.total_findings, 1)) * 100) },
+    { label: "Hash / Secrets", desc: "MD5, SHA-1, hardcoded keys", color: "#1D9E75", pct: Math.round((severityCounts.MEDIUM / Math.max(result.total_findings, 1)) * 100) },
+  ].map((b, i) => (
+    <div key={i} style={{ marginBottom: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+        <div>
+          <span style={{ color: b.color, fontWeight: 600 }}>{b.label}</span>
+          <span style={{ color: muted, marginLeft: 8, fontSize: 11 }}>{b.desc}</span>
+        </div>
+        <span style={{ color: b.color, fontWeight: 600 }}>{b.pct}%</span>
+      </div>
+      <div style={{ background: border, borderRadius: 4, height: 8 }}>
+        <div style={{ background: b.color, height: 8, borderRadius: 4, width: `${b.pct}%`, transition: "width 0.6s ease" }}></div>
+      </div>
+    </div>
+  ))}
+  <div style={{ fontSize: 11, color: muted, marginTop: 12, padding: "8px 12px", background: bg, borderRadius: 6 }}>
+    📊 Score = 100 − (CRITICAL×10) − (HIGH×6) − (MEDIUM×3). Capped at 0.
+  </div>
+</div>
 
           {detectedLanguages.length > 0 && (
             <div style={{ background: card, borderRadius: 8, padding: "12px 16px", marginBottom: 16, border: `1px solid ${border}`, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
