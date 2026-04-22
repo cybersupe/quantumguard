@@ -31,19 +31,16 @@ const SCAN_STEPS = [
   "Generating threat report...",
 ];
 
-// ─── Sidebar ───────────────────────────────────────────────────────────────────
 function Sidebar({ active, setActive, user, onLogin, onLogout, darkMode, setDarkMode }) {
   const navItems = [
-  { id: "scan", icon: "⚡", label: "Scanner" },
-  { id: "history", icon: "📋", label: "Scan History" },
-  { id: "migration", icon: "🔄", label: "Migration" },
-  { id: "dashboard", icon: "📊", label: "Analytics" },
-  { id: "docs", icon: "📖", label: "Docs" },
-];
-
+    { id: "scan", icon: "⚡", label: "Scanner" },
+    { id: "history", icon: "📋", label: "Scan History" },
+    { id: "migration", icon: "🔄", label: "Migration" },
+    { id: "dashboard", icon: "📊", label: "Analytics" },
+    { id: "docs", icon: "📖", label: "Docs" },
+  ];
   return (
     <div style={{ width: 220, minHeight: "100vh", background: COLORS.sidebar, borderRight: `1px solid ${COLORS.cardBorder}`, display: "flex", flexDirection: "column", position: "fixed", left: 0, top: 0, zIndex: 100 }}>
-      {/* Logo */}
       <div style={{ padding: "24px 20px", borderBottom: `1px solid ${COLORS.cardBorder}` }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 32, height: 32, borderRadius: 8, background: COLORS.purple, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>⚛</div>
@@ -53,28 +50,22 @@ function Sidebar({ active, setActive, user, onLogin, onLogout, darkMode, setDark
           </div>
         </div>
       </div>
-
-      {/* Nav */}
       <nav style={{ flex: 1, padding: "16px 12px" }}>
         {navItems.map(item => (
-          <div key={item.id} onClick={() => setActive(item.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, marginBottom: 4, cursor: "pointer", background: active === item.id ? `${COLORS.purple}22` : "transparent", border: active === item.id ? `1px solid ${COLORS.purple}44` : "1px solid transparent", transition: "all 0.2s" }}>
+          <div key={item.id} onClick={() => setActive(item.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, marginBottom: 4, cursor: "pointer", background: active === item.id ? `${COLORS.purple}22` : "transparent", border: active === item.id ? `1px solid ${COLORS.purple}44` : "1px solid transparent" }}>
             <span style={{ fontSize: 16 }}>{item.icon}</span>
             <span style={{ fontSize: 13, color: active === item.id ? COLORS.purpleLight : COLORS.muted, fontWeight: active === item.id ? 600 : 400 }}>{item.label}</span>
             {active === item.id && <div style={{ marginLeft: "auto", width: 4, height: 4, borderRadius: "50%", background: COLORS.purple }}></div>}
           </div>
         ))}
       </nav>
-
-      {/* Status */}
       <div style={{ padding: "12px 16px", margin: "0 12px 12px", borderRadius: 8, background: `${COLORS.green}11`, border: `1px solid ${COLORS.green}33` }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <div style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS.green, animation: "pulse 2s infinite" }}></div>
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS.green }}></div>
           <span style={{ fontSize: 11, color: COLORS.green }}>API Online</span>
         </div>
         <div style={{ fontSize: 10, color: COLORS.muted, marginTop: 2 }}>railway.app</div>
       </div>
-
-      {/* User */}
       <div style={{ padding: "16px 20px", borderTop: `1px solid ${COLORS.cardBorder}` }}>
         {user ? (
           <div>
@@ -98,7 +89,6 @@ function Sidebar({ active, setActive, user, onLogin, onLogout, darkMode, setDark
   );
 }
 
-// ─── Top Bar ───────────────────────────────────────────────────────────────────
 function TopBar({ title, subtitle }) {
   return (
     <div style={{ borderBottom: `1px solid ${COLORS.cardBorder}`, padding: "20px 32px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -106,14 +96,11 @@ function TopBar({ title, subtitle }) {
         <h1 style={{ fontSize: 20, fontWeight: 700, color: COLORS.white, margin: 0 }}>{title}</h1>
         {subtitle && <p style={{ fontSize: 12, color: COLORS.muted, margin: "4px 0 0" }}>{subtitle}</p>}
       </div>
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <span style={{ fontSize: 11, color: COLORS.muted }}>{new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</span>
-      </div>
+      <span style={{ fontSize: 11, color: COLORS.muted }}>{new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</span>
     </div>
   );
 }
 
-// ─── Scanner Page ──────────────────────────────────────────────────────────────
 function ScannerPage({ user }) {
   const [mode, setMode] = useState("github");
   const [input, setInput] = useState("");
@@ -224,15 +211,12 @@ function ScannerPage({ user }) {
   };
 
   const filteredFindings = result ? result.findings.filter(f => (filter === "ALL" || f.severity === filter) && (search === "" || f.file.toLowerCase().includes(search.toLowerCase()) || f.code.toLowerCase().includes(search.toLowerCase()))) : [];
-
   const grouped = filteredFindings.reduce((acc, f) => { if (!acc[f.file]) acc[f.file] = []; acc[f.file].push(f); return acc; }, {});
 
   return (
     <div>
       <TopBar title="Threat Scanner" subtitle="Quantum vulnerability analysis engine" />
       <div style={{ padding: "24px 32px" }}>
-
-        {/* Scan Input */}
         <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 24, marginBottom: 24 }}>
           <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
             {[{ id: "github", icon: "🔗", label: "GitHub URL" }, { id: "zip", icon: "📁", label: "Upload ZIP" }, { id: "path", icon: "🖥️", label: "Server Path" }].map(m => (
@@ -241,7 +225,6 @@ function ScannerPage({ user }) {
               </button>
             ))}
           </div>
-
           {mode === "zip" ? (
             <div style={{ display: "flex", gap: 12 }}>
               <input type="file" accept=".zip" onChange={(e) => setFile(e.target.files[0])} style={{ flex: 1, padding: "10px 14px", borderRadius: 8, border: `1px solid ${COLORS.cardBorder}`, background: COLORS.bg, color: COLORS.text, fontSize: 13 }} />
@@ -254,9 +237,7 @@ function ScannerPage({ user }) {
                 <button onClick={handleScan} disabled={loading} style={{ padding: "10px 24px", borderRadius: 8, background: loading ? `${COLORS.purple}88` : COLORS.purple, color: COLORS.white, border: "none", cursor: loading ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600 }}>{loading ? "Scanning..." : "▶ Run Scan"}</button>
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <button onClick={() => setShowToken(!showToken)} style={{ background: "transparent", border: `1px solid ${COLORS.cardBorder}`, borderRadius: 6, padding: "4px 12px", cursor: "pointer", color: COLORS.muted, fontSize: 11 }}>
-                  {showToken ? "Hide Token" : "🔒 Private Repo"}
-                </button>
+                <button onClick={() => setShowToken(!showToken)} style={{ background: "transparent", border: `1px solid ${COLORS.cardBorder}`, borderRadius: 6, padding: "4px 12px", cursor: "pointer", color: COLORS.muted, fontSize: 11 }}>{showToken ? "Hide Token" : "🔒 Private Repo"}</button>
                 {showToken && <input value={githubToken} onChange={(e) => setGithubToken(e.target.value)} placeholder="GitHub Personal Access Token" type="password" style={{ flex: 1, padding: "4px 12px", borderRadius: 6, border: `1px solid ${COLORS.cardBorder}`, background: COLORS.bg, color: COLORS.text, fontSize: 11 }} />}
               </div>
             </div>
@@ -266,8 +247,6 @@ function ScannerPage({ user }) {
               <button onClick={handleScan} disabled={loading} style={{ padding: "10px 24px", borderRadius: 8, background: COLORS.purple, color: COLORS.white, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>{loading ? "Scanning..." : "▶ Run Scan"}</button>
             </div>
           )}
-
-          {/* Progress */}
           {loading && (
             <div style={{ marginTop: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.muted, marginBottom: 6 }}>
@@ -279,8 +258,6 @@ function ScannerPage({ user }) {
               </div>
             </div>
           )}
-
-          {/* Error */}
           {error && (
             <div style={{ marginTop: 16, background: `${COLORS.red}11`, border: `1px solid ${COLORS.red}44`, borderRadius: 8, padding: 12 }}>
               <div style={{ color: COLORS.red, fontSize: 13 }}>⚠ {error}</div>
@@ -288,10 +265,8 @@ function ScannerPage({ user }) {
           )}
         </div>
 
-        {/* Results */}
         {result && (
           <div>
-            {/* Metric Cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
               {[
                 { label: "Risk Score", value: result.quantum_readiness_score, suffix: "/100", color: getScoreColor(result.quantum_readiness_score), desc: result.quantum_readiness_score >= 70 ? "✓ Quantum Safe" : result.quantum_readiness_score >= 40 ? "⚠ At Risk" : "✗ Critical" },
@@ -307,7 +282,6 @@ function ScannerPage({ user }) {
               ))}
             </div>
 
-            {/* Severity + Score Breakdown */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
               <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 20 }}>
                 <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 16, textTransform: "uppercase", letterSpacing: 1 }}>Severity Distribution</div>
@@ -327,7 +301,6 @@ function ScannerPage({ user }) {
                   </div>
                 ))}
               </div>
-
               <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 20 }}>
                 <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 16, textTransform: "uppercase", letterSpacing: 1 }}>Score Breakdown</div>
                 {[
@@ -337,10 +310,7 @@ function ScannerPage({ user }) {
                 ].map((b, i) => (
                   <div key={i} style={{ marginBottom: 12 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
-                      <div>
-                        <span style={{ color: b.color, fontWeight: 600 }}>{b.label}</span>
-                        <span style={{ color: COLORS.muted, marginLeft: 8, fontSize: 10 }}>{b.desc}</span>
-                      </div>
+                      <div><span style={{ color: b.color, fontWeight: 600 }}>{b.label}</span><span style={{ color: COLORS.muted, marginLeft: 8, fontSize: 10 }}>{b.desc}</span></div>
                       <span style={{ color: b.color, fontWeight: 600 }}>{b.pct}%</span>
                     </div>
                     <div style={{ background: COLORS.bg, borderRadius: 4, height: 6 }}>
@@ -348,13 +318,10 @@ function ScannerPage({ user }) {
                     </div>
                   </div>
                 ))}
-                <div style={{ fontSize: 10, color: COLORS.muted, marginTop: 8, padding: "6px 10px", background: COLORS.bg, borderRadius: 4 }}>
-                  Score = 100 − (CRITICAL×10) − (HIGH×6) − (MEDIUM×3)
-                </div>
+                <div style={{ fontSize: 10, color: COLORS.muted, marginTop: 8, padding: "6px 10px", background: COLORS.bg, borderRadius: 4 }}>Score = 100 − (CRITICAL×10) − (HIGH×6) − (MEDIUM×3)</div>
               </div>
             </div>
 
-            {/* Top Files */}
             {fileBreakdown && (
               <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 20, marginBottom: 24 }}>
                 <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 16, textTransform: "uppercase", letterSpacing: 1 }}>Top Affected Files</div>
@@ -369,7 +336,6 @@ function ScannerPage({ user }) {
               </div>
             )}
 
-            {/* Actions */}
             <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 20, marginBottom: 24 }}>
               <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 16, textTransform: "uppercase", letterSpacing: 1 }}>Export & Share</div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
@@ -380,13 +346,10 @@ function ScannerPage({ user }) {
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <input value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="Email report to..." type="email" style={{ flex: 1, padding: "8px 14px", borderRadius: 6, border: `1px solid ${COLORS.cardBorder}`, background: COLORS.bg, color: COLORS.text, fontSize: 12 }} />
-                <button onClick={handleEmail} disabled={sendingEmail || !emailInput} style={{ padding: "8px 16px", borderRadius: 6, background: emailSent ? COLORS.green : COLORS.purple, color: emailSent ? "#000" : COLORS.white, border: "none", cursor: "pointer", fontSize: 12 }}>
-                  {emailSent ? "✓ Sent!" : sendingEmail ? "Sending..." : "📧 Email"}
-                </button>
+                <button onClick={handleEmail} disabled={sendingEmail || !emailInput} style={{ padding: "8px 16px", borderRadius: 6, background: emailSent ? COLORS.green : COLORS.purple, color: emailSent ? "#000" : COLORS.white, border: "none", cursor: "pointer", fontSize: 12 }}>{emailSent ? "✓ Sent!" : sendingEmail ? "Sending..." : "📧 Email"}</button>
               </div>
             </div>
 
-            {/* Findings Table */}
             <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 20 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
                 <div style={{ fontSize: 12, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1 }}>Threat Intelligence — {result.total_findings} findings</div>
@@ -399,7 +362,6 @@ function ScannerPage({ user }) {
                   <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." style={{ padding: "4px 12px", borderRadius: 20, border: `1px solid ${COLORS.cardBorder}`, background: COLORS.bg, color: COLORS.text, fontSize: 11, width: 120 }} />
                 </div>
               </div>
-
               {Object.entries(grouped).map(([file, filefindings], gi) => (
                 <div key={gi} style={{ marginBottom: 12, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 8, overflow: "hidden" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", background: COLORS.bg, borderBottom: `1px solid ${COLORS.cardBorder}` }}>
@@ -430,7 +392,6 @@ function ScannerPage({ user }) {
                 </div>
               ))}
             </div>
-
             {saved && <div style={{ marginTop: 12, background: `${COLORS.green}11`, border: `1px solid ${COLORS.green}44`, borderRadius: 8, padding: "10px 16px", color: COLORS.green, fontSize: 12 }}>✓ Scan saved to history</div>}
           </div>
         )}
@@ -439,7 +400,6 @@ function ScannerPage({ user }) {
   );
 }
 
-// ─── History Page ──────────────────────────────────────────────────────────────
 function HistoryPage({ user }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -474,10 +434,9 @@ function HistoryPage({ user }) {
         {loading ? (
           <div style={{ color: COLORS.muted }}>Loading...</div>
         ) : history.length === 0 ? (
-          <div style={{ color: COLORS.muted, fontSize: 14 }}>No scans yet — run your first scan!</div>
+          <div style={{ color: COLORS.muted, fontSize: 14 }}>No scans yet!</div>
         ) : (
           <div style={{ display: "grid", gap: 8 }}>
-            {/* Header */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 120px 100px 100px", gap: 16, padding: "8px 16px" }}>
               {["Target", "Date", "Score", "Threats"].map(h => (
                 <div key={h} style={{ fontSize: 11, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1 }}>{h}</div>
@@ -498,7 +457,6 @@ function HistoryPage({ user }) {
   );
 }
 
-// ─── Analytics Page ────────────────────────────────────────────────────────────
 function AnalyticsPage({ user }) {
   return (
     <div>
@@ -517,20 +475,19 @@ function AnalyticsPage({ user }) {
             </div>
           ))}
         </div>
-
         <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 24 }}>
           <div style={{ fontSize: 12, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>Quantum Timeline</div>
           {[
-            { year: "2024", event: "NIST finalizes PQC standards — FIPS 203, 204, 205", color: COLORS.green, done: true },
-            { year: "2026", event: "QuantumGuard launches — first focused scanner", color: COLORS.purple, done: true },
-            { year: "2027", event: "Regulatory pressure increases for compliance", color: COLORS.amber, done: false },
-            { year: "2030", event: "Cryptographically Relevant Quantum Computers arrive", color: COLORS.red, done: false },
+            { year: "2024", event: "NIST finalizes PQC standards — FIPS 203, 204, 205", color: COLORS.green },
+            { year: "2026", event: "QuantumGuard launches — first focused scanner", color: COLORS.purple },
+            { year: "2027", event: "Regulatory pressure increases for compliance", color: COLORS.amber },
+            { year: "2030", event: "Cryptographically Relevant Quantum Computers arrive", color: COLORS.red },
           ].map((t, i) => (
             <div key={i} style={{ display: "flex", gap: 16, marginBottom: 16, alignItems: "flex-start" }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: t.color, marginTop: 4, flexShrink: 0 }}></div>
               <div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: t.color, marginRight: 12 }}>{t.year}</span>
-                <span style={{ fontSize: 12, color: t.done ? COLORS.text : COLORS.muted }}>{t.event}</span>
+                <span style={{ fontSize: 12, color: COLORS.muted }}>{t.event}</span>
               </div>
             </div>
           ))}
@@ -540,13 +497,9 @@ function AnalyticsPage({ user }) {
   );
 }
 
-// ─── Docs Page ─────────────────────────────────────────────────────────────────
-function DocsPage() {
-  function MigrationPage({ user }) {
+function MigrationPage({ user }) {
   const [scans, setScans] = useState([]);
-  const [selectedScan, setSelectedScan] = useState(null);
   const [migrationStatus, setMigrationStatus] = useState({});
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
@@ -554,36 +507,19 @@ function DocsPage() {
       try {
         const q = query(collection(db, "scans"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
         const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setScans(data);
-        if (data.length > 0) setSelectedScan(data[0]);
+        setScans(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       } catch (e) { console.error(e); }
-      setLoading(false);
     };
     fetchScans();
   }, [user]);
 
   const vulnTypes = ["RSA", "ECC", "DH", "DSA", "MD5", "SHA1", "RC4", "DES", "ECB_MODE", "WEAK_TLS", "HARDCODED_SECRET"];
-
   const getStatus = (vuln) => migrationStatus[vuln] || "pending";
   const setStatus = (vuln, status) => setMigrationStatus(p => ({ ...p, [vuln]: status }));
-
   const totalFixed = Object.values(migrationStatus).filter(s => s === "fixed").length;
   const totalInProgress = Object.values(migrationStatus).filter(s => s === "in_progress").length;
   const overallProgress = Math.round((totalFixed / vulnTypes.length) * 100);
-
-  const statusColors = {
-    pending: COLORS.muted,
-    in_progress: COLORS.amber,
-    fixed: COLORS.green,
-  };
-
-  const statusLabels = {
-    pending: "Pending",
-    in_progress: "In Progress",
-    fixed: "Fixed ✓",
-  };
-
+  const statusColors = { pending: COLORS.muted, in_progress: COLORS.amber, fixed: COLORS.green };
   const fixes = {
     RSA: "CRYSTALS-Kyber (ML-KEM FIPS 203)",
     ECC: "CRYSTALS-Dilithium (ML-DSA FIPS 204)",
@@ -612,8 +548,6 @@ function DocsPage() {
     <div>
       <TopBar title="Crypto Migration Tracker" subtitle="Track your quantum-safe migration progress" />
       <div style={{ padding: "24px 32px" }}>
-
-        {/* Overall Progress */}
         <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 24, marginBottom: 24 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
             <div>
@@ -636,23 +570,10 @@ function DocsPage() {
           <div style={{ background: COLORS.bg, borderRadius: 8, height: 12 }}>
             <div style={{ background: `linear-gradient(90deg, ${COLORS.purple}, ${COLORS.green})`, height: 12, borderRadius: 8, width: `${overallProgress}%`, transition: "width 0.6s ease" }}></div>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: COLORS.muted, marginTop: 6 }}>
-            <span>Started</span>
-            <span>Target: Dec 2029</span>
-          </div>
         </div>
 
-        {/* Vulnerability Migration Table */}
         <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 24, marginBottom: 24 }}>
           <div style={{ fontSize: 12, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>Vulnerability Migration Status</div>
-
-          {/* Header */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 120px 140px", gap: 16, padding: "8px 16px", marginBottom: 8 }}>
-            {["Vulnerability", "Replace With", "Severity", "Status"].map(h => (
-              <div key={h} style={{ fontSize: 11, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1 }}>{h}</div>
-            ))}
-          </div>
-
           {vulnTypes.map((vuln, i) => {
             const status = getStatus(vuln);
             const severity = ["RSA", "ECC", "RC4", "DES"].includes(vuln) ? "CRITICAL" : ["DH", "DSA", "ECB_MODE", "WEAK_TLS", "HARDCODED_SECRET"].includes(vuln) ? "HIGH" : "MEDIUM";
@@ -663,7 +584,7 @@ function DocsPage() {
                 <div style={{ fontSize: 10, fontWeight: 700, color: severity === "CRITICAL" ? COLORS.red : severity === "HIGH" ? COLORS.amber : COLORS.green, background: severity === "CRITICAL" ? `${COLORS.red}22` : severity === "HIGH" ? `${COLORS.amber}22` : `${COLORS.green}22`, padding: "2px 8px", borderRadius: 4, textAlign: "center" }}>{severity}</div>
                 <div style={{ display: "flex", gap: 4 }}>
                   {["pending", "in_progress", "fixed"].map(s => (
-                    <button key={s} onClick={() => setStatus(vuln, s)} style={{ flex: 1, padding: "4px 6px", borderRadius: 4, border: `1px solid ${status === s ? statusColors[s] : COLORS.cardBorder}`, background: status === s ? `${statusColors[s]}22` : "transparent", color: status === s ? statusColors[s] : COLORS.muted, cursor: "pointer", fontSize: 9, fontWeight: status === s ? 700 : 400 }}>
+                    <button key={s} onClick={() => setStatus(vuln, s)} style={{ flex: 1, padding: "4px 6px", borderRadius: 4, border: `1px solid ${status === s ? statusColors[s] : COLORS.cardBorder}`, background: status === s ? `${statusColors[s]}22` : "transparent", color: status === s ? statusColors[s] : COLORS.muted, cursor: "pointer", fontSize: 9 }}>
                       {s === "pending" ? "⬜" : s === "in_progress" ? "🔄" : "✅"}
                     </button>
                   ))}
@@ -673,51 +594,45 @@ function DocsPage() {
           })}
         </div>
 
-        {/* Recent Scans */}
         {scans.length > 0 && (
-          <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 24 }}>
+          <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 24, marginBottom: 16 }}>
             <div style={{ fontSize: 12, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>Recent Scans</div>
-            <div style={{ display: "grid", gap: 8 }}>
-              {scans.slice(0, 5).map((scan, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: COLORS.bg, borderRadius: 8, border: `1px solid ${COLORS.cardBorder}` }}>
-                  <div>
-                    <div style={{ fontSize: 12, color: COLORS.text, fontFamily: "monospace" }}>{scan.filename || "scan"}</div>
-                    <div style={{ fontSize: 10, color: COLORS.muted }}>{scan.createdAt?.toDate?.()?.toLocaleDateString() || "—"}</div>
+            {scans.slice(0, 5).map((scan, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: COLORS.bg, borderRadius: 8, marginBottom: 8, border: `1px solid ${COLORS.cardBorder}` }}>
+                <div>
+                  <div style={{ fontSize: 12, color: COLORS.text, fontFamily: "monospace" }}>{scan.filename || "scan"}</div>
+                  <div style={{ fontSize: 10, color: COLORS.muted }}>{scan.createdAt?.toDate?.()?.toLocaleDateString() || "—"}</div>
+                </div>
+                <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: scan.score >= 70 ? COLORS.green : scan.score >= 40 ? COLORS.amber : COLORS.red }}>{scan.score}</div>
+                    <div style={{ fontSize: 10, color: COLORS.muted }}>Score</div>
                   </div>
-                  <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: scan.score >= 70 ? COLORS.green : scan.score >= 40 ? COLORS.amber : COLORS.red }}>{scan.score}</div>
-                      <div style={{ fontSize: 10, color: COLORS.muted }}>Score</div>
-                    </div>
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.red }}>{scan.findings}</div>
-                      <div style={{ fontSize: 10, color: COLORS.muted }}>Threats</div>
-                    </div>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.red }}>{scan.findings}</div>
+                    <div style={{ fontSize: 10, color: COLORS.muted }}>Threats</div>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         )}
 
-        {/* Export */}
-        <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8 }}>
           <button onClick={() => {
             const report = vulnTypes.map(v => `${v},${getStatus(v)},${fixes[v]}`).join("\n");
             const blob = new Blob([`Vulnerability,Status,Fix\n${report}`], { type: "text/csv" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a"); a.href = url; a.download = "migration-status.csv"; a.click();
-          }} style={{ padding: "8px 20px", borderRadius: 8, background: COLORS.green, color: "#000", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
-            📊 Export Migration Report
-          </button>
-          <button onClick={() => setMigrationStatus({})} style={{ padding: "8px 20px", borderRadius: 8, background: "transparent", color: COLORS.muted, border: `1px solid ${COLORS.cardBorder}`, cursor: "pointer", fontSize: 12 }}>
-            Reset
-          </button>
+          }} style={{ padding: "8px 20px", borderRadius: 8, background: COLORS.green, color: "#000", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>📊 Export Migration Report</button>
+          <button onClick={() => setMigrationStatus({})} style={{ padding: "8px 20px", borderRadius: 8, background: "transparent", color: COLORS.muted, border: `1px solid ${COLORS.cardBorder}`, cursor: "pointer", fontSize: 12 }}>Reset</button>
         </div>
       </div>
     </div>
   );
 }
+
+function DocsPage() {
   return (
     <div>
       <TopBar title="Documentation" subtitle="Integration guides and API reference" />
@@ -742,40 +657,26 @@ function DocsPage() {
             </div>
           ))}
         </div>
-
         <div style={{ marginTop: 16, background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 24 }}>
-          <div style={{ fontSize: 12, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>GitHub Actions Workflow</div>
-          <pre style={{ background: COLORS.bg, borderRadius: 8, padding: 16, fontSize: 11, color: COLORS.purpleLight, fontFamily: "monospace", overflowX: "auto" }}>{`name: QuantumGuard Security Scan
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-jobs:
-  quantum-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Run QuantumGuard
-        run: |
-          pip install requests
-          python -c "
-          import requests, json
-          r = requests.post(
-            'https://web-production-16177f.up.railway.app/scan-github',
-            json={'github_url': 'https://github.com/\${{ github.repository }}'}
-          )
-          data = r.json()
-          print(f'Score: {data[\"quantum_readiness_score\"]}/100')
-          print(f'Threats: {data[\"total_findings\"]}')
-          "`}</pre>
+          <div style={{ fontSize: 12, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>API Endpoints</div>
+          {[
+            { method: "POST", path: "/public-scan-zip", desc: "Upload ZIP file for scanning" },
+            { method: "POST", path: "/scan-github", desc: "Scan GitHub repository by URL" },
+            { method: "POST", path: "/scan", desc: "Scan server path (requires API key)" },
+            { method: "GET", path: "/health", desc: "Check API health status" },
+          ].map((e, i) => (
+            <div key={i} style={{ display: "flex", gap: 12, alignItems: "center", padding: "8px 0", borderBottom: i < 3 ? `1px solid ${COLORS.cardBorder}` : "none" }}>
+              <span style={{ background: `${COLORS.purple}22`, color: COLORS.purple, padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 700, minWidth: 50, textAlign: "center" }}>{e.method}</span>
+              <span style={{ fontFamily: "monospace", fontSize: 12, color: COLORS.purpleLight }}>{e.path}</span>
+              <span style={{ fontSize: 12, color: COLORS.muted }}>{e.desc}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Homepage ──────────────────────────────────────────────────────────────────
 function Homepage({ onGetStarted }) {
   return (
     <div style={{ minHeight: "100vh", background: COLORS.bg, color: COLORS.text, fontFamily: "sans-serif" }}>
@@ -789,16 +690,13 @@ function Homepage({ onGetStarted }) {
             <span key={i} style={{ background: `${b.color}22`, border: `1px solid ${b.color}44`, borderRadius: 20, padding: "4px 14px", fontSize: 11, color: b.color, fontWeight: 600 }}>{b.text}</span>
           ))}
         </div>
-
         <h1 style={{ fontSize: "clamp(36px, 6vw, 64px)", fontWeight: 800, lineHeight: 1.1, maxWidth: 900, margin: "0 auto 24px", color: COLORS.white }}>
           Quantum Threat Intelligence<br />
           <span style={{ color: COLORS.purple }}>for Your Codebase</span>
         </h1>
-
         <p style={{ fontSize: "clamp(15px, 2vw, 20px)", color: COLORS.muted, maxWidth: 600, margin: "0 auto 48px", lineHeight: 1.7 }}>
           Enterprise-grade quantum vulnerability scanner. Detect RSA, ECC, and 15+ cryptographic weaknesses before quantum computers break them.
         </p>
-
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
           <button onClick={onGetStarted} style={{ background: COLORS.purple, color: COLORS.white, padding: "16px 40px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 16, fontWeight: 700 }}>▶ Launch Scanner</button>
           <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer" style={{ background: "transparent", color: COLORS.text, padding: "16px 40px", borderRadius: 10, textDecoration: "none", fontSize: 16, border: `1px solid ${COLORS.cardBorder}` }}>GitHub →</a>
@@ -806,14 +704,8 @@ function Homepage({ onGetStarted }) {
         <p style={{ color: COLORS.muted, fontSize: 12, marginTop: 16 }}>No credit card. No signup required. Scan instantly.</p>
       </div>
 
-      {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 1, maxWidth: 860, margin: "0 auto 80px", background: COLORS.cardBorder, borderRadius: 12, overflow: "hidden" }}>
-        {[
-          { num: "15+", label: "Vulnerabilities" },
-          { num: "6", label: "Languages" },
-          { num: "2030", label: "Quantum Deadline" },
-          { num: "100%", label: "Open Source" },
-        ].map((s, i) => (
+        {[{ num: "15+", label: "Vulnerabilities" }, { num: "6", label: "Languages" }, { num: "2030", label: "Quantum Deadline" }, { num: "100%", label: "Open Source" }].map((s, i) => (
           <div key={i} style={{ background: COLORS.card, padding: 24, textAlign: "center" }}>
             <div style={{ fontSize: 32, fontWeight: 800, color: COLORS.purple }}>{s.num}</div>
             <div style={{ color: COLORS.muted, fontSize: 12, marginTop: 4 }}>{s.label}</div>
@@ -821,7 +713,6 @@ function Homepage({ onGetStarted }) {
         ))}
       </div>
 
-      {/* Features */}
       <div style={{ maxWidth: 900, margin: "0 auto 80px", padding: "0 20px" }}>
         <h2 style={{ textAlign: "center", fontSize: 32, fontWeight: 700, marginBottom: 48, color: COLORS.white }}>Enterprise Security Platform</h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
@@ -831,7 +722,7 @@ function Homepage({ onGetStarted }) {
             { icon: "🎯", title: "NIST 2024 Remediation", desc: "Every finding includes CRYSTALS-Kyber or Dilithium migration path" },
             { icon: "🔒", title: "Private Repo Support", desc: "Scan private GitHub repos securely with Personal Access Token" },
             { icon: "📄", title: "Threat Reports", desc: "Professional PDF reports, CSV export, email delivery for board presentations" },
-            { icon: "⚡", title: "CI/CD Ready", desc: "GitHub Actions integration, REST API access, webhook support" },
+            { icon: "🔄", title: "Migration Tracker", desc: "Track your quantum migration progress — vulnerability by vulnerability" },
           ].map((f, i) => (
             <div key={i} style={{ background: COLORS.card, borderRadius: 12, padding: 24, border: `1px solid ${COLORS.cardBorder}` }}>
               <div style={{ fontSize: 24, marginBottom: 12 }}>{f.icon}</div>
@@ -842,12 +733,11 @@ function Homepage({ onGetStarted }) {
         </div>
       </div>
 
-      {/* Pricing */}
       <div style={{ maxWidth: 900, margin: "0 auto 80px", padding: "0 20px" }}>
         <h2 style={{ textAlign: "center", fontSize: 32, fontWeight: 700, marginBottom: 48, color: COLORS.white }}>Simple Pricing</h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
           {[
-            { name: "Free", price: "$0", period: "forever", features: ["Web scanner", "ZIP + GitHub scan", "Private repo support", "PDF & CSV reports", "Email reports", "10 scans/day"] },
+            { name: "Free", price: "$0", period: "forever", features: ["Web scanner", "ZIP + GitHub scan", "Private repo support", "PDF & CSV reports", "Migration tracker", "10 scans/day"] },
             { name: "Pro", price: "$29", period: "/month", features: ["Everything in Free", "Unlimited scans", "AI-powered reports", "Team members", "API access", "Priority support"], highlight: true },
             { name: "Enterprise", price: "Custom", features: ["Everything in Pro", "CI/CD integration", "SSO login", "SOC2 compliance", "Dedicated support"] },
           ].map((p, i) => (
@@ -864,13 +754,11 @@ function Homepage({ onGetStarted }) {
         </div>
       </div>
 
-      {/* CTA */}
       <div style={{ textAlign: "center", padding: "60px 20px", background: COLORS.card, borderTop: `1px solid ${COLORS.cardBorder}` }}>
         <h2 style={{ fontSize: 32, fontWeight: 700, color: COLORS.white, marginBottom: 16 }}>Ready to secure your code?</h2>
         <p style={{ color: COLORS.muted, marginBottom: 32, fontSize: 15 }}>Scan your codebase in 30 seconds. Free forever.</p>
         <button onClick={onGetStarted} style={{ background: COLORS.purple, color: COLORS.white, padding: "16px 48px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 16, fontWeight: 700 }}>▶ Launch Scanner</button>
       </div>
-
       <div style={{ textAlign: "center", padding: "24px 20px", color: COLORS.muted, fontSize: 12 }}>
         QuantumGuard by MANGSRI — Open Source Quantum Security Platform — 2026
       </div>
@@ -878,7 +766,6 @@ function Homepage({ onGetStarted }) {
   );
 }
 
-// ─── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const [user, setUser] = useState(null);
   const [active, setActive] = useState("home");
@@ -906,9 +793,9 @@ export default function App() {
       <div style={{ marginLeft: 220, flex: 1, minHeight: "100vh" }}>
         {active === "scan" && <ScannerPage user={user} />}
         {active === "history" && <HistoryPage user={user} />}
+        {active === "migration" && <MigrationPage user={user} />}
         {active === "dashboard" && <AnalyticsPage user={user} />}
         {active === "docs" && <DocsPage />}
-        {active === "migration" && <MigrationPage user={user} />}
       </div>
     </div>
   );
