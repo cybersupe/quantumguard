@@ -555,12 +555,12 @@ export default function App() {
           <span style={{ background: "#E24B4A22", border: "1px solid #E24B4A", borderRadius: 20, padding: "4px 14px", fontSize: 12, color: "#E24B4A" }}>Free Forever</span>
         </div>
         <h1 style={{ fontSize: "clamp(32px, 6vw, 56px)", fontWeight: 700, lineHeight: 1.15, maxWidth: 800, margin: "0 auto 24px", color: text }}>
-          Find Weak Encryption<br />
-          <span style={{ color: "#7F77DD" }}>Before Quantum Computers Do</span>
-        </h1>
-        <p style={{ fontSize: "clamp(15px, 2vw, 19px)", color: muted, maxWidth: 600, margin: "0 auto 40px", lineHeight: 1.7 }}>
-          Scan your codebase and find every encryption algorithm that quantum computers will break. Get a clear migration plan aligned with NIST 2024 standards.
-        </p>
+  Scan Your Codebase for<br />
+  <span style={{ color: "#7F77DD" }}>Weak Cryptography & Security Risks</span>
+</h1>
+<p style={{ fontSize: "clamp(15px, 2vw, 19px)", color: muted, maxWidth: 600, margin: "0 auto 40px", lineHeight: 1.7 }}>
+  Get a Quantum Readiness Score and fix vulnerabilities before attackers do. Built for indie developers and startups who care about security.
+</p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
           <a href="#scan" style={{ background: "#534AB7", color: "#fff", padding: "16px 36px", borderRadius: 10, textDecoration: "none", fontSize: 16, fontWeight: 600 }}>Start Free Scan →</a>
           <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer" style={{ background: card, color: text, padding: "16px 36px", borderRadius: 10, textDecoration: "none", fontSize: 16, border: `1px solid ${border}` }}>View on GitHub</a>
