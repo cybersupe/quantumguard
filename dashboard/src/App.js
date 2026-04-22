@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import "./App.css";
-import { auth, db, signInWithGoogle, logOut, googleProvider } from "./firebase";
+import { auth, db, signInWithGoogle, logOut } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, addDoc, getDocs, query, where, orderBy } from "firebase/firestore";
-
 const API = "https://web-production-16177f.up.railway.app";
 
 function Navbar({ darkMode, setDarkMode, user, onLogin, onLogout }) {
