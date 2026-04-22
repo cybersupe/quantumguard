@@ -15,6 +15,12 @@ VULNERABLE_PATTERNS = {
             r"forge\.pki\.rsa", r"new NodeRSA",
             r"crypto\.publicEncrypt", r"crypto\.privateDecrypt",
             r"OpenSSL::PKey::RSA",
+            # Go
+            r"rsa\.GenerateKey", r"rsa\.EncryptPKCS1v15",
+            r"rsa\.DecryptPKCS1v15", r"rsa\.SignPKCS1v15",
+            # Rust
+            r"RsaPrivateKey::new", r"RsaPublicKey",
+            r"Pkcs1v15Encrypt", r"Pkcs1v15Sign",
         ]
     },
     "ECC": {
@@ -33,6 +39,12 @@ VULNERABLE_PATTERNS = {
             r"prime256v1", r"brainpool",
             r"curve25519", r"x25519",
             r"OpenSSL::PKey::EC",
+            # Go
+            r"elliptic\.P256", r"elliptic\.P384", r"elliptic\.P521",
+            r"ecdsa\.GenerateKey", r"ecdsa\.Sign", r"ecdsa\.Verify",
+            # Rust
+            r"p256::SecretKey", r"p384::SecretKey",
+            r"k256::SecretKey", r"ecdsa::SigningKey",
         ]
     },
     "DH": {
@@ -46,6 +58,8 @@ VULNERABLE_PATTERNS = {
             r"KeyPairGenerator\.getInstance\s*\(\s*['\"]DH['\"]",
             r"DHPublicKeySpec", r"DHPrivateKeySpec",
             r"javax\.crypto\.interfaces\.DHKey",
+            # Go
+            r"dh\.GenerateKey",
         ]
     },
     "DSA": {
@@ -59,6 +73,8 @@ VULNERABLE_PATTERNS = {
             r"KeyPairGenerator\.getInstance\s*\(\s*['\"]DSA['\"]",
             r"generateKeyPairSync\s*\(\s*['\"]dsa['\"]",
             r"java\.security\.interfaces\.DSAKey",
+            # Go
+            r"dsa\.GenerateKey", r"dsa\.Sign",
         ]
     },
     "MD5": {
@@ -74,6 +90,10 @@ VULNERABLE_PATTERNS = {
             r"md5sum", r"md5_hex",
             r"crypto\.createHash\s*\(\s*['\"]md5['\"]",
             r"OpenSSL::Digest::MD5",
+            # Go
+            r"md5\.New\(\)", r"md5\.Sum",
+            # Rust
+            r"md5::compute", r"Md5::new",
         ]
     },
     "SHA1": {
@@ -89,6 +109,10 @@ VULNERABLE_PATTERNS = {
             r"sha1sum", r"sha1_hex",
             r"crypto\.createHash\s*\(\s*['\"]sha1['\"]",
             r"OpenSSL::Digest::SHA1",
+            # Go
+            r"sha1\.New\(\)", r"sha1\.Sum",
+            # Rust
+            r"sha1::Sha1", r"Sha1::new",
         ]
     },
     "SHA256_SIGNED": {
@@ -110,6 +134,10 @@ VULNERABLE_PATTERNS = {
             r"Cipher\.getInstance\s*\(\s*['\"]RC4['\"]",
             r"from Crypto\.Cipher import ARC4",
             r"crypto\.createCipheriv\s*\(\s*['\"]rc4['\"]",
+            # Go
+            r"rc4\.NewCipher",
+            # Rust
+            r"Rc4::new",
         ]
     },
     "DES": {
@@ -122,6 +150,10 @@ VULNERABLE_PATTERNS = {
             r"Cipher\.getInstance\s*\(\s*['\"]DES",
             r"crypto\.createCipheriv\s*\(\s*['\"]des",
             r"OpenSSL::Cipher::DES",
+            # Go
+            r"des\.NewCipher", r"des\.NewTripleDESCipher",
+            # Rust
+            r"Des::new", r"TdesEde3::new",
         ]
     },
     "ECB_MODE": {
@@ -149,6 +181,13 @@ VULNERABLE_PATTERNS = {
             r"secureProtocol.*SSLv",
             r"minVersion.*TLSv1\b",
             r"TLS_RSA_WITH",
+            # Go
+            r"tls\.VersionTLS10", r"tls\.VersionTLS11",
+            r"tls\.VersionSSL30",
+            # Rust
+            r"ProtocolVersion::SSLv3",
+            r"ProtocolVersion::TLSv1_0",
+            r"ProtocolVersion::TLSv1_1",
         ]
     },
     "WEAK_KEY_SIZE": {
@@ -161,6 +200,10 @@ VULNERABLE_PATTERNS = {
             r"generate_private_key\s*\([^)]*key_size\s*=\s*(?:512|1024|2048)",
             r"KeySize\s*=\s*(?:512|1024|2048)",
             r"key_size\s*=\s*(?:512|1024|2048)",
+            # Go
+            r"rsa\.GenerateKey\s*\([^,]+,\s*(?:512|1024|2048)\s*\)",
+            # Rust
+            r"RsaPrivateKey::new\s*\([^,]+,\s*(?:512|1024|2048)\s*\)",
         ]
     },
     "HARDCODED_SECRET": {
@@ -189,6 +232,12 @@ VULNERABLE_PATTERNS = {
             r"java\.util\.Random",
             r"rand\(\)",
             r"mt_rand\(\)",
+            # Go
+            r"math/rand",
+            r"rand\.Intn", r"rand\.Float",
+            # Rust
+            r"rand::thread_rng",
+            r"SmallRng::new",
         ]
     },
     "JWT_NONE_ALG": {
@@ -208,6 +257,10 @@ VULNERABLE_PATTERNS = {
             r"Blowfish", r"blowfish",
             r"Cipher\.getInstance\s*\(\s*['\"]Blowfish",
             r"from Crypto\.Cipher import Blowfish",
+            # Go
+            r"golang\.org/x/crypto/blowfish",
+            # Rust
+            r"blowfish::Blowfish",
         ]
     },
     "MD4": {
