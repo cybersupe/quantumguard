@@ -258,7 +258,6 @@ function Scanner({ darkMode, user }) {
   const [copied, setCopied] = useState(false);
   const [checklist, setChecklist] = useState({});
   const intervalRef = useRef(null);
-  const stepRef = useRef(null);
 
   const bg = darkMode ? "#0f0f1a" : "#f5f5f5";
   const card = darkMode ? "#1a1a2e" : "#ffffff";
@@ -735,4 +734,4 @@ export default function App() {
       </div>
     </div>
   );
-} 
+}
