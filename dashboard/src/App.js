@@ -531,7 +531,7 @@ export default function App() {
 
  const handleLogout = async () => {
   try { 
-    await auth.signOut(); 
+    await logOut();
     setUser(null);
   } catch (e) { 
     console.error(e); 
