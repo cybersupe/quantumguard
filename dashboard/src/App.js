@@ -529,9 +529,14 @@ export default function App() {
     try { await signInWithGoogle(); } catch (e) { console.error(e); }
   };
 
-  const handleLogout = async () => {
-    try { await logOut(); } catch (e) { console.error(e); }
-  };
+ const handleLogout = async () => {
+  try { 
+    await auth.signOut(); 
+    setUser(null);
+  } catch (e) { 
+    console.error(e); 
+  }
+};
 
   const bg = darkMode ? "#0f0f1a" : "#f5f5f5";
   const card = darkMode ? "#1a1a2e" : "#ffffff";
