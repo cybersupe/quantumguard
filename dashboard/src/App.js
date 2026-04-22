@@ -34,11 +34,12 @@ const SCAN_STEPS = [
 // ─── Sidebar ───────────────────────────────────────────────────────────────────
 function Sidebar({ active, setActive, user, onLogin, onLogout, darkMode, setDarkMode }) {
   const navItems = [
-    { id: "scan", icon: "⚡", label: "Scanner" },
-    { id: "history", icon: "📋", label: "Scan History" },
-    { id: "dashboard", icon: "📊", label: "Analytics" },
-    { id: "docs", icon: "📖", label: "Docs" },
-  ];
+  { id: "scan", icon: "⚡", label: "Scanner" },
+  { id: "history", icon: "📋", label: "Scan History" },
+  { id: "migration", icon: "🔄", label: "Migration" },
+  { id: "dashboard", icon: "📊", label: "Analytics" },
+  { id: "docs", icon: "📖", label: "Docs" },
+];
 
   return (
     <div style={{ width: 220, minHeight: "100vh", background: COLORS.sidebar, borderRight: `1px solid ${COLORS.cardBorder}`, display: "flex", flexDirection: "column", position: "fixed", left: 0, top: 0, zIndex: 100 }}>
@@ -541,6 +542,182 @@ function AnalyticsPage({ user }) {
 
 // ─── Docs Page ─────────────────────────────────────────────────────────────────
 function DocsPage() {
+  function MigrationPage({ user }) {
+  const [scans, setScans] = useState([]);
+  const [selectedScan, setSelectedScan] = useState(null);
+  const [migrationStatus, setMigrationStatus] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchScans = async () => {
+      try {
+        const q = query(collection(db, "scans"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setScans(data);
+        if (data.length > 0) setSelectedScan(data[0]);
+      } catch (e) { console.error(e); }
+      setLoading(false);
+    };
+    fetchScans();
+  }, [user]);
+
+  const vulnTypes = ["RSA", "ECC", "DH", "DSA", "MD5", "SHA1", "RC4", "DES", "ECB_MODE", "WEAK_TLS", "HARDCODED_SECRET"];
+
+  const getStatus = (vuln) => migrationStatus[vuln] || "pending";
+  const setStatus = (vuln, status) => setMigrationStatus(p => ({ ...p, [vuln]: status }));
+
+  const totalFixed = Object.values(migrationStatus).filter(s => s === "fixed").length;
+  const totalInProgress = Object.values(migrationStatus).filter(s => s === "in_progress").length;
+  const overallProgress = Math.round((totalFixed / vulnTypes.length) * 100);
+
+  const statusColors = {
+    pending: COLORS.muted,
+    in_progress: COLORS.amber,
+    fixed: COLORS.green,
+  };
+
+  const statusLabels = {
+    pending: "Pending",
+    in_progress: "In Progress",
+    fixed: "Fixed ✓",
+  };
+
+  const fixes = {
+    RSA: "CRYSTALS-Kyber (ML-KEM FIPS 203)",
+    ECC: "CRYSTALS-Dilithium (ML-DSA FIPS 204)",
+    DH: "CRYSTALS-Kyber (ML-KEM FIPS 203)",
+    DSA: "CRYSTALS-Dilithium (ML-DSA FIPS 204)",
+    MD5: "SHA-3-256 or BLAKE3",
+    SHA1: "SHA-3-256 or BLAKE3",
+    RC4: "AES-256-GCM",
+    DES: "AES-256-GCM",
+    ECB_MODE: "AES-256-GCM",
+    WEAK_TLS: "TLS 1.3",
+    HARDCODED_SECRET: "AWS Secrets Manager / Vault",
+  };
+
+  if (!user) return (
+    <div>
+      <TopBar title="Migration Tracker" subtitle="Track your quantum migration progress" />
+      <div style={{ padding: 32, textAlign: "center" }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
+        <div style={{ color: COLORS.muted, fontSize: 14 }}>Sign in to track your migration progress</div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div>
+      <TopBar title="Crypto Migration Tracker" subtitle="Track your quantum-safe migration progress" />
+      <div style={{ padding: "24px 32px" }}>
+
+        {/* Overall Progress */}
+        <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 24, marginBottom: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
+            <div>
+              <div style={{ fontSize: 12, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1 }}>Overall Migration Progress</div>
+              <div style={{ fontSize: 36, fontWeight: 800, color: overallProgress >= 70 ? COLORS.green : overallProgress >= 40 ? COLORS.amber : COLORS.red, marginTop: 4 }}>{overallProgress}%</div>
+            </div>
+            <div style={{ display: "flex", gap: 16 }}>
+              {[
+                { label: "Fixed", value: totalFixed, color: COLORS.green },
+                { label: "In Progress", value: totalInProgress, color: COLORS.amber },
+                { label: "Pending", value: vulnTypes.length - totalFixed - totalInProgress, color: COLORS.muted },
+              ].map((s, i) => (
+                <div key={i} style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: s.color }}>{s.value}</div>
+                  <div style={{ fontSize: 11, color: COLORS.muted }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ background: COLORS.bg, borderRadius: 8, height: 12 }}>
+            <div style={{ background: `linear-gradient(90deg, ${COLORS.purple}, ${COLORS.green})`, height: 12, borderRadius: 8, width: `${overallProgress}%`, transition: "width 0.6s ease" }}></div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: COLORS.muted, marginTop: 6 }}>
+            <span>Started</span>
+            <span>Target: Dec 2029</span>
+          </div>
+        </div>
+
+        {/* Vulnerability Migration Table */}
+        <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 24, marginBottom: 24 }}>
+          <div style={{ fontSize: 12, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>Vulnerability Migration Status</div>
+
+          {/* Header */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 120px 140px", gap: 16, padding: "8px 16px", marginBottom: 8 }}>
+            {["Vulnerability", "Replace With", "Severity", "Status"].map(h => (
+              <div key={h} style={{ fontSize: 11, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1 }}>{h}</div>
+            ))}
+          </div>
+
+          {vulnTypes.map((vuln, i) => {
+            const status = getStatus(vuln);
+            const severity = ["RSA", "ECC", "RC4", "DES"].includes(vuln) ? "CRITICAL" : ["DH", "DSA", "ECB_MODE", "WEAK_TLS", "HARDCODED_SECRET"].includes(vuln) ? "HIGH" : "MEDIUM";
+            return (
+              <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 2fr 120px 140px", gap: 16, padding: "12px 16px", background: status === "fixed" ? `${COLORS.green}08` : COLORS.bg, borderRadius: 8, marginBottom: 6, border: `1px solid ${status === "fixed" ? COLORS.green + "33" : status === "in_progress" ? COLORS.amber + "33" : COLORS.cardBorder}`, alignItems: "center" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: status === "fixed" ? COLORS.muted : COLORS.white, textDecoration: status === "fixed" ? "line-through" : "none" }}>{vuln}</div>
+                <div style={{ fontSize: 11, color: COLORS.muted, fontFamily: "monospace" }}>{fixes[vuln]}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: severity === "CRITICAL" ? COLORS.red : severity === "HIGH" ? COLORS.amber : COLORS.green, background: severity === "CRITICAL" ? `${COLORS.red}22` : severity === "HIGH" ? `${COLORS.amber}22` : `${COLORS.green}22`, padding: "2px 8px", borderRadius: 4, textAlign: "center" }}>{severity}</div>
+                <div style={{ display: "flex", gap: 4 }}>
+                  {["pending", "in_progress", "fixed"].map(s => (
+                    <button key={s} onClick={() => setStatus(vuln, s)} style={{ flex: 1, padding: "4px 6px", borderRadius: 4, border: `1px solid ${status === s ? statusColors[s] : COLORS.cardBorder}`, background: status === s ? `${statusColors[s]}22` : "transparent", color: status === s ? statusColors[s] : COLORS.muted, cursor: "pointer", fontSize: 9, fontWeight: status === s ? 700 : 400 }}>
+                      {s === "pending" ? "⬜" : s === "in_progress" ? "🔄" : "✅"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Recent Scans */}
+        {scans.length > 0 && (
+          <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 24 }}>
+            <div style={{ fontSize: 12, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>Recent Scans</div>
+            <div style={{ display: "grid", gap: 8 }}>
+              {scans.slice(0, 5).map((scan, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: COLORS.bg, borderRadius: 8, border: `1px solid ${COLORS.cardBorder}` }}>
+                  <div>
+                    <div style={{ fontSize: 12, color: COLORS.text, fontFamily: "monospace" }}>{scan.filename || "scan"}</div>
+                    <div style={{ fontSize: 10, color: COLORS.muted }}>{scan.createdAt?.toDate?.()?.toLocaleDateString() || "—"}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: scan.score >= 70 ? COLORS.green : scan.score >= 40 ? COLORS.amber : COLORS.red }}>{scan.score}</div>
+                      <div style={{ fontSize: 10, color: COLORS.muted }}>Score</div>
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.red }}>{scan.findings}</div>
+                      <div style={{ fontSize: 10, color: COLORS.muted }}>Threats</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Export */}
+        <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
+          <button onClick={() => {
+            const report = vulnTypes.map(v => `${v},${getStatus(v)},${fixes[v]}`).join("\n");
+            const blob = new Blob([`Vulnerability,Status,Fix\n${report}`], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a"); a.href = url; a.download = "migration-status.csv"; a.click();
+          }} style={{ padding: "8px 20px", borderRadius: 8, background: COLORS.green, color: "#000", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+            📊 Export Migration Report
+          </button>
+          <button onClick={() => setMigrationStatus({})} style={{ padding: "8px 20px", borderRadius: 8, background: "transparent", color: COLORS.muted, border: `1px solid ${COLORS.cardBorder}`, cursor: "pointer", fontSize: 12 }}>
+            Reset
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
   return (
     <div>
       <TopBar title="Documentation" subtitle="Integration guides and API reference" />
@@ -731,6 +908,7 @@ export default function App() {
         {active === "history" && <HistoryPage user={user} />}
         {active === "dashboard" && <AnalyticsPage user={user} />}
         {active === "docs" && <DocsPage />}
+        {active === "migration" && <MigrationPage user={user} />}
       </div>
     </div>
   );
