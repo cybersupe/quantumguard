@@ -1,58 +1,28 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-}
-
-.animate-fade { animation: fadeInUp 0.6s ease forwards; }
-.animate-pulse { animation: pulse 2s infinite; }
-.animate-float { animation: float 3s ease-in-out infinite; }
-
-.hero-gradient {
-  background: radial-gradient(ellipse at 50% 0%, rgba(83, 74, 183, 0.15) 0%, transparent 70%);
-}
-
-.card-hover {
-  transition: transform 0.2s ease, border-color 0.2s ease;
-}
-
-.card-hover:hover {
-  transform: translateY(-4px);
-  border-color: #534AB7 !important;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #534AB7, #7F77DD);
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-  transform: translateY(-2px);
-}
-
-.glow {
-  box-shadow: 0 0 40px rgba(83, 74, 183, 0.3);
-}
-
 @media (max-width: 768px) {
-  nav { padding: 12px 16px !important; flex-wrap: wrap; gap: 12px; }
-  nav div { gap: 12px !important; flex-wrap: wrap; }
-  h1 { font-size: 32px !important; }
-  .grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
-  .grid-3 { grid-template-columns: 1fr !important; }
-  .grid-2 { grid-template-columns: 1fr !important; }
-  .hero-buttons { flex-direction: column !important; align-items: center !important; }
-  .pricing-grid { grid-template-columns: 1fr !important; }
+  div[style*="width: 220px"] {
+    width: 60px !important;
+    min-width: 60px !important;
+  }
+  
+  div[style*="marginLeft: 220"] {
+    margin-left: 60px !important;
+  }
+
+  div[style*="label"] {
+    display: none !important;
+  }
+
+  div[style*="gridTemplateColumns: repeat(4"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  div[style*="gridTemplateColumns: repeat(3"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  div[style*="padding: 24px 32px"] {
+    padding: 16px !important;
+  }
 }
