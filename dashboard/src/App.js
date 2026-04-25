@@ -150,7 +150,7 @@ function ScannerPage({ user }) {
         res = await fetch(`${API}/public-scan-zip`, { method: "POST", body: formData });
       } else if (mode === "github") {
         if (!input) throw new Error("Please enter a GitHub URL");
-        res = await fetch(`${API}/scan-github`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ github_url: input, github_token: githubToken || null }) });
+        res = await fetch(`${API}/scan-github`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ github_url: input }) });
       } else {
         if (!input) throw new Error("Please enter a path");
         res = await fetch(`${API}/scan`, { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": "quantumguard-secret-2026" }, body: JSON.stringify({ directory: input }) });
