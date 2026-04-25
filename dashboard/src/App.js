@@ -773,7 +773,7 @@ export default function App() {
   const [active, setActive] = useState("home");
   const [darkMode, setDarkMode] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-const isMobile = window.innerWidth <= 768;
+const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     onAuthStateChanged(auth, (u) => setUser(u));
