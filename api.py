@@ -160,6 +160,7 @@ async def check_agility(request: Request, body: GitScanRequest):
     finally:
         if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
-            @app.get("/health")
+
+@app.get("/health")
 def health():
     return {"status": "healthy"}
