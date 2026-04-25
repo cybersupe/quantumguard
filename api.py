@@ -77,6 +77,7 @@ async def public_scan_zip(request: Request, file: UploadFile = File(...)):
 async def scan_github(request: Request, body: GitScanRequest):
     if "github.com" not in body.github_url:
         raise HTTPException(status_code=400, detail="Only GitHub URLs allowed")
+    temp_dir = None
     try:
         parts = body.github_url.rstrip("/").split("/")
         owner = parts[-2]
@@ -98,7 +99,7 @@ async def scan_github(request: Request, body: GitScanRequest):
             response = requests.get(zip_url, headers=headers, timeout=30, allow_redirects=True)
 
         if response.status_code != 200:
-            raise HTTPException(status_code=400, detail="Could not download repo. Make sure it is public or token is valid.")
+            raise HTTPException(status_code=400, detail="Could not download repo. Make sure it is public.")
 
         temp_dir = f"/tmp/qg-{uuid.uuid4().hex[:8]}"
         os.makedirs(temp_dir, exist_ok=True)
@@ -111,7 +112,6 @@ async def scan_github(request: Request, body: GitScanRequest):
         return {
             "github_url": body.github_url,
             "repo": f"{owner}/{repo}",
-            "private": bool(body.github_token),
             "quantum_readiness_score": score,
             "total_findings": len(findings),
             "findings": findings
@@ -121,7 +121,7 @@ async def scan_github(request: Request, body: GitScanRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
     finally:
-        if os.path.exists(temp_dir):
+        if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
 
 @app.get("/health")
