@@ -6,7 +6,6 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, addDoc, getDocs, query, where, orderBy } from "firebase/firestore";
 
 const API = "https://web-production-16177f.up.railway.app";
-
 const COLORS = {
   bg: "#0a0a0f",
   sidebar: "#0d0d1a",
