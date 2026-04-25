@@ -72,9 +72,9 @@ def generate_report(directory):
         print(f"  Vulnerability: {f['vulnerability']}")
         print(f"  Fix: Replace with {f['replacement']}\n")
     return report
-    def check_crypto_agility(directory):
-        agility_findings = []
-    hardcoded_patterns = [
+       def check_crypto_agility(directory):
+           agility_findings = []
+           hardcoded_patterns = [
         (r'AES\.new\([^,]+,\s*AES\.MODE_', 'Hardcoded AES mode'),
         (r'RSA\.generate\(\d+\)', 'Hardcoded RSA key size'),
         (r'key\s*=\s*b[\'"][^\'"]+[\'"]', 'Hardcoded encryption key'),
@@ -125,6 +125,12 @@ def generate_report(directory):
     configurable = len([f for f in agility_findings if f["type"] == "configurable"])
     total = hardcoded + configurable
     agility_score = round((configurable / total * 100) if total > 0 else 100)
+    return {
+        "agility_score": agility_score,
+        "hardcoded_count": hardcoded,
+        "configurable_count": configurable,
+        "findings": agility_findings
+    }
     return {
         "agility_score": agility_score,
         "hardcoded_count": hardcoded,
