@@ -1,0 +1,79 @@
+name: QuantumGuard Security Scan
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  quantum-scan:
+    name: Quantum Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run QuantumGuard Scan
+        id: scan
+        run: |
+          echo "🔍 Running QuantumGuard quantum vulnerability scan..."
+          
+          RESPONSE=$(curl -s -X POST \
+            "https://quantumguard-api.onrender.com/scan-github" \
+            -H "Content-Type: application/json" \
+            -d "{\"github_url\": \"https://github.com/${{ github.repository }}\"}")
+          
+          echo "SCAN_RESPONSE<<EOF" >> $GITHUB_OUTPUT
+          echo "$RESPONSE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          SCORE=$(echo $RESPONSE | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('quantum_readiness_score', 0))" 2>/dev/null || echo "0")
+          FINDINGS=$(echo $RESPONSE | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('total_findings', 0))" 2>/dev/null || echo "0")
+          
+          echo "SCORE=$SCORE" >> $GITHUB_OUTPUT
+          echo "FINDINGS=$FINDINGS" >> $GITHUB_OUTPUT
+          
+          echo "⚛ Quantum Readiness Score: $SCORE/100"
+          echo "🔎 Total Findings: $FINDINGS"
+
+      - name: Generate Scan Summary
+        run: |
+          SCORE=${{ steps.scan.outputs.SCORE }}
+          FINDINGS=${{ steps.scan.outputs.FINDINGS }}
+          
+          echo "## ⚛ QuantumGuard Security Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🎯 Quantum Readiness Score | **$SCORE / 100** |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔎 Total Vulnerabilities | **$FINDINGS** |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📅 Scanned At | $(date -u '+%Y-%m-%d %H:%M UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔗 Repository | ${{ github.repository }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$SCORE" -ge 70 ]; then
+            echo "### ✅ Status: QUANTUM SAFE" >> $GITHUB_STEP_SUMMARY
+            echo "Your codebase has good quantum resistance." >> $GITHUB_STEP_SUMMARY
+          elif [ "$SCORE" -ge 40 ]; then
+            echo "### ⚠️ Status: AT RISK" >> $GITHUB_STEP_SUMMARY
+            echo "Some quantum vulnerabilities detected. Review findings." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### 🚨 Status: CRITICAL RISK" >> $GITHUB_STEP_SUMMARY
+            echo "Multiple quantum vulnerabilities found. Immediate action required." >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 [View Full Report](https://quantumguard-one.vercel.app)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail if Critical Risk
+        run: |
+          SCORE=${{ steps.scan.outputs.SCORE }}
+          FINDINGS=${{ steps.scan.outputs.FINDINGS }}
+          echo "Score: $SCORE | Findings: $FINDINGS"
+          if [ "$SCORE" -lt 20 ] && [ "$FINDINGS" -gt 50 ]; then
+            echo "🚨 CRITICAL: Too many quantum vulnerabilities ($FINDINGS found, score $SCORE/100)"
+            exit 1
+          fi
+          echo "✅ Scan passed — Score: $SCORE/100"
