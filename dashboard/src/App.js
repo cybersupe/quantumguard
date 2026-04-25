@@ -20,6 +20,7 @@ const SCAN_STEPS = [
 function Sidebar({ active, setActive, user, onLogin, onLogout, darkMode, setDarkMode, open, onClose }) {
   const navItems = [
     { id: "scan", icon: "⚡", label: "Scanner" },
+    { id: "agility", icon: "🔬", label: "Agility Checker" },
     { id: "history", icon: "📋", label: "Scan History" },
     { id: "migration", icon: "🔄", label: "Migration" },
     { id: "dashboard", icon: "📊", label: "Analytics" },
@@ -27,13 +28,7 @@ function Sidebar({ active, setActive, user, onLogin, onLogout, darkMode, setDark
   ];
   return (
     <>
-      {/* Overlay for mobile */}
-      {open && (
-        <div onClick={onClose} style={{
-          display: "none", position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 90,
-          "@media(maxWidth:768px)": { display: "block" }
-        }} className="sidebar-overlay" />
-      )}
+      {open && <div className="sidebar-overlay open" onClick={onClose} />}
       <div className={`sidebar${open ? " open" : ""}`} style={{
         width: 220, minHeight: "100vh", background: COLORS.sidebar,
         borderRight: `1px solid ${COLORS.cardBorder}`, display: "flex",
@@ -101,6 +96,152 @@ function TopBar({ title, subtitle }) {
         {subtitle && <p style={{ fontSize: 12, color: COLORS.muted, margin: "4px 0 0" }}>{subtitle}</p>}
       </div>
       <span style={{ fontSize: 11, color: COLORS.muted }}>{new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</span>
+    </div>
+  );
+}
+
+function AgilityPage() {
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+
+  const handleCheck = async () => {
+    if (!input) return;
+    setLoading(true); setError(null); setResult(null);
+    try {
+      const res = await fetch(`${API}/check-agility`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ github_url: input }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Check failed");
+      setResult(data);
+    } catch (e) {
+      setError(typeof e.message === "string" ? e.message : "Check failed. Please try again.");
+    }
+    setLoading(false);
+  };
+
+  const getScoreColor = (s) => s >= 70 ? COLORS.green : s >= 40 ? COLORS.amber : COLORS.red;
+  const getScoreLabel = (s) => s >= 70 ? "✓ Highly Agile" : s >= 40 ? "⚠ Partially Agile" : "✗ Low Agility";
+
+  return (
+    <div>
+      <TopBar title="Crypto Agility Checker" subtitle="Detect hardcoded vs configurable cryptography" />
+      <div className="page-content">
+        <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 24, marginBottom: 24 }}>
+          <div style={{ fontSize: 13, color: COLORS.muted, marginBottom: 16, lineHeight: 1.6 }}>
+            Crypto agility means your encryption algorithms are <span style={{ color: COLORS.purple }}>configurable</span> — not hardcoded. 
+            Agile codebases can swap algorithms quickly when quantum computers arrive. 
+            Paste a GitHub URL to check your agility score.
+          </div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleCheck()}
+              placeholder="https://github.com/username/repo"
+              style={{ flex: 1, minWidth: 200, padding: "10px 14px", borderRadius: 8, border: `1px solid ${COLORS.cardBorder}`, background: COLORS.bg, color: COLORS.text, fontSize: 13 }}
+            />
+            <button onClick={handleCheck} disabled={loading} style={{ padding: "10px 24px", borderRadius: 8, background: loading ? `${COLORS.purple}88` : COLORS.purple, color: COLORS.white, border: "none", cursor: loading ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600 }}>
+              {loading ? "Checking..." : "🔬 Check Agility"}
+            </button>
+          </div>
+          {error && (
+            <div style={{ marginTop: 16, background: `${COLORS.red}11`, border: `1px solid ${COLORS.red}44`, borderRadius: 8, padding: 12 }}>
+              <div style={{ color: COLORS.red, fontSize: 13 }}>⚠ {error}</div>
+            </div>
+          )}
+        </div>
+
+        {loading && (
+          <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 32, textAlign: "center", marginBottom: 24 }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>🔬</div>
+            <div style={{ color: COLORS.purple, fontSize: 14 }}>Analyzing crypto agility...</div>
+          </div>
+        )}
+
+        {result && (
+          <div>
+            <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
+              <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 24, textAlign: "center" }}>
+                <div style={{ fontSize: 11, color: COLORS.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>Agility Score</div>
+                <div style={{ fontSize: 56, fontWeight: 800, color: getScoreColor(result.agility_score), lineHeight: 1 }}>{result.agility_score}</div>
+                <div style={{ fontSize: 12, color: getScoreColor(result.agility_score), marginTop: 8 }}>{getScoreLabel(result.agility_score)}</div>
+              </div>
+              <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 24, textAlign: "center" }}>
+                <div style={{ fontSize: 11, color: COLORS.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>Hardcoded</div>
+                <div style={{ fontSize: 56, fontWeight: 800, color: COLORS.red, lineHeight: 1 }}>{result.hardcoded_count}</div>
+                <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 8 }}>needs to be configurable</div>
+              </div>
+              <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 24, textAlign: "center" }}>
+                <div style={{ fontSize: 11, color: COLORS.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>Configurable</div>
+                <div style={{ fontSize: 56, fontWeight: 800, color: COLORS.green, lineHeight: 1 }}>{result.configurable_count}</div>
+                <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 8 }}>already agile</div>
+              </div>
+            </div>
+
+            <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 24, marginBottom: 24 }}>
+              <div style={{ fontSize: 12, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>Agility Breakdown</div>
+              {[
+                { label: "Hardcoded crypto", count: result.hardcoded_count, total: result.hardcoded_count + result.configurable_count, color: COLORS.red },
+                { label: "Configurable crypto", count: result.configurable_count, total: result.hardcoded_count + result.configurable_count, color: COLORS.green },
+              ].map((b, i) => (
+                <div key={i} style={{ marginBottom: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                    <span style={{ color: b.color, fontWeight: 600 }}>{b.label}</span>
+                    <span style={{ color: COLORS.muted }}>{b.count} ({b.total > 0 ? Math.round(b.count / b.total * 100) : 0}%)</span>
+                  </div>
+                  <div style={{ background: COLORS.bg, borderRadius: 4, height: 8 }}>
+                    <div style={{ background: b.color, height: 8, borderRadius: 4, width: `${b.total > 0 ? (b.count / b.total) * 100 : 0}%`, transition: "width 0.6s" }}></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 24, marginBottom: 24 }}>
+              <div style={{ fontSize: 12, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>What is Crypto Agility?</div>
+              <div style={{ fontSize: 13, color: COLORS.muted, lineHeight: 1.7 }}>
+                Crypto agility means your app can swap cryptographic algorithms without major code changes. 
+                Instead of <span style={{ color: COLORS.red, fontFamily: "monospace" }}>RSA.generate(2048)</span> hardcoded everywhere, 
+                you use <span style={{ color: COLORS.green, fontFamily: "monospace" }}>KEY_ALGO = os.environ.get("CRYPTO_ALGO")</span> so you can 
+                switch to CRYSTALS-Kyber when quantum computers arrive by just changing a config value.
+              </div>
+            </div>
+
+            {result.findings && result.findings.length > 0 && (
+              <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 24 }}>
+                <div style={{ fontSize: 12, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>
+                  Findings — {result.findings.length} items
+                </div>
+                {result.findings.map((f, i) => (
+                  <div key={i} style={{
+                    borderLeft: `3px solid ${f.type === "hardcoded" ? COLORS.red : COLORS.green}`,
+                    paddingLeft: 14, marginBottom: 16,
+                  }}>
+                    <div style={{ display: "flex", gap: 8, marginBottom: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      <span style={{
+                        background: f.type === "hardcoded" ? `${COLORS.red}22` : `${COLORS.green}22`,
+                        color: f.type === "hardcoded" ? COLORS.red : COLORS.green,
+                        padding: "2px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, textTransform: "uppercase"
+                      }}>{f.type}</span>
+                      <span style={{ color: COLORS.muted, fontSize: 11 }}>{f.file.split("/").pop()}:{f.line}</span>
+                      <span style={{ color: COLORS.muted, fontSize: 11 }}>— {f.description}</span>
+                    </div>
+                    <div style={{ fontFamily: "monospace", background: COLORS.bg, padding: "8px 12px", borderRadius: 6, fontSize: 11, marginBottom: 6, color: COLORS.purpleLight, overflowX: "auto" }}>{f.code}</div>
+                    <div style={{ fontSize: 11, color: COLORS.muted }}>
+                      {f.type === "hardcoded" ? "⚠ " : "✓ "}
+                      <span style={{ color: f.type === "hardcoded" ? COLORS.amber : COLORS.green }}>{f.recommendation}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -516,21 +657,7 @@ function AnalyticsPage() {
 }
 
 function MigrationPage({ user }) {
-  const [scans, setScans] = useState([]);
   const [migrationStatus, setMigrationStatus] = useState({});
-
-  useEffect(() => {
-    if (!user) return;
-    const fetchScans = async () => {
-      try {
-        const q = query(collection(db, "scans"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
-        const snapshot = await getDocs(q);
-        setScans(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      } catch (e) { console.error(e); }
-    };
-    fetchScans();
-  }, [user]);
-
   const vulnTypes = ["RSA", "ECC", "DH", "DSA", "MD5", "SHA1", "RC4", "DES", "ECB_MODE", "WEAK_TLS", "HARDCODED_SECRET"];
   const getStatus = (vuln) => migrationStatus[vuln] || "pending";
   const setStatus = (vuln, status) => setMigrationStatus(p => ({ ...p, [vuln]: status }));
@@ -579,7 +706,6 @@ function MigrationPage({ user }) {
             <div style={{ background: `linear-gradient(90deg, ${COLORS.purple}, ${COLORS.green})`, height: 12, borderRadius: 8, width: `${overallProgress}%`, transition: "width 0.6s ease" }}></div>
           </div>
         </div>
-
         <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 24, marginBottom: 24 }}>
           <div style={{ fontSize: 12, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>Vulnerability Migration Status</div>
           {vulnTypes.map((vuln, i) => {
@@ -601,7 +727,6 @@ function MigrationPage({ user }) {
             );
           })}
         </div>
-
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button onClick={() => {
             const report = vulnTypes.map(v => `${v},${getStatus(v)},${fixes[v]}`).join("\n");
@@ -624,9 +749,9 @@ function DocsPage() {
         <div className="docs-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
           {[
             { title: "Quick Start", icon: "⚡", desc: "Scan your first repo in 30 seconds", steps: ["Go to Scanner tab", "Paste GitHub URL", "Click Run Scan", "Download PDF report"] },
-            { title: "GitHub Actions", icon: "🔄", desc: "Automate scans in CI/CD pipeline", steps: ["Copy workflow YAML", "Add to .github/workflows/", "Push to trigger scan", "View results in Actions"] },
+            { title: "Agility Checker", icon: "🔬", desc: "Check if your crypto is configurable", steps: ["Go to Agility Checker tab", "Paste GitHub URL", "Click Check Agility", "Review hardcoded vs configurable"] },
             { title: "Private Repos", icon: "🔒", desc: "Scan private repositories securely", steps: ["Generate GitHub PAT", "Click Private Repo button", "Paste your token", "Token never stored"] },
-            { title: "API Reference", icon: "🔌", desc: "Integrate QuantumGuard in your stack", steps: ["POST /public-scan-zip", "POST /scan-github", "POST /scan (API key)", "GET /health"] },
+            { title: "API Reference", icon: "🔌", desc: "Integrate QuantumGuard in your stack", steps: ["POST /public-scan-zip", "POST /scan-github", "POST /check-agility", "GET /health"] },
           ].map((d, i) => (
             <div key={i} style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 24 }}>
               <div style={{ fontSize: 24, marginBottom: 8 }}>{d.icon}</div>
@@ -638,21 +763,6 @@ function DocsPage() {
                   <span style={{ fontSize: 12, color: COLORS.muted }}>{s}</span>
                 </div>
               ))}
-            </div>
-          ))}
-        </div>
-        <div style={{ background: COLORS.card, border: `1px solid ${COLORS.cardBorder}`, borderRadius: 12, padding: 24 }}>
-          <div style={{ fontSize: 12, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>API Endpoints</div>
-          {[
-            { method: "POST", path: "/public-scan-zip", desc: "Upload ZIP file for scanning" },
-            { method: "POST", path: "/scan-github", desc: "Scan GitHub repository by URL" },
-            { method: "POST", path: "/scan", desc: "Scan server path (requires API key)" },
-            { method: "GET", path: "/health", desc: "Check API health status" },
-          ].map((e, i) => (
-            <div key={i} style={{ display: "flex", gap: 12, alignItems: "center", padding: "8px 0", borderBottom: i < 3 ? `1px solid ${COLORS.cardBorder}` : "none", flexWrap: "wrap" }}>
-              <span style={{ background: `${COLORS.purple}22`, color: COLORS.purple, padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 700, minWidth: 50, textAlign: "center" }}>{e.method}</span>
-              <span style={{ fontFamily: "monospace", fontSize: 12, color: COLORS.purpleLight }}>{e.path}</span>
-              <span style={{ fontSize: 12, color: COLORS.muted }}>{e.desc}</span>
             </div>
           ))}
         </div>
@@ -682,7 +792,6 @@ function Homepage({ onGetStarted }) {
         </div>
         <p style={{ color: COLORS.muted, fontSize: 12, marginTop: 16 }}>No credit card. No signup required. Scan instantly.</p>
       </div>
-
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 1, maxWidth: 860, margin: "0 auto 60px", background: COLORS.cardBorder, borderRadius: 12, overflow: "hidden" }}>
         {[{ num: "15+", label: "Vulnerabilities" }, { num: "6", label: "Languages" }, { num: "2030", label: "Quantum Deadline" }, { num: "100%", label: "Open Source" }].map((s, i) => (
           <div key={i} style={{ background: COLORS.card, padding: 20, textAlign: "center" }}>
@@ -691,27 +800,6 @@ function Homepage({ onGetStarted }) {
           </div>
         ))}
       </div>
-
-      <div style={{ maxWidth: 900, margin: "0 auto 60px", padding: "0 20px" }}>
-        <h2 style={{ textAlign: "center", fontSize: "clamp(22px,4vw,32px)", fontWeight: 700, marginBottom: 32, color: COLORS.white }}>Enterprise Security Platform</h2>
-        <div className="features-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
-          {[
-            { icon: "🔍", title: "Deep Code Analysis", desc: "Line-by-line scanning across 6 languages" },
-            { icon: "📊", title: "Quantum Readiness Score", desc: "0-100 risk score with full breakdown" },
-            { icon: "🎯", title: "NIST 2024 Remediation", desc: "Every finding includes CRYSTALS-Kyber or Dilithium path" },
-            { icon: "🔒", title: "Private Repo Support", desc: "Scan private repos with Personal Access Token" },
-            { icon: "📄", title: "Threat Reports", desc: "PDF, CSV, email delivery for board presentations" },
-            { icon: "🔄", title: "Migration Tracker", desc: "Track your quantum migration — vulnerability by vulnerability" },
-          ].map((f, i) => (
-            <div key={i} style={{ background: COLORS.card, borderRadius: 12, padding: 24, border: `1px solid ${COLORS.cardBorder}` }}>
-              <div style={{ fontSize: 24, marginBottom: 12 }}>{f.icon}</div>
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: COLORS.white }}>{f.title}</div>
-              <div style={{ fontSize: 12, color: COLORS.muted, lineHeight: 1.6 }}>{f.desc}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       <div style={{ textAlign: "center", padding: "60px 20px", background: COLORS.card, borderTop: `1px solid ${COLORS.cardBorder}` }}>
         <h2 style={{ fontSize: "clamp(22px,4vw,32px)", fontWeight: 700, color: COLORS.white, marginBottom: 16 }}>Ready to secure your code?</h2>
         <p style={{ color: COLORS.muted, marginBottom: 32, fontSize: 15 }}>Scan your codebase in 30 seconds. Free forever.</p>
@@ -748,23 +836,17 @@ export default function App() {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: COLORS.bg, color: COLORS.text, fontFamily: "'Segoe UI', sans-serif" }}>
-      {/* Hamburger button - mobile only */}
       <button className="hamburger" onClick={() => setSidebarOpen(!sidebarOpen)}>☰</button>
-
-      {/* Overlay - mobile only */}
-      {sidebarOpen && (
-        <div className="sidebar-overlay open" onClick={() => setSidebarOpen(false)} />
-      )}
-
+      {sidebarOpen && <div className="sidebar-overlay open" onClick={() => setSidebarOpen(false)} />}
       <Sidebar
         active={active} setActive={setActive} user={user}
         onLogin={handleLogin} onLogout={handleLogout}
         darkMode={darkMode} setDarkMode={setDarkMode}
         open={sidebarOpen} onClose={() => setSidebarOpen(false)}
       />
-
       <div className="main-content" style={{ marginLeft: 220, flex: 1, minHeight: "100vh" }}>
         {active === "scan" && <ScannerPage user={user} />}
+        {active === "agility" && <AgilityPage />}
         {active === "history" && <HistoryPage user={user} />}
         {active === "migration" && <MigrationPage user={user} />}
         {active === "dashboard" && <AnalyticsPage />}
