@@ -26,9 +26,11 @@ MAX_ZIP_SIZE = 10 * 1024 * 1024
 class ScanRequest(BaseModel):
     directory: str
 
+from typing import Optional
+
 class GitScanRequest(BaseModel):
     github_url: str
-    github_token: str = None
+    github_token: Optional[str] = None
 
 def verify_key(key: str):
     if key != API_KEY:
