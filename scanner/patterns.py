@@ -278,3 +278,99 @@ SEVERITY_SCORE = {
     "HIGH": 6,
     "MEDIUM": 3,
 }
+# ── Go patterns ──────────────────────────────────────────
+GO_PATTERNS = {
+    "RSA_GO": {
+        "patterns": [r'rsa\.GenerateKey', r'rsa\.EncryptPKCS1v15', r'rsa\.SignPKCS1v15'],
+        "severity": "CRITICAL", "replacement": "golang.org/x/crypto — CRYSTALS-Kyber"
+    },
+    "ECC_GO": {
+        "patterns": [r'elliptic\.P256\(\)', r'elliptic\.P384\(\)', r'ecdsa\.GenerateKey'],
+        "severity": "CRITICAL", "replacement": "CRYSTALS-Dilithium (ML-DSA FIPS 204)"
+    },
+    "MD5_GO": {
+        "patterns": [r'md5\.New\(\)', r'md5\.Sum\('],
+        "severity": "MEDIUM", "replacement": "crypto/sha3 — SHA3-256"
+    },
+    "SHA1_GO": {
+        "patterns": [r'sha1\.New\(\)', r'sha1\.Sum\('],
+        "severity": "MEDIUM", "replacement": "crypto/sha3 — SHA3-256"
+    },
+    "DES_GO": {
+        "patterns": [r'des\.NewCipher', r'des\.NewTripleDESCipher'],
+        "severity": "CRITICAL", "replacement": "crypto/aes — AES-256-GCM"
+    },
+    "WEAK_TLS_GO": {
+        "patterns": [r'tls\.VersionTLS10', r'tls\.VersionTLS11', r'InsecureSkipVerify:\s*true'],
+        "severity": "HIGH", "replacement": "tls.VersionTLS13 minimum"
+    },
+}
+
+# ── Rust patterns ─────────────────────────────────────────
+RUST_PATTERNS = {
+    "RSA_RUST": {
+        "patterns": [r'RsaPrivateKey::new', r'Pkcs1v15Encrypt', r'rsa::RsaPublicKey'],
+        "severity": "CRITICAL", "replacement": "pqcrypto-kyber crate — CRYSTALS-Kyber"
+    },
+    "MD5_RUST": {
+        "patterns": [r'md5::compute', r'Md5::new\(\)', r'md5::Md5'],
+        "severity": "MEDIUM", "replacement": "sha3 crate — SHA3-256"
+    },
+    "SHA1_RUST": {
+        "patterns": [r'sha1::Sha1', r'Sha1::new\(\)', r'sha1::digest'],
+        "severity": "MEDIUM", "replacement": "sha3 crate — SHA3-256"
+    },
+    "WEAK_TLS_RUST": {
+        "patterns": [r'danger_accept_invalid_certs\(true\)', r'TlsConnector::builder'],
+        "severity": "HIGH", "replacement": "rustls with TLS 1.3 only"
+    },
+    "ECC_RUST": {
+        "patterns": [r'p256::SecretKey', r'k256::SecretKey', r'ecdsa::SigningKey'],
+        "severity": "CRITICAL", "replacement": "pqcrypto-dilithium — CRYSTALS-Dilithium"
+    },
+}
+
+# ── C / C++ patterns ──────────────────────────────────────
+C_PATTERNS = {
+    "RSA_C": {
+        "patterns": [r'RSA_generate_key', r'RSA_public_encrypt', r'RSA_private_decrypt', r'EVP_PKEY_RSA'],
+        "severity": "CRITICAL", "replacement": "liboqs — CRYSTALS-Kyber (ML-KEM)"
+    },
+    "ECC_C": {
+        "patterns": [r'EC_KEY_new_by_curve_name', r'ECDSA_sign', r'ECDSA_verify', r'EC_GROUP_new'],
+        "severity": "CRITICAL", "replacement": "liboqs — CRYSTALS-Dilithium (ML-DSA)"
+    },
+    "MD5_C": {
+        "patterns": [r'MD5_Init\(', r'MD5_Update\(', r'MD5_Final\(', r'EVP_md5\(\)'],
+        "severity": "MEDIUM", "replacement": "SHA3_256 from OpenSSL 3.x"
+    },
+    "SHA1_C": {
+        "patterns": [r'SHA1_Init\(', r'SHA1_Update\(', r'SHA1_Final\(', r'EVP_sha1\(\)'],
+        "severity": "MEDIUM", "replacement": "EVP_sha3_256() from OpenSSL 3.x"
+    },
+    "DES_C": {
+        "patterns": [r'DES_set_key\(', r'DES_ecb_encrypt\(', r'EVP_des_', r'EVP_des_ede3'],
+        "severity": "CRITICAL", "replacement": "EVP_aes_256_gcm() from OpenSSL"
+    },
+    "RC4_C": {
+        "patterns": [r'RC4_set_key\(', r'RC4\(', r'EVP_rc4\(\)'],
+        "severity": "CRITICAL", "replacement": "EVP_aes_256_gcm() from OpenSSL"
+    },
+    "WEAK_SSL_C": {
+        "patterns": [r'SSLv2_method\(\)', r'SSLv3_method\(\)', r'TLSv1_method\(\)', r'SSL_OP_NO_TLSv1_2'],
+        "severity": "HIGH", "replacement": "TLS_method() with TLS_MIN_VERSION = TLS1_3_VERSION"
+    },
+    "HARDCODED_KEY_C": {
+        "patterns": [r'char\s+\w*key\w*\[\]\s*=\s*"', r'unsigned char\s+\w*key\w*\[\]'],
+        "severity": "HIGH", "replacement": "Load keys from secure vault or HSM"
+    },
+    "RAND_C": {
+        "patterns": [r'rand\(\)', r'srand\(', r'random\(\)'],
+        "severity": "MEDIUM", "replacement": "RAND_bytes() from OpenSSL for cryptographic randomness"
+    },
+}
+
+# ── Merge all into VULNERABLE_PATTERNS ───────────────────
+VULNERABLE_PATTERNS.update(GO_PATTERNS)
+VULNERABLE_PATTERNS.update(RUST_PATTERNS)
+VULNERABLE_PATTERNS.update(C_PATTERNS)
