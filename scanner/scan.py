@@ -73,7 +73,7 @@ def generate_report(directory):
         print(f"  Fix: Replace with {f['replacement']}\n")
     return report
     def check_crypto_agility(directory):
-    agility_findings = []
+        agility_findings = []
     hardcoded_patterns = [
         (r'AES\.new\([^,]+,\s*AES\.MODE_', 'Hardcoded AES mode'),
         (r'RSA\.generate\(\d+\)', 'Hardcoded RSA key size'),
