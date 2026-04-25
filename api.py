@@ -73,7 +73,7 @@ async def public_scan_zip(request: Request, file: UploadFile = File(...)):
             shutil.rmtree(temp_dir)
 
 @app.post("/scan-github")
-@limiter.limit("2/minute")
+@limiter.limit("20/minute")
 async def scan_github(request: Request, body: GitScanRequest):
     if "github.com" not in body.github_url:
         raise HTTPException(status_code=400, detail="Only GitHub URLs allowed")
