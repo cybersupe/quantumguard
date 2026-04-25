@@ -279,8 +279,7 @@ function ScannerPage({ user }) {
 
   const handlePDF = () => {
     if (!result) return;
-    const win=window.open("https://twitter.com/intent/tweet?text="+encodeURIComponent("QuantumGuard: "+result.quantum_readiness_score+"/100 — "+result.total_findings+" vulnerabilities
-quantumguard-one.vercel.app #QuantumSecurity"),"_blank");
+    const win=window.open("https://twitter.com/intent/tweet?text="+encodeURIComponent("QuantumGuard: "+result.quantum_readiness_score+"/100 - "+result.total_findings+" vulnerabilities - quantumguard-one.vercel.app #QuantumSecurity"),"_blank");
     win.document.write(`<html><head><title>QuantumGuard Report</title><style>body{font-family:monospace;padding:32px;background:#0b0c0e;color:#C4C9D4;}h1{color:#7B5FFF;}.score{font-size:64px;font-weight:800;color:${scoreColor};}.finding{border-left:3px solid #E85C4A;padding:8px 14px;margin:8px 0;background:#1a1d23;}.HIGH{border-color:#F5A623;}.MEDIUM{border-color:#F0C040;}.LOW{border-color:#53C28B;}code{color:#22D3EE;font-size:11px;}</style></head><body><h1>⚛ QuantumGuard Threat Report</h1><p>Generated: ${new Date().toLocaleString()}</p><p>Target: ${result.github_url||"ZIP Upload"}</p><div class="score">${result.quantum_readiness_score}/100</div><p>Total: ${result.total_findings} | Critical: ${sev?.CRITICAL} | High: ${sev?.HIGH} | Medium: ${sev?.MEDIUM}</p><hr/>${result.findings.map(f=>`<div class="finding ${f.severity}"><b>[${f.severity}]</b> ${f.file.split("/").pop()}:${f.line}<br/><code>${f.code}</code><br/>Fix: ${f.replacement}</div>`).join("")}</body></html>`);
     win.document.close(); win.print();
   };
