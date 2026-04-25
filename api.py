@@ -161,6 +161,56 @@ async def check_agility(request: Request, body: GitScanRequest):
         if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
 
+@app.post("/analyze-tls")
+@limiter.limit("10/minute")
+async def analyze_tls(request: Request, body: dict):
+    import ssl, socket
+    domain = body.get("domain", "").strip().replace("https://", "").replace("http://", "").split("/")[0]
+    if not domain:
+        raise HTTPException(status_code=400, detail="Domain required")
+    try:
+        ctx = ssl.create_default_context()
+        with socket.create_connection((domain, 443), timeout=10) as sock:
+            with ctx.wrap_socket(sock, server_hostname=domain) as ssock:
+                tls_version = ssock.version()
+                cipher = ssock.cipher()
+                cert = ssock.getpeercert()
+                cipher_name = cipher[0] if cipher else "Unknown"
+                cipher_bits = cipher[2] if cipher else 0
+                quantum_safe = tls_version == "TLSv1.3" and "ECDHE" in cipher_name
+                score = 0
+                if tls_version == "TLSv1.3": score += 40
+                elif tls_version == "TLSv1.2": score += 20
+                if "ECDHE" in cipher_name: score += 20
+                if cipher_bits and cipher_bits >= 256: score += 20
+                if "AES_256" in cipher_name: score += 20
+                import datetime
+                exp = cert.get("notAfter", "")
+                issues = []
+                if tls_version != "TLSv1.3":
+                    issues.append(f"Using {tls_version} — upgrade to TLS 1.3")
+                if "RSA" in cipher_name and "ECDHE" not in cipher_name:
+                    issues.append("RSA key exchange is quantum-vulnerable")
+                if cipher_bits and cipher_bits < 256:
+                    issues.append(f"Cipher key size {cipher_bits} bits — use 256-bit minimum")
+                return {
+                    "domain": domain,
+                    "tls_version": tls_version,
+                    "cipher_suite": cipher_name,
+                    "cipher_bits": cipher_bits,
+                    "quantum_safe": quantum_safe,
+                    "tls_score": score,
+                    "cert_expires": exp,
+                    "issues": issues,
+                    "recommendation": "Upgrade to TLS 1.3 with CRYSTALS-Kyber when available" if not quantum_safe else "Good — use TLS 1.3 with post-quantum cipher suites when standardized"
+                }
+    except ssl.SSLError as e:
+        raise HTTPException(status_code=400, detail=f"SSL Error: {str(e)}")
+    except socket.timeout:
+        raise HTTPException(status_code=400, detail="Connection timed out")
+    except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Error: {str(e)}")
+
 @app.get("/health")
 def health():
     return {"status": "healthy"}
