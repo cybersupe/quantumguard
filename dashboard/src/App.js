@@ -47,6 +47,7 @@ function Sidebar({ active, setActive, user, onLogin, onLogout, open, onClose }) 
   const navItems = [
     { id: "scan", icon: "⚡", label: "Threat Scanner" },
     { id: "agility", icon: "🔬", label: "Agility Checker" },
+    { id: "tls", icon: "🔐", label: "TLS Analyzer" },
     { id: "history", icon: "🗂", label: "Scan History" },
     { id: "migration", icon: "🔄", label: "Migration" },
     { id: "dashboard", icon: "📊", label: "Analytics" },
@@ -771,6 +772,149 @@ function DocsPage() {
 }
 
 // ══════════════════════════════════════════════════════════════
+// TLS ANALYZER PAGE
+// ══════════════════════════════════════════════════════════════
+function TLSPage() {
+  const [domain, setDomain] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+
+  const handleAnalyze = async () => {
+    if (!domain) return;
+    setLoading(true); setError(null); setResult(null);
+    try {
+      const res = await fetch(`${API}/analyze-tls`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain: domain.replace("https://","").replace("http://","").split("/")[0] })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Analysis failed");
+      setResult(data);
+    } catch(e) { setError(typeof e.message === "string" ? e.message : "Analysis failed."); }
+    setLoading(false);
+  };
+
+  const scoreColor = result ? (result.tls_score >= 70 ? C.green : result.tls_score >= 40 ? C.amber : C.red) : C.muted;
+  const tlsColor = result ? (result.tls_version === "TLSv1.3" ? C.green : result.tls_version === "TLSv1.2" ? C.amber : C.red) : C.muted;
+
+  return (
+    <div style={{padding:16}}>
+      <Panel title="TLS / SSL Quantum Readiness Analyzer">
+        <div style={{fontSize:11,color:C.muted,fontFamily:"monospace",marginBottom:12,lineHeight:1.7}}>
+          Checks any domain for TLS version, cipher suite strength, and quantum vulnerability.<br/>
+          TLS 1.3 + forward secrecy = best protection. RSA key exchange = quantum vulnerable.
+        </div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <input value={domain} onChange={e=>setDomain(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleAnalyze()}
+            placeholder="google.com or https://github.com"
+            style={{flex:1,minWidth:200,padding:"7px 12px",borderRadius:3,border:`1px solid ${C.panelBorder}`,background:C.input,color:C.text,fontSize:12,fontFamily:"monospace"}} />
+          <button onClick={handleAnalyze} disabled={loading} style={{padding:"7px 20px",borderRadius:3,background:loading?`${C.purple}88`:C.purple,color:C.white,border:"none",cursor:loading?"not-allowed":"pointer",fontSize:12,fontWeight:700}}>
+            {loading?"ANALYZING...":"🔐 ANALYZE TLS"}
+          </button>
+        </div>
+        {error && <div style={{marginTop:10,background:`${C.red}18`,border:`1px solid ${C.red}44`,borderRadius:3,padding:"8px 12px",color:C.red,fontSize:11,fontFamily:"monospace"}}>ERROR: {error}</div>}
+      </Panel>
+
+      {loading && (
+        <Panel>
+          <div style={{textAlign:"center",padding:24}}>
+            <div style={{fontSize:28,marginBottom:8}}>🔐</div>
+            <div style={{fontFamily:"monospace",fontSize:12,color:C.purple}}>CONNECTING TO {domain.toUpperCase()}...</div>
+            <div style={{fontFamily:"monospace",fontSize:10,color:C.muted,marginTop:4}}>Checking TLS handshake and cipher suites</div>
+          </div>
+        </Panel>
+      )}
+
+      {result && (
+        <>
+          <div className="stats-grid" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
+            <div style={{background:C.panel,border:`1px solid ${C.panelBorder}`,borderRadius:4,padding:"14px 18px"}}>
+              <div style={{fontSize:10,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:6,fontFamily:"monospace"}}>TLS SCORE</div>
+              <div style={{fontSize:40,fontWeight:800,color:scoreColor,fontFamily:"monospace",lineHeight:1}}>{result.tls_score}<span style={{fontSize:14,color:C.muted}}>/100</span></div>
+              <div style={{fontSize:10,color:scoreColor,marginTop:6,fontFamily:"monospace"}}>{result.tls_score>=70?"QUANTUM READY":result.tls_score>=40?"PARTIAL":"VULNERABLE"}</div>
+            </div>
+            <div style={{background:C.panel,border:`1px solid ${C.panelBorder}`,borderRadius:4,padding:"14px 18px"}}>
+              <div style={{fontSize:10,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:6,fontFamily:"monospace"}}>TLS VERSION</div>
+              <div style={{fontSize:28,fontWeight:800,color:tlsColor,fontFamily:"monospace",lineHeight:1}}>{result.tls_version}</div>
+              <div style={{fontSize:10,color:tlsColor,marginTop:6,fontFamily:"monospace"}}>{result.tls_version==="TLSv1.3"?"LATEST":"UPGRADE NEEDED"}</div>
+            </div>
+            <div style={{background:C.panel,border:`1px solid ${C.panelBorder}`,borderRadius:4,padding:"14px 18px"}}>
+              <div style={{fontSize:10,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:6,fontFamily:"monospace"}}>QUANTUM SAFE</div>
+              <div style={{fontSize:36,fontWeight:800,color:result.quantum_safe?C.green:C.red,fontFamily:"monospace",lineHeight:1}}>{result.quantum_safe?"YES":"NO"}</div>
+              <div style={{fontSize:10,color:result.quantum_safe?C.green:C.red,marginTop:6,fontFamily:"monospace"}}>{result.quantum_safe?"Forward secrecy active":"RSA key exchange detected"}</div>
+            </div>
+            <div style={{background:C.panel,border:`1px solid ${C.panelBorder}`,borderRadius:4,padding:"14px 18px"}}>
+              <div style={{fontSize:10,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:6,fontFamily:"monospace"}}>KEY SIZE</div>
+              <div style={{fontSize:36,fontWeight:800,color:result.cipher_bits>=256?C.green:C.amber,fontFamily:"monospace",lineHeight:1}}>{result.cipher_bits}<span style={{fontSize:14,color:C.muted}}>bit</span></div>
+              <div style={{fontSize:10,color:result.cipher_bits>=256?C.green:C.amber,marginTop:6,fontFamily:"monospace"}}>{result.cipher_bits>=256?"STRONG":"UPGRADE NEEDED"}</div>
+            </div>
+          </div>
+
+          <Panel title="Cipher Suite Details">
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+              <div>
+                <div style={{fontSize:9,color:C.muted,fontFamily:"monospace",marginBottom:4}}>DOMAIN</div>
+                <div style={{fontFamily:"monospace",fontSize:12,color:C.cyan}}>{result.domain}</div>
+              </div>
+              <div>
+                <div style={{fontSize:9,color:C.muted,fontFamily:"monospace",marginBottom:4}}>CIPHER SUITE</div>
+                <div style={{fontFamily:"monospace",fontSize:11,color:C.text,wordBreak:"break-all"}}>{result.cipher_suite}</div>
+              </div>
+              <div>
+                <div style={{fontSize:9,color:C.muted,fontFamily:"monospace",marginBottom:4}}>CERT EXPIRES</div>
+                <div style={{fontFamily:"monospace",fontSize:11,color:C.amber}}>{result.cert_expires}</div>
+              </div>
+              <div>
+                <div style={{fontSize:9,color:C.muted,fontFamily:"monospace",marginBottom:4}}>RECOMMENDATION</div>
+                <div style={{fontFamily:"monospace",fontSize:10,color:C.green,lineHeight:1.5}}>{result.recommendation}</div>
+              </div>
+            </div>
+          </Panel>
+
+          {result.issues && result.issues.length > 0 && (
+            <Panel title={`Issues Found — ${result.issues.length}`}>
+              {result.issues.map((issue,i)=>(
+                <div key={i} style={{display:"flex",gap:10,padding:"8px 0",borderBottom:i<result.issues.length-1?`1px solid ${C.panelBorder}`:"none",alignItems:"flex-start"}}>
+                  <span style={{color:C.red,fontFamily:"monospace",fontSize:12,flexShrink:0}}>⚠</span>
+                  <span style={{fontFamily:"monospace",fontSize:11,color:C.text,lineHeight:1.5}}>{issue}</span>
+                </div>
+              ))}
+            </Panel>
+          )}
+
+          {result.issues && result.issues.length === 0 && (
+            <Panel>
+              <div style={{textAlign:"center",padding:16}}>
+                <div style={{fontSize:28,marginBottom:8}}>✅</div>
+                <div style={{fontFamily:"monospace",fontSize:13,color:C.green,fontWeight:700}}>NO ISSUES FOUND</div>
+                <div style={{fontFamily:"monospace",fontSize:10,color:C.muted,marginTop:4}}>{result.domain} is using strong TLS configuration</div>
+              </div>
+            </Panel>
+          )}
+
+          <Panel title="Quick Reference — TLS Quantum Safety">
+            {[
+              {version:"TLS 1.3",status:"RECOMMENDED",color:C.green,desc:"Latest standard. Use with CRYSTALS-Kyber when available."},
+              {version:"TLS 1.2",status:"ACCEPTABLE",color:C.amber,desc:"Still supported but lacks some forward secrecy features."},
+              {version:"TLS 1.0/1.1",status:"DEPRECATED",color:C.red,desc:"Deprecated by RFC 8996. Must upgrade immediately."},
+              {version:"SSL 2/3",status:"BROKEN",color:C.critical,desc:"Completely broken. Immediately disable."},
+            ].map((t,i)=>(
+              <div key={i} style={{display:"flex",gap:12,padding:"8px 0",borderBottom:i<3?`1px solid ${C.panelBorder}`:"none",alignItems:"center"}}>
+                <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,color:t.color,minWidth:80}}>{t.version}</span>
+                <span style={{fontFamily:"monospace",fontSize:9,color:t.color,background:`${t.color}18`,padding:"1px 6px",borderRadius:2,minWidth:80,textAlign:"center"}}>{t.status}</span>
+                <span style={{fontFamily:"monospace",fontSize:10,color:C.muted}}>{t.desc}</span>
+              </div>
+            ))}
+          </Panel>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
 // HOMEPAGE
 // ══════════════════════════════════════════════════════════════
 function Homepage({ onGetStarted }) {
@@ -825,7 +969,7 @@ export default function App() {
 
   if (active === "home") return <Homepage onGetStarted={() => setActive("scan")} />;
 
-  const pageTitle = {scan:"Threat Scanner",agility:"Agility Checker",history:"Scan History",migration:"Migration Tracker",dashboard:"Analytics",docs:"Documentation"};
+  const pageTitle = {scan:"Threat Scanner",agility:"Agility Checker",tls:"TLS Analyzer",history:"Scan History",migration:"Migration Tracker",dashboard:"Analytics",docs:"Documentation"};
 
   return (
     <div style={{display:"flex",minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'Segoe UI',sans-serif"}}>
@@ -844,6 +988,7 @@ export default function App() {
         <div style={{flex:1,overflowY:"auto"}}>
           {active==="scan" && <ScannerPage user={user} />}
           {active==="agility" && <AgilityPage />}
+          {active==="tls" && <TLSPage />}
           {active==="history" && <HistoryPage user={user} />}
           {active==="migration" && <MigrationPage user={user} />}
           {active==="dashboard" && <AnalyticsPage />}
