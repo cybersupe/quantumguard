@@ -30,13 +30,20 @@ def scan_file(filepath):
 def scan_directory(directory):
     all_findings = []
     supported = (".py", ".js", ".java", ".ts", ".go", ".rs", ".c", ".cpp", ".cc", ".h", ".hpp")
+    file_count = 0
+    MAX_FILES = 200
     for root, dirs, files in os.walk(directory):
         dirs[:] = [d for d in dirs if d not in ["venv", "node_modules", ".git", "__pycache__"]]
         for file in files:
+            if file_count >= MAX_FILES:
+                break
             if file.endswith(supported):
                 filepath = os.path.join(root, file)
                 findings = scan_file(filepath)
                 all_findings.extend(findings)
+                file_count += 1
+        if file_count >= MAX_FILES:
+            break
     return all_findings
 
 
