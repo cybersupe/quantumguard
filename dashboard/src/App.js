@@ -178,21 +178,21 @@ function SevBar({ label, count, total, color }) {
 }
 
 // ── Log-viewer finding row ─────────────────────────────────────
-function FindingRow({ f, checked, onCheck }) {
+function FindingRow({ f, checked, onCheck, onAiFix }) {
   const sevColor = f.severity === "CRITICAL" ? C.critical : f.severity === "HIGH" ? C.high : f.severity === "MEDIUM" ? C.medium : C.low;
   return (
     <div style={{
-      display: "grid", gridTemplateColumns: "24px 80px 1fr 1fr 180px", gap: 8,
+      display: "grid", gridTemplateColumns: "24px 80px 1fr 1fr 140px 70px", gap: 8,
       padding: "7px 12px", borderBottom: `1px solid ${C.panelBorder}`,
       background: checked ? `${C.greenDark}22` : "transparent",
       opacity: checked ? 0.5 : 1, alignItems: "start",
-      cursor: "pointer",
-    }} onClick={onCheck}>
-      <input type="checkbox" checked={!!checked} onChange={onCheck} onClick={e => e.stopPropagation()} style={{ marginTop: 2 }} />
+    }}>
+      <input type="checkbox" checked={!!checked} onChange={onCheck} style={{ marginTop: 2, cursor: "pointer" }} />
       <span style={{ fontFamily: "monospace", fontSize: 10, fontWeight: 700, color: sevColor, background: `${sevColor}18`, padding: "1px 6px", borderRadius: 2, textAlign: "center" }}>{f.severity}</span>
       <span style={{ fontFamily: "monospace", fontSize: 10, color: C.cyan, wordBreak: "break-all" }}>{f.file.split("/").pop()}:{f.line}</span>
       <span style={{ fontFamily: "monospace", fontSize: 10, color: C.text, wordBreak: "break-all" }}>{f.code}</span>
       <span style={{ fontFamily: "monospace", fontSize: 10, color: C.green, wordBreak: "break-all" }}>{f.replacement}</span>
+      <button onClick={()=>onAiFix(f)} style={{ padding: "2px 6px", borderRadius: 2, background: `${C.purple}33`, border: `1px solid ${C.purple}`, color: C.purpleLight, cursor: "pointer", fontSize: 9, fontFamily: "monospace", fontWeight: 700 }}>⚡ AI FIX</button>
     </div>
   );
 }
@@ -218,6 +218,9 @@ function ScannerPage({ user }) {
   const [emailInput, setEmailInput] = useState("");
   const [emailSent, setEmailSent] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [aiModal, setAiModal] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState(null);
   const intervalRef = useRef(null);
 
   const startProgress = () => {
@@ -264,6 +267,46 @@ function ScannerPage({ user }) {
       setEmailSent(true); setTimeout(()=>setEmailSent(false),3000);
     } catch(e){alert("Email failed.");}
     setSendingEmail(false);
+  };
+
+  const handleAiFix = async (finding) => {
+    setAiModal(finding);
+    setAiLoading(true);
+    setAiResult(null);
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          messages: [{
+            role: "user",
+            content: `You are a quantum cryptography security expert. A developer has this vulnerable code:
+
+File: ${finding.file.split("/").pop()}
+Line: ${finding.line}
+Vulnerable code: ${finding.code}
+Vulnerability type: ${finding.vulnerability}
+Severity: ${finding.severity}
+Current recommendation: ${finding.replacement}
+
+Provide a concise, practical fix. Return ONLY:
+1. A 1-sentence explanation of why this is vulnerable
+2. The exact replacement code (ready to paste in)
+3. Any import statements needed
+
+Be specific and practical. No lengthy explanations.`
+          }]
+        })
+      });
+      const data = await res.json();
+      const text = data.content?.[0]?.text || "Could not generate fix.";
+      setAiResult(text);
+    } catch(e) {
+      setAiResult("Error calling AI. Please try again.");
+    }
+    setAiLoading(false);
   };
 
   const scoreColor = result ? (result.quantum_readiness_score >= 70 ? C.green : result.quantum_readiness_score >= 40 ? C.amber : C.red) : C.muted;
@@ -384,8 +427,8 @@ function ScannerPage({ user }) {
               <span style={{fontSize:10,color:C.muted,fontFamily:"monospace",marginLeft:"auto"}}>{filtered.length} / {result.total_findings} events</span>
             </div>
             {/* Header row */}
-            <div style={{display:"grid",gridTemplateColumns:"24px 80px 1fr 1fr 180px",gap:8,padding:"5px 12px",borderBottom:`1px solid ${C.panelBorder}`,background:C.panelHeader}}>
-              {["","SEVERITY","FILE : LINE","CODE","REMEDIATION"].map((h,i)=>(
+            <div style={{display:"grid",gridTemplateColumns:"24px 80px 1fr 1fr 140px 70px",gap:8,padding:"5px 12px",borderBottom:`1px solid ${C.panelBorder}`,background:C.panelHeader}}>
+              {["","SEVERITY","FILE : LINE","CODE","REMEDIATION","AI"].map((h,i)=>(
                 <span key={i} style={{fontSize:9,color:C.muted,fontFamily:"monospace",fontWeight:700,textTransform:"uppercase"}}>{h}</span>
               ))}
             </div>
@@ -393,12 +436,44 @@ function ScannerPage({ user }) {
             <div style={{maxHeight:400,overflowY:"auto"}}>
               {Object.entries(grouped).map(([file,findings])=>findings.map((f,i)=>{
                 const key=`${f.file}:${f.line}`;
-                return <FindingRow key={`${file}-${i}`} f={f} checked={checklist[key]} onCheck={()=>setChecklist(p=>({...p,[key]:!p[key]}))} />;
+                return <FindingRow key={`${file}-${i}`} f={f} checked={checklist[key]} onCheck={()=>setChecklist(p=>({...p,[key]:!p[key]}))} onAiFix={handleAiFix} />;
               }))}
               {filtered.length===0&&<div style={{padding:20,textAlign:"center",color:C.muted,fontSize:12,fontFamily:"monospace"}}>No events match filter.</div>}
             </div>
           </Panel>
         </>
+      )}
+      {/* AI Fix Modal */}
+      {aiModal && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div style={{background:C.panel,border:`1px solid ${C.purple}`,borderRadius:6,width:"100%",maxWidth:680,maxHeight:"80vh",display:"flex",flexDirection:"column"}}>
+            <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.panelBorder}`,display:"flex",justifyContent:"space-between",alignItems:"center",background:C.panelHeader,borderRadius:"6px 6px 0 0"}}>
+              <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,color:C.purpleLight}}>⚡ AI MIGRATION ASSISTANT</span>
+              <button onClick={()=>{setAiModal(null);setAiResult(null);}} style={{background:"transparent",border:"none",color:C.muted,cursor:"pointer",fontSize:16}}>✕</button>
+            </div>
+            <div style={{padding:16,borderBottom:`1px solid ${C.panelBorder}`,background:C.input}}>
+              <div style={{fontFamily:"monospace",fontSize:9,color:C.muted,marginBottom:4}}>VULNERABLE CODE</div>
+              <div style={{fontFamily:"monospace",fontSize:11,color:C.red}}>{aiModal.code}</div>
+              <div style={{fontFamily:"monospace",fontSize:9,color:C.muted,marginTop:8,marginBottom:4}}>FILE · SEVERITY</div>
+              <div style={{fontFamily:"monospace",fontSize:10,color:C.cyan}}>{aiModal.file.split("/").pop()}:{aiModal.line} · <span style={{color:aiModal.severity==="CRITICAL"?C.critical:aiModal.severity==="HIGH"?C.high:C.medium}}>{aiModal.severity}</span></div>
+            </div>
+            <div style={{flex:1,overflowY:"auto",padding:16}}>
+              {aiLoading ? (
+                <div style={{textAlign:"center",padding:32}}>
+                  <div style={{fontSize:24,marginBottom:12}}>⚡</div>
+                  <div style={{fontFamily:"monospace",fontSize:12,color:C.purple}}>GENERATING AI FIX...</div>
+                  <div style={{fontFamily:"monospace",fontSize:10,color:C.muted,marginTop:8}}>Analyzing vulnerability and generating replacement code</div>
+                </div>
+              ) : aiResult ? (
+                <div>
+                  <div style={{fontFamily:"monospace",fontSize:9,color:C.muted,marginBottom:8}}>AI RECOMMENDATION</div>
+                  <div style={{fontFamily:"monospace",fontSize:11,color:C.text,lineHeight:1.8,whiteSpace:"pre-wrap",background:C.input,padding:14,borderRadius:4,border:`1px solid ${C.panelBorder}`}}>{aiResult}</div>
+                  <button onClick={()=>navigator.clipboard.writeText(aiResult)} style={{marginTop:12,padding:"5px 14px",borderRadius:3,background:C.green,color:"#000",border:"none",cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>COPY FIX</button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
