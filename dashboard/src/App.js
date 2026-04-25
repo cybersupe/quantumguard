@@ -63,7 +63,7 @@ function Sidebar({ active, setActive, user, onLogin, onLogout, darkMode, setDark
           <div style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS.green }}></div>
           <span style={{ fontSize: 11, color: COLORS.green }}>API Online</span>
         </div>
-        <div style={{ fontSize: 10, color: COLORS.muted, marginTop: 2 }}>railway.app</div>
+        <div style={{ fontSize: 10, color: COLORS.muted, marginTop: 2 }}>https://quantumguard-api.onrender.com</div>
       </div>
       <div style={{ padding: "16px 20px", borderTop: `1px solid ${COLORS.cardBorder}` }}>
         {user ? (
@@ -150,7 +150,10 @@ function ScannerPage({ user }) {
         res = await fetch(`${API}/public-scan-zip`, { method: "POST", body: formData });
       } else if (mode === "github") {
         if (!input) throw new Error("Please enter a GitHub URL");
-        res = await fetch(`${API}/scan-github`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ github_url: input }) });
+        res = await fetch(`${API}/scan-github`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ 
+  github_url: input,
+  ...(githubToken ? { github_token: githubToken } : {})
+});
       } else {
         if (!input) throw new Error("Please enter a path");
         res = await fetch(`${API}/scan`, { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": "quantumguard-secret-2026" }, body: JSON.stringify({ directory: input }) });
