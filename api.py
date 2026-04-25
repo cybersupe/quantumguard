@@ -126,6 +126,40 @@ async def scan_github(request: Request, body: GitScanRequest):
         if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
 
-@app.get("/health")
+@app.post("/check-agility")
+@limiter.limit("10/minute")
+async def check_agility(request: Request, body: GitScanRequest):
+    if "github.com" not in body.github_url:
+        raise HTTPException(status_code=400, detail="Only GitHub URLs allowed")
+    temp_dir = None
+    try:
+        parts = body.github_url.rstrip("/").split("/")
+        owner = parts[-2]
+        repo = parts[-1].replace(".git", "")
+        headers = {"Accept": "application/vnd.github+json", "User-Agent": "QuantumGuard"}
+        if body.github_token:
+            headers["Authorization"] = f"token {body.github_token}"
+        zip_url = f"https://api.github.com/repos/{owner}/{repo}/zipball/main"
+        response = requests.get(zip_url, headers=headers, timeout=30, allow_redirects=True)
+        if response.status_code != 200:
+            zip_url = f"https://api.github.com/repos/{owner}/{repo}/zipball/master"
+            response = requests.get(zip_url, headers=headers, timeout=30, allow_redirects=True)
+        if response.status_code != 200:
+            raise HTTPException(status_code=400, detail="Could not download repo.")
+        temp_dir = f"/tmp/qg-{uuid.uuid4().hex[:8]}"
+        os.makedirs(temp_dir, exist_ok=True)
+        with zipfile.ZipFile(io.BytesIO(response.content)) as z:
+            z.extractall(temp_dir)
+        from scanner.scan import check_crypto_agility
+        result = check_crypto_agility(temp_dir)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+    finally:
+        if temp_dir and os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+            @app.get("/health")
 def health():
     return {"status": "healthy"}
