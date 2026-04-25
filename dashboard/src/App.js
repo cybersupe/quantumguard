@@ -279,7 +279,8 @@ function ScannerPage({ user }) {
 
   const handlePDF = () => {
     if (!result) return;
-    const win=window.open("","_blank");
+    const win=window.open("https://twitter.com/intent/tweet?text="+encodeURIComponent("QuantumGuard: "+result.quantum_readiness_score+"/100 — "+result.total_findings+" vulnerabilities
+quantumguard-one.vercel.app #QuantumSecurity"),"_blank");
     win.document.write(`<html><head><title>QuantumGuard Report</title><style>body{font-family:monospace;padding:32px;background:#0b0c0e;color:#C4C9D4;}h1{color:#7B5FFF;}.score{font-size:64px;font-weight:800;color:${scoreColor};}.finding{border-left:3px solid #E85C4A;padding:8px 14px;margin:8px 0;background:#1a1d23;}.HIGH{border-color:#F5A623;}.MEDIUM{border-color:#F0C040;}.LOW{border-color:#53C28B;}code{color:#22D3EE;font-size:11px;}</style></head><body><h1>⚛ QuantumGuard Threat Report</h1><p>Generated: ${new Date().toLocaleString()}</p><p>Target: ${result.github_url||"ZIP Upload"}</p><div class="score">${result.quantum_readiness_score}/100</div><p>Total: ${result.total_findings} | Critical: ${sev?.CRITICAL} | High: ${sev?.HIGH} | Medium: ${sev?.MEDIUM}</p><hr/>${result.findings.map(f=>`<div class="finding ${f.severity}"><b>[${f.severity}]</b> ${f.file.split("/").pop()}:${f.line}<br/><code>${f.code}</code><br/>Fix: ${f.replacement}</div>`).join("")}</body></html>`);
     win.document.close(); win.print();
   };
@@ -364,7 +365,8 @@ function ScannerPage({ user }) {
               <button onClick={handlePDF} style={{padding:"5px 14px",borderRadius:3,background:C.purple,color:C.white,border:"none",cursor:"pointer",fontSize:11,fontWeight:700}}>PDF REPORT</button>
               <button onClick={handleCSV} style={{padding:"5px 14px",borderRadius:3,background:C.green,color:"#000",border:"none",cursor:"pointer",fontSize:11,fontWeight:700}}>CSV EXPORT</button>
               <button onClick={()=>{navigator.clipboard.writeText(result.findings.map(f=>`[${f.severity}] ${f.file}:${f.line} — ${f.code} → ${f.replacement}`).join("\n"));}} style={{padding:"5px 14px",borderRadius:3,background:"transparent",color:C.muted,border:`1px solid ${C.panelBorder}`,cursor:"pointer",fontSize:11}}>COPY ALL</button>
-              <button onClick={()=>{const txt=encodeURIComponent("QuantumGuard: "+result.quantum_readiness_score+"/100 — "+result.total_findings+" vulnerabilities\nquantumguard-one.vercel.app #QuantumSecurity");window.open("https://twitter.com/intent/tweet?text="+txt,"_blank");}} style={{padding:"5px 14px",borderRadius:3,background:"#1DA1F2",color:C.white,border:"none",cursor:"pointer",fontSize:11}}>SHARE</button>
+              <button onClick={()=>window.open("https://twitter.com/intent/tweet?text="+encodeURIComponent("QuantumGuard: "+result.quantum_readiness_score+"/100 vulnerabilities - quantumguard-one.vercel.app #QuantumSecurity"),"_blank")} style={{padding:"5px 14px",borderRadius:3,background:"#1DA1F2",color:C.white,border:"none",cursor:"pointer",fontSize:11}}>SHARE</button>
+            </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
               <input value={emailInput} onChange={e=>setEmailInput(e.target.value)} placeholder="Email report to..." type="email" style={{flex:1,minWidth:200,padding:"5px 12px",borderRadius:3,border:`1px solid ${C.panelBorder}`,background:C.input,color:C.text,fontSize:11,fontFamily:"monospace"}} />
               <button onClick={handleEmail} disabled={sendingEmail||!emailInput} style={{padding:"5px 14px",borderRadius:3,background:emailSent?C.green:C.purple,color:emailSent?"#000":C.white,border:"none",cursor:"pointer",fontSize:11}}>{emailSent?"✓ SENT":sendingEmail?"SENDING...":"SEND EMAIL"}</button>
