@@ -29,7 +29,7 @@ def scan_file(filepath):
 
 def scan_directory(directory):
     all_findings = []
-    supported = (".py", ".js", ".java", ".ts", ".go", ".rs")
+    supported = (".py", ".js", ".java", ".ts", ".go", ".rs", ".c", ".cpp", ".cc", ".h", ".hpp")
     for root, dirs, files in os.walk(directory):
         dirs[:] = [d for d in dirs if d not in ["venv", "node_modules", ".git", "__pycache__"]]
         for file in files:
