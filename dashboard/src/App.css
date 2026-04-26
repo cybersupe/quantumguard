@@ -132,3 +132,17 @@ body {
     white-space: nowrap !important;
   }
 }
+@media (max-width: 768px) {
+  nav > div > div:nth-child(2) {
+    display: none !important;
+  }
+
+  nav > div {
+    justify-content: space-between !important;
+  }
+
+  nav a:last-child,
+  nav button:last-child {
+    display: inline-flex !important;
+  }
+}
