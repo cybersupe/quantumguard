@@ -43,7 +43,7 @@ const SCAN_STEPS = [
 // ── Sidebar ──────────────────────────────────────────────────
 function Sidebar({ active, setActive, user, onLogin, onLogout, open, onClose }) {
   const navItems = [
-    { id: "scan", icon: "⚡", label: "Scanner" },
+    { id: "scan", icon: "⚡", label: "GitHub Scanner" },,
     { id: "agility", icon: "🔬", label: "Agility Checker" },
     { id: "tls", icon: "🔐", label: "TLS Analyzer" },
     { id: "history", icon: "🗂", label: "Scan History" },
