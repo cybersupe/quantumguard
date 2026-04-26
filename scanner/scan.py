@@ -5,11 +5,22 @@ from datetime import datetime
 from scanner.patterns import VULNERABLE_PATTERNS, SEVERITY_SCORE
 
 
+from scanner.ast_scanner import scan_python_ast
+
 def scan_file(filepath):
     findings = []
+
     try:
         with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
             lines = f.readlines()
+
+        code = "".join(lines)
+
+        # 🔥 AST scanning for Python files
+        if filepath.endswith(".py"):
+            findings.extend(scan_python_ast(code, filepath))
+
+        # 🔥 Existing regex scanning (DO NOT REMOVE)
         for line_num, line in enumerate(lines, start=1):
             for vuln_name, vuln_data in VULNERABLE_PATTERNS.items():
                 for pattern in vuln_data["patterns"]:
@@ -22,9 +33,14 @@ def scan_file(filepath):
                             "severity": vuln_data["severity"],
                             "replacement": vuln_data["replacement"],
                         })
+
     except Exception as e:
         print(f"Error reading {filepath}: {e}")
+
     return findings
+    
+    
+ 
 
 
 def scan_directory(directory):
