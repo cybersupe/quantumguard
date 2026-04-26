@@ -1,380 +1,410 @@
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuantumGuard Employee Onboarding</title>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: var(--font-sans); }
-  .ob-wrap { padding: 0 0 2rem; }
-  .ob-header { background: #16a34a; padding: 2rem 2rem 1.5rem; border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0; }
-  .ob-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
-  .ob-logo-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 20px; }
-  .ob-logo-text { font-size: 20px; font-weight: 500; color: white; }
-  .ob-logo-text span { color: rgba(255,255,255,0.7); font-weight: 400; }
-  .ob-title { font-size: 22px; font-weight: 500; color: white; margin-bottom: 4px; }
-  .ob-sub { font-size: 13px; color: rgba(255,255,255,0.75); }
-  .ob-progress { margin-top: 1.25rem; }
-  .ob-steps { display: flex; gap: 4px; margin-bottom: 6px; }
-  .ob-step { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.25); transition: background 0.3s; }
-  .ob-step.done { background: white; }
-  .ob-step.active { background: rgba(255,255,255,0.7); }
-  .ob-step-label { font-size: 11px; color: rgba(255,255,255,0.7); }
-  .ob-body { padding: 1.5rem 2rem; background: var(--color-background-primary); }
-  .ob-section { display: none; }
-  .ob-section.active { display: block; }
-  .ob-section-title { font-size: 16px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 4px; }
-  .ob-section-desc { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1.25rem; }
-  .field { margin-bottom: 1rem; }
-  .field label { display: block; font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 5px; }
-  .field label .req { color: #dc2626; margin-left: 2px; }
-  .field input, .field select, .field textarea { width: 100%; padding: 8px 12px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); font-size: 13px; font-family: var(--font-sans); background: var(--color-background-primary); color: var(--color-text-primary); outline: none; }
-  .field input:focus, .field select:focus, .field textarea:focus { border-color: #16a34a; box-shadow: 0 0 0 2px rgba(22,163,74,0.15); }
-  .field textarea { resize: vertical; min-height: 80px; }
-  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .field-hint { font-size: 11px; color: var(--color-text-secondary); margin-top: 4px; }
-  .check-group { display: flex; flex-direction: column; gap: 8px; }
-  .check-item { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
-  .check-item input[type="checkbox"] { margin-top: 2px; accent-color: #16a34a; width: 15px; height: 15px; flex-shrink: 0; cursor: pointer; }
-  .check-item span { font-size: 13px; color: var(--color-text-primary); }
-  .check-item .check-sub { font-size: 11px; color: var(--color-text-secondary); display: block; }
-  .radio-group { display: flex; flex-direction: column; gap: 8px; }
-  .radio-item { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); cursor: pointer; transition: border-color 0.15s, background 0.15s; }
-  .radio-item:hover { border-color: #16a34a; background: #f0fdf4; }
-  .radio-item input[type="radio"] { margin-top: 2px; accent-color: #16a34a; flex-shrink: 0; cursor: pointer; }
-  .radio-item .radio-label { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
-  .radio-item .radio-sub { font-size: 11px; color: var(--color-text-secondary); }
-  .divider { height: 0.5px; background: var(--color-border-tertiary); margin: 1.25rem 0; }
-  .info-box { background: #f0fdf4; border: 0.5px solid #86efac; border-radius: var(--border-radius-md); padding: 12px 14px; margin-bottom: 1rem; }
-  .info-box-title { font-size: 12px; font-weight: 500; color: #15803d; margin-bottom: 4px; }
-  .info-box-body { font-size: 12px; color: #166534; line-height: 1.6; }
-  .warn-box { background: #fef3c7; border: 0.5px solid #fcd34d; border-radius: var(--border-radius-md); padding: 12px 14px; margin-bottom: 1rem; }
-  .warn-box-body { font-size: 12px; color: #92400e; line-height: 1.6; }
-  .link-card { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 10px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
-  .link-card-name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
-  .link-card-url { font-size: 11px; color: #16a34a; font-family: var(--font-mono); }
-  .tag { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 500; }
-  .tag-green { background: #dcfce7; color: #15803d; }
-  .tag-blue { background: #dbeafe; color: #1d4ed8; }
-  .tag-amber { background: #fef3c7; color: #92400e; }
-  .tag-red { background: #fee2e2; color: #991b1b; }
-  .ob-footer { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; border-top: 0.5px solid var(--color-border-tertiary); background: var(--color-background-secondary); border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg); }
-  .ob-footer-left { font-size: 12px; color: var(--color-text-secondary); }
-  .btn-row { display: flex; gap: 8px; }
-  .btn { padding: 8px 18px; border-radius: var(--border-radius-md); font-size: 13px; font-weight: 500; cursor: pointer; border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); font-family: var(--font-sans); transition: background 0.15s; }
-  .btn:hover { background: var(--color-background-secondary); }
-  .btn-primary { background: #16a34a; color: white; border-color: #16a34a; }
-  .btn-primary:hover { background: #15803d; border-color: #15803d; }
-  .success-screen { text-align: center; padding: 2rem 1rem; }
-  .success-icon { width: 64px; height: 64px; border-radius: 50%; background: #dcfce7; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 28px; }
-  .success-title { font-size: 20px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 6px; }
-  .success-sub { font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; }
-  .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 13px; }
-  .summary-row:last-child { border-bottom: none; }
-  .summary-key { color: var(--color-text-secondary); }
-  .summary-val { color: var(--color-text-primary); font-weight: 500; text-align: right; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', sans-serif; background: #f0fdf4; min-height: 100vh; padding: 20px; }
+.wrap { max-width: 680px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+.header { background: #16a34a; padding: 28px 28px 20px; }
+.logo { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.logo-icon { width: 38px; height: 38px; border-radius: 10px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.logo-text { font-size: 18px; font-weight: 700; color: white; }
+.logo-text span { font-weight: 400; opacity: 0.8; }
+.header h1 { font-size: 22px; font-weight: 700; color: white; margin-bottom: 4px; }
+.header p { font-size: 13px; color: rgba(255,255,255,0.8); }
+.progress { margin-top: 16px; }
+.steps { display: flex; gap: 4px; margin-bottom: 6px; }
+.step-bar { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.25); transition: background 0.3s; }
+.step-bar.active { background: rgba(255,255,255,0.7); }
+.step-bar.done { background: white; }
+.step-label { font-size: 11px; color: rgba(255,255,255,0.75); }
+.body { padding: 24px 28px; }
+.section { display: none; }
+.section.active { display: block; }
+.sec-title { font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
+.sec-desc { font-size: 13px; color: #6b7280; margin-bottom: 20px; line-height: 1.5; }
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 5px; }
+.req { color: #dc2626; }
+.field input, .field select, .field textarea {
+  width: 100%; padding: 9px 12px; border: 1.5px solid #e2f0e2;
+  border-radius: 8px; font-size: 13px; font-family: inherit;
+  background: #f9fafb; color: #1a1a1a; outline: none; transition: border 0.15s;
+}
+.field input:focus, .field select:focus, .field textarea:focus { border-color: #16a34a; background: white; box-shadow: 0 0 0 3px rgba(22,163,74,0.1); }
+.field textarea { min-height: 90px; resize: vertical; }
+.field-hint { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.radio-group { display: flex; flex-direction: column; gap: 8px; }
+.radio-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1.5px solid #e5e7eb; border-radius: 8px; cursor: pointer; transition: all 0.15s; }
+.radio-item:hover { border-color: #16a34a; background: #f0fdf4; }
+.radio-item input { margin-top: 2px; accent-color: #16a34a; flex-shrink: 0; }
+.radio-label { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+.radio-sub { font-size: 11px; color: #6b7280; display: block; margin-top: 2px; }
+.check-group { display: flex; flex-direction: column; gap: 8px; }
+.check-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 12px; border: 1.5px solid #e5e7eb; border-radius: 8px; cursor: pointer; }
+.check-item:hover { border-color: #16a34a; background: #f0fdf4; }
+.check-item input { margin-top: 2px; accent-color: #16a34a; flex-shrink: 0; }
+.check-item span { font-size: 13px; color: #1a1a1a; }
+.check-sub { font-size: 11px; color: #6b7280; display: block; margin-top: 2px; }
+.divider { height: 1px; background: #e5e7eb; margin: 20px 0; }
+.info-box { background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; }
+.info-title { font-size: 12px; font-weight: 700; color: #15803d; margin-bottom: 4px; }
+.info-body { font-size: 12px; color: #166534; line-height: 1.6; }
+.warn-box { background: #fefce8; border: 1px solid #fde047; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; }
+.warn-body { font-size: 12px; color: #854d0e; line-height: 1.6; }
+.footer { display: flex; justify-content: space-between; align-items: center; padding: 16px 28px; background: #f9fafb; border-top: 1px solid #e5e7eb; }
+.footer-txt { font-size: 12px; color: #9ca3af; }
+.btn-row { display: flex; gap: 8px; }
+.btn { padding: 9px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1.5px solid #e5e7eb; background: white; color: #374151; font-family: inherit; transition: all 0.15s; }
+.btn:hover { background: #f9fafb; }
+.btn-primary { background: #16a34a; color: white; border-color: #16a34a; }
+.btn-primary:hover { background: #15803d; }
+.btn-primary:disabled { background: #86efac; border-color: #86efac; cursor: not-allowed; }
+.success { text-align: center; padding: 32px 16px; }
+.success-icon { width: 72px; height: 72px; border-radius: 50%; background: #dcfce7; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 32px; }
+.success-title { font-size: 22px; font-weight: 700; color: #1a1a1a; margin-bottom: 8px; }
+.success-sub { font-size: 14px; color: #6b7280; line-height: 1.6; margin-bottom: 20px; }
+.summary { text-align: left; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
+.summary-row { display: flex; justify-content: space-between; padding: 9px 14px; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+.summary-row:last-child { border-bottom: none; }
+.s-key { color: #6b7280; }
+.s-val { color: #1a1a1a; font-weight: 600; text-align: right; max-width: 60%; word-break: break-word; }
+.sending { text-align: center; padding: 20px; color: #16a34a; font-size: 14px; font-weight: 600; }
+@media (max-width: 600px) { .row2 { grid-template-columns: 1fr; } body { padding: 10px; } .body, .footer { padding: 16px; } }
 </style>
-
-<div class="ob-wrap">
-  <div class="ob-header">
-    <div class="ob-logo">
-      <div class="ob-logo-icon">⚛</div>
-      <div class="ob-logo-text">Quantum<span>Guard</span></div>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">⚛</div>
+      <div class="logo-text">Quantum<span>Guard</span></div>
     </div>
-    <div class="ob-title">Employee Onboarding Form</div>
-    <div class="ob-sub">Complete all sections to get full access to the project</div>
-    <div class="ob-progress">
-      <div class="ob-steps">
-        <div class="ob-step active" id="step-bar-0"></div>
-        <div class="ob-step" id="step-bar-1"></div>
-        <div class="ob-step" id="step-bar-2"></div>
-        <div class="ob-step" id="step-bar-3"></div>
-        <div class="ob-step" id="step-bar-4"></div>
+    <h1>Employee Onboarding Form</h1>
+    <p>Complete all sections to get full project access · MANGSRI</p>
+    <div class="progress">
+      <div class="steps">
+        <div class="step-bar active" id="sb0"></div>
+        <div class="step-bar" id="sb1"></div>
+        <div class="step-bar" id="sb2"></div>
+        <div class="step-bar" id="sb3"></div>
+        <div class="step-bar" id="sb4"></div>
       </div>
-      <div class="ob-step-label" id="step-label">Step 1 of 5 — Personal Information</div>
+      <div class="step-label" id="slabel">Step 1 of 5 — Personal Information</div>
     </div>
   </div>
 
-  <div class="ob-body">
+  <div class="body">
 
-    <!-- SECTION 1: Personal Info -->
-    <div class="ob-section active" id="sec-0">
-      <div class="ob-section-title">Personal Information</div>
-      <div class="ob-section-desc">Basic details about you so we can set up your accounts.</div>
-      <div class="field-row">
-        <div class="field"><label>Full Name <span class="req">*</span></label><input type="text" id="f-name" placeholder="Pavansudheer Payyavula"></div>
-        <div class="field"><label>Email Address <span class="req">*</span></label><input type="email" id="f-email" placeholder="you@email.com"></div>
+    <!-- SEC 0: Personal Info -->
+    <div class="section active" id="s0">
+      <div class="sec-title">Personal Information</div>
+      <div class="sec-desc">Basic details so we can set up your accounts and add you to the project.</div>
+      <div class="row2">
+        <div class="field"><label>Full Name <span class="req">*</span></label><input type="text" id="name" placeholder="Your full name"></div>
+        <div class="field"><label>Email Address <span class="req">*</span></label><input type="email" id="email" placeholder="you@email.com"></div>
       </div>
-      <div class="field-row">
-        <div class="field"><label>Phone Number</label><input type="tel" id="f-phone" placeholder="+91 9999 999999"></div>
-        <div class="field"><label>City / Location</label><input type="text" id="f-city" placeholder="Hyderabad, India"></div>
+      <div class="row2">
+        <div class="field"><label>Phone Number</label><input type="tel" id="phone" placeholder="+91 9999 999999"></div>
+        <div class="field"><label>City / Location</label><input type="text" id="city" placeholder="Hyderabad, India"></div>
       </div>
-      <div class="field"><label>LinkedIn Profile URL</label><input type="url" id="f-linkedin" placeholder="linkedin.com/in/yourname"><div class="field-hint">Optional but helpful for team introductions</div></div>
-      <div class="field"><label>GitHub Username <span class="req">*</span></label><input type="text" id="f-github" placeholder="yourgithubusername"><div class="field-hint">You will be added as a collaborator on github.com/cybersupe/quantumguard</div></div>
+      <div class="field"><label>GitHub Username <span class="req">*</span></label><input type="text" id="github" placeholder="yourgithubusername"><div class="field-hint">You will be added as collaborator on github.com/cybersupe/quantumguard</div></div>
+      <div class="field"><label>LinkedIn Profile URL</label><input type="url" id="linkedin" placeholder="linkedin.com/in/yourname"></div>
     </div>
 
-    <!-- SECTION 2: Role & Skills -->
-    <div class="ob-section" id="sec-1">
-      <div class="ob-section-title">Role & Skills</div>
-      <div class="ob-section-desc">Help us understand your background so we assign the right tasks.</div>
-      <div class="field"><label>Which role best describes you? <span class="req">*</span></label>
+    <!-- SEC 1: Role & Skills -->
+    <div class="section" id="s1">
+      <div class="sec-title">Role & Skills</div>
+      <div class="sec-desc">Help us assign the right tasks based on your background.</div>
+      <div class="field"><label>Your Role <span class="req">*</span></label>
         <div class="radio-group">
-          <label class="radio-item"><input type="radio" name="role" value="backend"><div><div class="radio-label">Backend Developer</div><div class="radio-sub">Python, FastAPI, api.py, scanner engine, patterns.py</div></div></label>
-          <label class="radio-item"><input type="radio" name="role" value="frontend"><div><div class="radio-label">Frontend Developer</div><div class="radio-sub">React.js, App.js, App.css, mobile responsive, UI design</div></div></label>
-          <label class="radio-item"><input type="radio" name="role" value="devops"><div><div class="radio-label">DevOps / Growth</div><div class="radio-sub">GitHub Actions, README, marketing, Product Hunt, social media</div></div></label>
-          <label class="radio-item"><input type="radio" name="role" value="fullstack"><div><div class="radio-label">Full Stack</div><div class="radio-sub">Comfortable with both frontend and backend tasks</div></div></label>
+          <label class="radio-item"><input type="radio" name="role" value="Backend Developer"><div><div class="radio-label">Backend Developer</div><div class="radio-sub">Python, FastAPI, api.py, scanner engine, patterns.py</div></div></label>
+          <label class="radio-item"><input type="radio" name="role" value="Frontend Developer"><div><div class="radio-label">Frontend Developer</div><div class="radio-sub">React.js, App.js, App.css, mobile responsive, UI design</div></div></label>
+          <label class="radio-item"><input type="radio" name="role" value="DevOps / Growth"><div><div class="radio-label">DevOps / Growth</div><div class="radio-sub">GitHub Actions, README, marketing, Product Hunt, social media</div></div></label>
+          <label class="radio-item"><input type="radio" name="role" value="Full Stack"><div><div class="radio-label">Full Stack</div><div class="radio-sub">Comfortable with both frontend and backend tasks</div></div></label>
         </div>
       </div>
-      <div class="divider"></div>
-      <div class="field"><label>Which technologies do you know? (check all that apply)</label>
+      <div class="field"><label>Technologies You Know</label>
         <div class="check-group">
-          <label class="check-item"><input type="checkbox" value="python"><span>Python <span class="check-sub">Required for backend work on api.py and scanner</span></span></label>
-          <label class="check-item"><input type="checkbox" value="react"><span>React.js / JavaScript <span class="check-sub">Required for frontend work on App.js</span></span></label>
-          <label class="check-item"><input type="checkbox" value="git"><span>Git & GitHub <span class="check-sub">Required for all roles — version control and deployment</span></span></label>
-          <label class="check-item"><input type="checkbox" value="firebase"><span>Firebase / Firestore <span class="check-sub">Authentication and database management</span></span></label>
-          <label class="check-item"><input type="checkbox" value="css"><span>CSS / Responsive Design <span class="check-sub">Needed for mobile fixes and UI improvements</span></span></label>
-          <label class="check-item"><input type="checkbox" value="api"><span>REST APIs <span class="check-sub">Understanding of HTTP methods, JSON, endpoints</span></span></label>
+          <label class="check-item"><input type="checkbox" class="skill" value="Python"><span>Python<span class="check-sub">Required for backend — api.py and scanner</span></span></label>
+          <label class="check-item"><input type="checkbox" class="skill" value="React.js / JavaScript"><span>React.js / JavaScript<span class="check-sub">Required for frontend — App.js</span></span></label>
+          <label class="check-item"><input type="checkbox" class="skill" value="Git & GitHub"><span>Git & GitHub<span class="check-sub">Required for all roles</span></span></label>
+          <label class="check-item"><input type="checkbox" class="skill" value="Firebase / Firestore"><span>Firebase / Firestore<span class="check-sub">Auth and database</span></span></label>
+          <label class="check-item"><input type="checkbox" class="skill" value="CSS / Responsive Design"><span>CSS / Responsive Design<span class="check-sub">Mobile fixes and UI</span></span></label>
+          <label class="check-item"><input type="checkbox" class="skill" value="REST APIs"><span>REST APIs<span class="check-sub">HTTP, JSON, endpoints</span></span></label>
         </div>
       </div>
-      <div class="field"><label>Years of coding experience <span class="req">*</span></label>
-        <select id="f-exp">
-          <option value="">Select experience level</option>
-          <option value="fresher">Fresher — less than 1 year</option>
-          <option value="1-2">1 to 2 years</option>
-          <option value="2-4">2 to 4 years</option>
-          <option value="4+">4+ years</option>
+      <div class="field"><label>Years of Experience <span class="req">*</span></label>
+        <select id="exp">
+          <option value="">Select level</option>
+          <option>Fresher — less than 1 year</option>
+          <option>1 to 2 years</option>
+          <option>2 to 4 years</option>
+          <option>4+ years</option>
         </select>
       </div>
     </div>
 
-    <!-- SECTION 3: Access Setup -->
-    <div class="ob-section" id="sec-2">
-      <div class="ob-section-title">Access Setup</div>
-      <div class="ob-section-desc">Confirm which platform invites you have received and accepted.</div>
+    <!-- SEC 2: Access Setup -->
+    <div class="section" id="s2">
+      <div class="sec-title">Access Setup</div>
+      <div class="sec-desc">Confirm which platform invites you have received and accepted.</div>
       <div class="info-box">
-        <div class="info-box-title">Your manager (Pavan) will send invites to each platform below</div>
-        <div class="info-box-body">Accept all invite emails before filling this section. If you have not received an invite for a platform, write N/A in the confirmation field.</div>
+        <div class="info-title">Your manager (Pavan) will send invites to each platform</div>
+        <div class="info-body">Accept all invite emails before filling this section. If not received yet, select Pending.</div>
       </div>
-      <div class="field"><label>GitHub — github.com/cybersupe/quantumguard</label>
-        <select id="f-gh-access">
-          <option value="">Select status</option>
-          <option value="accepted">Accepted — I can see the repo</option>
-          <option value="pending">Pending — waiting for invite</option>
-          <option value="na">Not applicable to my role</option>
-        </select>
+      <div class="field"><label>GitHub — github.com/cybersupe/quantumguard <span class="req">*</span></label>
+        <select id="gh"><option value="">Select</option><option>Accepted — I can see the repo</option><option>Pending — waiting for invite</option><option>Not applicable to my role</option></select>
       </div>
-      <div class="field"><label>Vercel — vercel.com/cybersupes-projects/quantumguard</label>
-        <select id="f-vercel-access">
-          <option value="">Select status</option>
-          <option value="accepted">Accepted — I can see the dashboard</option>
-          <option value="pending">Pending — waiting for invite</option>
-          <option value="na">Not applicable to my role</option>
-        </select>
+      <div class="field"><label>Vercel — Frontend dashboard <span class="req">*</span></label>
+        <select id="vercel"><option value="">Select</option><option>Accepted — I can see the dashboard</option><option>Pending — waiting for invite</option><option>Not applicable to my role</option></select>
       </div>
-      <div class="field"><label>Render — dashboard.render.com (quantumguard-api)</label>
-        <select id="f-render-access">
-          <option value="">Select status</option>
-          <option value="accepted">Accepted — I can see the backend</option>
-          <option value="pending">Pending — waiting for invite</option>
-          <option value="na">Not applicable to my role</option>
-        </select>
+      <div class="field"><label>Render — Backend dashboard <span class="req">*</span></label>
+        <select id="render"><option value="">Select</option><option>Accepted — I can see the backend</option><option>Pending — waiting for invite</option><option>Not applicable to my role</option></select>
       </div>
-      <div class="field"><label>Firebase — console.firebase.google.com/project/quantumguard-1deb6</label>
-        <select id="f-firebase-access">
-          <option value="">Select status</option>
-          <option value="accepted">Accepted — I can see Firestore</option>
-          <option value="pending">Pending — waiting for invite</option>
-          <option value="na">Not applicable to my role</option>
-        </select>
+      <div class="field"><label>Firebase — quantumguard-1deb6 <span class="req">*</span></label>
+        <select id="firebase"><option value="">Select</option><option>Accepted — I can see Firestore</option><option>Pending — waiting for invite</option><option>Not applicable to my role</option></select>
       </div>
       <div class="divider"></div>
-      <div class="field"><label>Confirm your local setup <span class="req">*</span></label>
+      <div class="field"><label>Local Setup Completed</label>
         <div class="check-group">
-          <label class="check-item"><input type="checkbox" id="c-python"><span>Python 3.10+ installed <span class="check-sub">python.org/downloads</span></span></label>
-          <label class="check-item"><input type="checkbox" id="c-node"><span>Node.js 18+ installed <span class="check-sub">nodejs.org</span></span></label>
-          <label class="check-item"><input type="checkbox" id="c-git"><span>Git installed and configured <span class="check-sub">git-scm.com</span></span></label>
-          <label class="check-item"><input type="checkbox" id="c-vscode"><span>VS Code installed <span class="check-sub">code.visualstudio.com</span></span></label>
-          <label class="check-item"><input type="checkbox" id="c-cloned"><span>Repo cloned to my computer <span class="check-sub">git clone https://github.com/cybersupe/quantumguard</span></span></label>
+          <label class="check-item"><input type="checkbox" class="setup" value="Python 3.10+ installed"><span>Python 3.10+ installed</span></label>
+          <label class="check-item"><input type="checkbox" class="setup" value="Node.js 18+ installed"><span>Node.js 18+ installed</span></label>
+          <label class="check-item"><input type="checkbox" class="setup" value="Git installed and configured"><span>Git installed and configured</span></label>
+          <label class="check-item"><input type="checkbox" class="setup" value="VS Code installed"><span>VS Code installed</span></label>
+          <label class="check-item"><input type="checkbox" class="setup" value="Repo cloned to computer"><span>Repo cloned to my computer</span></label>
         </div>
       </div>
     </div>
 
-    <!-- SECTION 4: Understanding Check -->
-    <div class="ob-section" id="sec-3">
-      <div class="ob-section-title">Understanding Check</div>
-      <div class="ob-section-desc">Quick questions to confirm you have read the training material.</div>
-      <div class="warn-box">
-        <div class="warn-box-body">Please review the Employee Training Presentation before completing this section. If you have not received it, ask your manager.</div>
-      </div>
+    <!-- SEC 3: Quiz -->
+    <div class="section" id="s3">
+      <div class="sec-title">Understanding Check</div>
+      <div class="sec-desc">Answer these questions to confirm you have reviewed the training material.</div>
+      <div class="warn-box"><div class="warn-body">Please review the Employee Training Presentation before this section. Wrong answers will block you from proceeding.</div></div>
       <div class="field"><label>What is QuantumGuard? <span class="req">*</span></label>
         <div class="radio-group">
-          <label class="radio-item"><input type="radio" name="q1" value="wrong1"><div><div class="radio-label">A blockchain security tool</div></div></label>
+          <label class="radio-item"><input type="radio" name="q1" value="wrong"><div><div class="radio-label">A blockchain security tool</div></div></label>
           <label class="radio-item"><input type="radio" name="q1" value="correct"><div><div class="radio-label">A free scanner that detects quantum-vulnerable cryptography in code</div></div></label>
           <label class="radio-item"><input type="radio" name="q1" value="wrong2"><div><div class="radio-label">A VPN service for developers</div></div></label>
         </div>
       </div>
       <div class="field"><label>Where does the frontend code live? <span class="req">*</span></label>
         <div class="radio-group">
-          <label class="radio-item"><input type="radio" name="q2" value="wrong1"><div><div class="radio-label">api.py</div></div></label>
+          <label class="radio-item"><input type="radio" name="q2" value="wrong"><div><div class="radio-label">api.py</div></div></label>
           <label class="radio-item"><input type="radio" name="q2" value="wrong2"><div><div class="radio-label">patterns.py</div></div></label>
           <label class="radio-item"><input type="radio" name="q2" value="correct"><div><div class="radio-label">dashboard/src/App.js</div></div></label>
         </div>
       </div>
-      <div class="field"><label>What is the first git command you must run before making any changes? <span class="req">*</span></label>
+      <div class="field"><label>First git command before making changes? <span class="req">*</span></label>
         <div class="radio-group">
-          <label class="radio-item"><input type="radio" name="q3" value="wrong1"><div><div class="radio-label">git push</div></div></label>
+          <label class="radio-item"><input type="radio" name="q3" value="wrong"><div><div class="radio-label">git push</div></div></label>
           <label class="radio-item"><input type="radio" name="q3" value="correct"><div><div class="radio-label">git pull origin main</div></div></label>
           <label class="radio-item"><input type="radio" name="q3" value="wrong2"><div><div class="radio-label">git commit</div></div></label>
         </div>
       </div>
-      <div class="field"><label>Is your source code stored on our servers when you scan a repo? <span class="req">*</span></label>
+      <div class="field"><label>Is source code stored on our servers when scanning? <span class="req">*</span></label>
         <div class="radio-group">
-          <label class="radio-item"><input type="radio" name="q4" value="wrong"><div><div class="radio-label">Yes — it is saved to Firebase Firestore</div></div></label>
-          <label class="radio-item"><input type="radio" name="q4" value="correct"><div><div class="radio-label">No — it is scanned in /tmp and deleted immediately after</div></div></label>
+          <label class="radio-item"><input type="radio" name="q4" value="wrong"><div><div class="radio-label">Yes — saved to Firebase Firestore</div></div></label>
+          <label class="radio-item"><input type="radio" name="q4" value="correct"><div><div class="radio-label">No — scanned in /tmp and deleted immediately</div></div></label>
         </div>
       </div>
       <div class="field"><label>Questions or concerns about the project? <span class="req">*</span></label>
-        <textarea id="f-questions" placeholder="Write any questions you have about the codebase, your tasks, setup issues, or anything else. Leave 'None' if you have no questions."></textarea>
+        <textarea id="questions" placeholder="Write any questions. Write 'None' if you have no questions."></textarea>
       </div>
     </div>
 
-    <!-- SECTION 5: Agreement -->
-    <div class="ob-section" id="sec-4">
-      <div class="ob-section-title">Agreements & Acknowledgements</div>
-      <div class="ob-section-desc">Please read and confirm each item carefully before submitting.</div>
+    <!-- SEC 4: Agreement -->
+    <div class="section" id="s4">
+      <div class="sec-title">Agreements & Acknowledgements</div>
+      <div class="sec-desc">Read and confirm each item carefully before submitting.</div>
       <div class="info-box">
-        <div class="info-box-title">QuantumGuard is protected by AGPL v3 License</div>
-        <div class="info-box-body">Copyright (c) 2026 Pavansudheer Payyavula / MANGSRI. By joining this project you agree to protect the intellectual property of the owner.</div>
+        <div class="info-title">QuantumGuard is protected by AGPL v3 — Copyright 2026 MANGSRI</div>
+        <div class="info-body">By submitting this form you agree to protect the intellectual property of the project owner.</div>
       </div>
-      <div class="field">
-        <div class="check-group">
-          <label class="check-item"><input type="checkbox" id="a1"><span>I will never share source code, API keys, credentials, or confidential business information with anyone outside this team. <span class="check-sub">Includes the API key: quantumguard-secret-2026 and Firebase config</span></span></label>
-          <label class="check-item"><input type="checkbox" id="a2"><span>I understand that all code I write for QuantumGuard belongs to MANGSRI / Pavansudheer Payyavula under AGPL v3 license.</span></label>
-          <label class="check-item"><input type="checkbox" id="a3"><span>I will always run git pull origin main before making changes and will test locally before pushing to production.</span></label>
-          <label class="check-item"><input type="checkbox" id="a4"><span>I will never push broken or untested code to the main branch without informing the team first.</span></label>
-          <label class="check-item"><input type="checkbox" id="a5"><span>I understand the project is a startup and my performance directly impacts its success. I commit to delivering quality work on time.</span></label>
-          <label class="check-item"><input type="checkbox" id="a6"><span>I have received and reviewed the Employee Training Presentation covering file structure, setup, deployment, and my role-specific tasks.</span></label>
-        </div>
+      <div class="check-group" style="margin-bottom:16px;">
+        <label class="check-item"><input type="checkbox" id="a1"><span>I will never share source code, API keys, or credentials outside the team.<span class="check-sub">Includes: quantumguard-secret-2026 and Firebase config</span></span></label>
+        <label class="check-item"><input type="checkbox" id="a2"><span>All code I write for QuantumGuard belongs to MANGSRI / Pavansudheer Payyavula under AGPL v3.</span></label>
+        <label class="check-item"><input type="checkbox" id="a3"><span>I will always git pull before changes and test locally before pushing to production.</span></label>
+        <label class="check-item"><input type="checkbox" id="a4"><span>I will never push broken or untested code to main without informing the team.</span></label>
+        <label class="check-item"><input type="checkbox" id="a5"><span>I have reviewed the Employee Training Presentation covering setup, deployment, and my tasks.</span></label>
       </div>
-      <div class="divider"></div>
-      <div class="field"><label>Digital Signature (Type your full name) <span class="req">*</span></label><input type="text" id="f-sig" placeholder="Type your full legal name to sign"><div class="field-hint">By typing your name you confirm all the above statements are true</div></div>
-      <div class="field-row">
-        <div class="field"><label>Date</label><input type="date" id="f-date"></div>
-        <div class="field"><label>Start Date (when you join)</label><input type="date" id="f-start"></div>
+      <div class="field"><label>Digital Signature — Type your full name <span class="req">*</span></label>
+        <input type="text" id="sig" placeholder="Type your full legal name">
+        <div class="field-hint">By typing your name you confirm all statements above are true</div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Today's Date</label><input type="date" id="today"></div>
+        <div class="field"><label>Expected Start Date</label><input type="date" id="startdate"></div>
       </div>
     </div>
 
-    <!-- SUCCESS SCREEN -->
-    <div class="ob-section" id="sec-success">
-      <div class="success-screen">
+    <!-- SUCCESS -->
+    <div class="section" id="s-success">
+      <div class="success">
         <div class="success-icon">✓</div>
-        <div class="success-title">Onboarding complete!</div>
-        <div class="success-sub" style="margin-bottom:1.5rem;">Welcome to the QuantumGuard team. Here is a summary of your submission.</div>
-        <div id="summary-box" style="text-align:left; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.5rem;"></div>
+        <div class="success-title">Onboarding Complete!</div>
+        <div class="success-sub">Welcome to QuantumGuard! Your form has been submitted and emailed to Pavan.</div>
+        <div class="summary" id="summary"></div>
         <div class="info-box" style="text-align:left;">
-          <div class="info-box-title">Your next steps</div>
-          <div class="info-box-body">
-            1. Send this completed form to: thisispayyavula@gmail.com<br>
-            2. Set up your local environment (see Training slide 5)<br>
-            3. Join the team communication channel<br>
-            4. Start with your first assigned task from the training deck slide 9
+          <div class="info-title">Your next steps</div>
+          <div class="info-body">
+            1. Check your email for a confirmation<br>
+            2. Set up your local environment (Training slide 5)<br>
+            3. Check your assigned tasks (Training slide 9)<br>
+            4. Contact Pavan: thisispayyavula@gmail.com
           </div>
         </div>
-        <button class="btn btn-primary" onclick="sendPrompt('I completed the QuantumGuard onboarding form. What should I do first as a new employee?')">Ask what to do next ↗</button>
       </div>
     </div>
 
   </div>
 
-  <div class="ob-footer">
-    <div class="ob-footer-left" id="footer-text">QuantumGuard · MANGSRI · All information is confidential</div>
+  <div class="footer" id="form-footer">
+    <div class="footer-txt" id="ftxt">QuantumGuard · MANGSRI · Confidential</div>
     <div class="btn-row">
-      <button class="btn" id="btn-back" onclick="navigate(-1)" style="display:none;">Back</button>
-      <button class="btn btn-primary" id="btn-next" onclick="navigate(1)">Next</button>
+      <button class="btn" id="btn-back" onclick="go(-1)" style="display:none">Back</button>
+      <button class="btn btn-primary" id="btn-next" onclick="go(1)">Next →</button>
     </div>
   </div>
 </div>
 
 <script>
-  let current = 0;
+  emailjs.init("vATUvI1IlAtH0ooKaQlY9");
+
+  let cur = 0;
   const total = 5;
-  const stepNames = ["Personal Information","Role & Skills","Access Setup","Understanding Check","Agreements"];
+  const names = ["Personal Information","Role & Skills","Access Setup","Understanding Check","Agreements"];
 
-  function navigate(dir) {
-    if (dir === 1 && !validateSection(current)) return;
-    if (dir === 1 && current === total - 1) { submitForm(); return; }
-    document.getElementById('sec-' + current).classList.remove('active');
-    document.getElementById('step-bar-' + current).classList.remove('active');
-    document.getElementById('step-bar-' + current).classList.add('done');
-    current += dir;
-    if (current < 0) current = 0;
-    document.getElementById('sec-' + current).classList.add('active');
-    updateUI();
+  document.getElementById('today').value = new Date().toISOString().split('T')[0];
+
+  function go(dir) {
+    if (dir === 1 && !validate(cur)) return;
+    if (dir === 1 && cur === total - 1) { submit(); return; }
+    document.getElementById('s'+cur).classList.remove('active');
+    document.getElementById('sb'+cur).classList.remove('active');
+    document.getElementById('sb'+cur).classList.add('done');
+    cur += dir;
+    if (cur < 0) cur = 0;
+    document.getElementById('s'+cur).classList.add('active');
+    document.getElementById('sb'+cur).classList.remove('done');
+    document.getElementById('sb'+cur).classList.add('active');
+    document.getElementById('slabel').textContent = 'Step '+(cur+1)+' of '+total+' — '+names[cur];
+    document.getElementById('btn-back').style.display = cur > 0 ? 'block' : 'none';
+    document.getElementById('btn-next').textContent = cur === total-1 ? 'Submit ✓' : 'Next →';
+    document.getElementById('ftxt').textContent = 'Step '+(cur+1)+' of '+total+' · QuantumGuard Onboarding';
+    window.scrollTo(0,0);
   }
 
-  function updateUI() {
-    document.getElementById('step-bar-' + current).classList.add('active');
-    document.getElementById('step-label').textContent = 'Step ' + (current+1) + ' of ' + total + ' — ' + stepNames[current];
-    document.getElementById('btn-back').style.display = current > 0 ? 'block' : 'none';
-    document.getElementById('btn-next').textContent = current === total - 1 ? 'Submit' : 'Next';
-    document.getElementById('footer-text').textContent = 'Step ' + (current+1) + ' of ' + total + ' · QuantumGuard Onboarding';
-  }
-
-  function validateSection(idx) {
+  function validate(idx) {
     if (idx === 0) {
-      const name = document.getElementById('f-name').value.trim();
-      const email = document.getElementById('f-email').value.trim();
-      const github = document.getElementById('f-github').value.trim();
-      if (!name) { alert('Please enter your full name.'); return false; }
-      if (!email || !email.includes('@')) { alert('Please enter a valid email address.'); return false; }
-      if (!github) { alert('Please enter your GitHub username.'); return false; }
+      if (!v('name')) return err('Please enter your full name.');
+      if (!v('email') || !v('email').includes('@')) return err('Please enter a valid email.');
+      if (!v('github')) return err('Please enter your GitHub username.');
     }
     if (idx === 1) {
-      const role = document.querySelector('input[name="role"]:checked');
-      const exp = document.getElementById('f-exp').value;
-      if (!role) { alert('Please select your role.'); return false; }
-      if (!exp) { alert('Please select your experience level.'); return false; }
+      if (!document.querySelector('input[name="role"]:checked')) return err('Please select your role.');
+      if (!v('exp')) return err('Please select your experience level.');
+    }
+    if (idx === 2) {
+      if (!v('gh')) return err('Please select your GitHub access status.');
+      if (!v('vercel')) return err('Please select your Vercel access status.');
+      if (!v('render')) return err('Please select your Render access status.');
+      if (!v('firebase')) return err('Please select your Firebase access status.');
     }
     if (idx === 3) {
       const q1 = document.querySelector('input[name="q1"]:checked');
       const q2 = document.querySelector('input[name="q2"]:checked');
       const q3 = document.querySelector('input[name="q3"]:checked');
       const q4 = document.querySelector('input[name="q4"]:checked');
-      const questions = document.getElementById('f-questions').value.trim();
-      if (!q1 || !q2 || !q3 || !q4) { alert('Please answer all understanding check questions.'); return false; }
-      if (q1.value !== 'correct' || q2.value !== 'correct' || q3.value !== 'correct' || q4.value !== 'correct') {
-        alert('Some answers are incorrect. Please review the training material and try again.'); return false;
-      }
-      if (!questions) { alert('Please fill in the questions/concerns field (write "None" if none).'); return false; }
+      if (!q1||!q2||!q3||!q4) return err('Please answer all quiz questions.');
+      if (q1.value!=='correct'||q2.value!=='correct'||q3.value!=='correct'||q4.value!=='correct')
+        return err('Some answers are incorrect. Please review the training material and try again.');
+      if (!v('questions')) return err('Please fill the questions/concerns field.');
     }
     if (idx === 4) {
-      const boxes = ['a1','a2','a3','a4','a5','a6'];
-      for (let b of boxes) { if (!document.getElementById(b).checked) { alert('Please check all agreement boxes to proceed.'); return false; } }
-      const sig = document.getElementById('f-sig').value.trim();
-      if (!sig) { alert('Please type your full name as a digital signature.'); return false; }
+      if (!document.getElementById('a1').checked) return err('Please check all agreement boxes.');
+      if (!document.getElementById('a2').checked) return err('Please check all agreement boxes.');
+      if (!document.getElementById('a3').checked) return err('Please check all agreement boxes.');
+      if (!document.getElementById('a4').checked) return err('Please check all agreement boxes.');
+      if (!document.getElementById('a5').checked) return err('Please check all agreement boxes.');
+      if (!v('sig')) return err('Please type your full name as digital signature.');
     }
     return true;
   }
 
-  function submitForm() {
-    const role = document.querySelector('input[name="role"]:checked');
-    const summaryData = [
-      ['Name', document.getElementById('f-name').value],
-      ['Email', document.getElementById('f-email').value],
-      ['GitHub', document.getElementById('f-github').value],
-      ['Role', role ? role.value.charAt(0).toUpperCase() + role.value.slice(1) : ''],
-      ['Experience', document.getElementById('f-exp').value],
-      ['Signature', document.getElementById('f-sig').value],
-      ['Start Date', document.getElementById('f-start').value || 'Not specified'],
-    ];
-    const box = document.getElementById('summary-box');
-    box.innerHTML = summaryData.map(([k,v]) =>
-      '<div class="summary-row"><span class="summary-key">'+k+'</span><span class="summary-val">'+v+'</span></div>'
-    ).join('');
-    document.getElementById('sec-' + current).classList.remove('active');
-    document.getElementById('step-bar-' + current).classList.add('done');
-    document.getElementById('sec-success').classList.add('active');
-    document.getElementById('ob-footer-section').style.display = 'none';
-    document.querySelector('.ob-footer').style.display = 'none';
-    for (let i = 0; i < total; i++) document.getElementById('step-bar-'+i).classList.add('done');
-    document.getElementById('step-label').textContent = 'Onboarding complete!';
+  function v(id) { return document.getElementById(id).value.trim(); }
+  function err(msg) { alert(msg); return false; }
+
+  function getSkills() {
+    return Array.from(document.querySelectorAll('.skill:checked')).map(c=>c.value).join(', ') || 'None selected';
+  }
+  function getSetup() {
+    return Array.from(document.querySelectorAll('.setup:checked')).map(c=>c.value).join(', ') || 'None selected';
   }
 
-  document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  function submit() {
+    const role = document.querySelector('input[name="role"]:checked');
+    const btn = document.getElementById('btn-next');
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+
+    const params = {
+      to_email: 'thisispayyavula@gmail.com',
+      employee_name: v('name'),
+      employee_email: v('email'),
+      phone: v('phone') || 'Not provided',
+      city: v('city') || 'Not provided',
+      github: v('github'),
+      linkedin: v('linkedin') || 'Not provided',
+      role: role ? role.value : '',
+      skills: getSkills(),
+      experience: v('exp'),
+      gh_access: v('gh'),
+      vercel_access: v('vercel'),
+      render_access: v('render'),
+      firebase_access: v('firebase'),
+      setup: getSetup(),
+      questions: v('questions'),
+      signature: v('sig'),
+      start_date: v('startdate') || 'Not specified',
+      submitted_date: v('today'),
+    };
+
+    emailjs.send('service_vy8yxbq', 'template_onboarding', params)
+      .then(() => showSuccess(params))
+      .catch(() => {
+        emailjs.send('service_vy8yxbq', 'template_mgydwpx', {
+          to_email: 'thisispayyavula@gmail.com',
+          score: 'NEW EMPLOYEE ONBOARDING',
+          total: params.employee_name,
+          filename: params.role + ' | ' + params.github,
+        }).then(() => showSuccess(params))
+          .catch(() => showSuccess(params));
+      });
+  }
+
+  function showSuccess(p) {
+    document.getElementById('s4').classList.remove('active');
+    document.getElementById('s-success').classList.add('active');
+    document.getElementById('form-footer').style.display = 'none';
+    for(let i=0;i<total;i++) { document.getElementById('sb'+i).classList.add('done'); document.getElementById('sb'+i).classList.remove('active'); }
+    document.getElementById('slabel').textContent = 'Onboarding complete!';
+    const rows = [
+      ['Name', p.employee_name], ['Email', p.employee_email],
+      ['GitHub', p.github], ['Role', p.role],
+      ['Experience', p.experience], ['Signature', p.signature],
+      ['Start Date', p.start_date],
+    ];
+    document.getElementById('summary').innerHTML = rows.map(([k,v]) =>
+      `<div class="summary-row"><span class="s-key">${k}</span><span class="s-val">${v}</span></div>`
+    ).join('');
+  }
 </script>
+</body>
+</html>
