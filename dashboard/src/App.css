@@ -162,6 +162,11 @@ body {
     height: 72px !important;
     overflow: hidden !important;
   }
+  @media (max-width: 768px) {
+  nav {
+    display: none !important;
+  }
+}
 
   #root nav:not(.sidebar nav) > div {
     display: flex !important;
