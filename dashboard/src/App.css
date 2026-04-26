@@ -133,3 +133,23 @@ body {
     display: flex !important;
   }
 }
+@media (max-width: 768px) {
+  #root > div > nav a {
+    display: none !important;
+  }
+
+  #root > div > nav a:last-child,
+  #root > div > nav button:last-child {
+    display: flex !important;
+  }
+
+  #root > div > nav > div {
+    justify-content: space-between !important;
+    gap: 8px !important;
+  }
+
+  #root > div > nav {
+    overflow: hidden !important;
+    height: 72px !important;
+  }
+}
