@@ -1,13 +1,36 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-body { background: #f8faf8; color: #1a1a1a; font-family: 'Segoe UI', sans-serif; }
+html, body, #root {
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  background: #f8faf8;
+  color: #1a1a1a;
+  font-family: "Segoe UI", sans-serif;
+}
+
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 900;
+}
+
+.main-content {
+  margin-left: 240px;
+  width: calc(100% - 240px);
+  overflow-x: hidden;
+}
 
 .hamburger {
   display: none;
   position: fixed;
   top: 12px;
   left: 12px;
-  z-index: 200;
+  z-index: 1100;
   background: #16a34a;
   border: none;
   border-radius: 8px;
@@ -20,23 +43,74 @@ body { background: #f8faf8; color: #1a1a1a; font-family: 'Segoe UI', sans-serif;
   justify-content: center;
 }
 
-.sidebar-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.4);
-  z-index: 90;
-}
-
 @media (max-width: 768px) {
   .hamburger { display: flex; }
-  .sidebar { transform: translateX(-100%); transition: transform 0.25s ease; }
-  .sidebar.open { transform: translateX(0); }
-  .main-content { margin-left: 0 !important; }
-  .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
-  .charts-grid { grid-template-columns: 1fr !important; }
-  .analytics-grid { grid-template-columns: 1fr !important; }
-  .docs-grid { grid-template-columns: 1fr !important; }
-  .tls-grid { grid-template-columns: 1fr !important; }
+
+  .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 260px !important;
+    height: 100vh !important;
+    z-index: 1000 !important;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+
+  .sidebar.open {
+    transform: translateX(0) !important;
+  }
+
+  .stats-grid,
+  .charts-grid,
+  .analytics-grid,
+  .docs-grid,
+  .tls-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Hide navbar links on mobile */
+  .nav-links {
+    display: none !important;
+  }
+
+  /* Hide dashboard preview on mobile */
+  .hero-preview {
+    display: none !important;
+  }
+
+  /* Hero full width on mobile */
+  .hero-grid {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+    padding: 32px 16px !important;
+  }
+
+  /* Stats bar single column */
+  .stats-bar-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  h1 {
+    font-size: 32px !important;
+    line-height: 1.15 !important;
+  }
+
+  /* How it works stacked */
+  .howitworks-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Pricing stacked */
+  .pricing-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 ::-webkit-scrollbar { width: 6px; }
