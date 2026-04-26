@@ -93,3 +93,43 @@ body {
     line-height: 1.1 !important;
   }
 }
+@media (max-width: 768px) {
+  * {
+    min-width: 0 !important;
+  }
+
+  .main-content > div {
+    padding: 12px !important;
+  }
+
+  .main-content {
+    overflow-x: hidden !important;
+  }
+
+  .main-content > div:first-child {
+    height: auto !important;
+    padding: 10px 12px !important;
+    gap: 6px !important;
+  }
+
+  .main-content > div:first-child > div:last-child {
+    display: none !important;
+  }
+
+  input {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  button {
+    width: auto !important;
+  }
+
+  .sidebar {
+    display: none !important;
+  }
+
+  .sidebar.open {
+    display: flex !important;
+  }
+}
