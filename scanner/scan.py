@@ -3,8 +3,6 @@ import re
 import json
 from datetime import datetime
 from scanner.patterns import VULNERABLE_PATTERNS, SEVERITY_SCORE
-
-
 from scanner.ast_scanner import scan_python_ast
 
 def scan_file(filepath):
@@ -16,11 +14,11 @@ def scan_file(filepath):
 
         code = "".join(lines)
 
-        # 🔥 AST scanning for Python files
+        # 🔥 AST for Python
         if filepath.endswith(".py"):
             findings.extend(scan_python_ast(code, filepath))
 
-        # 🔥 Existing regex scanning (DO NOT REMOVE)
+        # 🔥 Existing regex (DO NOT REMOVE)
         for line_num, line in enumerate(lines, start=1):
             for vuln_name, vuln_data in VULNERABLE_PATTERNS.items():
                 for pattern in vuln_data["patterns"]:
@@ -38,11 +36,6 @@ def scan_file(filepath):
         print(f"Error reading {filepath}: {e}")
 
     return findings
-    
-    
- 
-
-
 def scan_directory(directory):
     all_findings = []
     supported = (".py", ".js", ".java", ".ts", ".go", ".rs", ".c", ".cpp", ".cc", ".h", ".hpp")
