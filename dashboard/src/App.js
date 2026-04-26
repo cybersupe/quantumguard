@@ -1324,6 +1324,8 @@ function Homepage({ onGetStarted }) {
           <span style={{ color: C.muted, fontSize: 12 }}>·</span>
           <a href="/terms.html" style={{ color: C.green, fontSize: 12, textDecoration: "none" }}>Terms of Service</a>
           <span style={{ color: C.muted, fontSize: 12 }}>·</span>
+          <a href="/sla.html" style={{ color: C.green, fontSize: 12, textDecoration: "none" }}>SLA</a>
+          <span style={{ color: C.muted, fontSize: 12 }}>·</span>
           <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer" style={{ color: C.green, fontSize: 12, textDecoration: "none" }}>GitHub ↗</a>
         </div>
       </div>
