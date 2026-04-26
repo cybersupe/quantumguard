@@ -153,3 +153,19 @@ body {
     height: 72px !important;
   }
 }
+@media (max-width: 768px) {
+  #root nav:not(.sidebar nav) > div > *:not(:first-child):not(:last-child) {
+    display: none !important;
+  }
+
+  #root nav:not(.sidebar nav) {
+    height: 72px !important;
+    overflow: hidden !important;
+  }
+
+  #root nav:not(.sidebar nav) > div {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+  }
+}
