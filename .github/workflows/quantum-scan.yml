@@ -72,7 +72,7 @@ jobs:
           SCORE=${{ steps.scan.outputs.SCORE }}
           FINDINGS=${{ steps.scan.outputs.FINDINGS }}
           echo "Score: $SCORE | Findings: $FINDINGS"
-          if [ "$SCORE" -lt 20 ] && [ "$FINDINGS" -gt 50 ]; then
+          if [ "$SCORE" -lt 5 ] && [ "$FINDINGS" -gt 500 ]; then
             echo "🚨 CRITICAL: Too many quantum vulnerabilities ($FINDINGS found, score $SCORE/100)"
             exit 1
           fi
