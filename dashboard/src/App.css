@@ -198,3 +198,43 @@ img, svg, canvas {
     max-width: 100% !important;
   }
 }
+@media (max-width: 768px) {
+  section {
+    max-width: 100vw !important;
+    overflow: hidden !important;
+  }
+
+  section > div {
+    grid-template-columns: 1fr !important;
+  }
+
+  section > div > div:nth-child(2) {
+    display: none !important;
+  }
+
+  [class*="hero"] {
+    grid-template-columns: 1fr !important;
+    overflow: hidden !important;
+  }
+
+  [class*="preview"],
+  [class*="mockup"],
+  [class*="phone"],
+  [class*="dashboard"] {
+    display: none !important;
+  }
+
+  header,
+  nav {
+    max-width: 100vw !important;
+    overflow: hidden !important;
+  }
+
+  nav a {
+    display: none !important;
+  }
+
+  nav a:first-child {
+    display: flex !important;
+  }
+}
