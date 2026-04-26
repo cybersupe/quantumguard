@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Service Level Agreement — QuantumGuard</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', sans-serif; background: #f8faf8; color: #1a1a1a; }
+nav { background: white; border-bottom: 1px solid #e2f0e2; padding: 0 40px; height: 64px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.logo-icon { width: 36px; height: 36px; border-radius: 10px; background: #16a34a; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.logo-text { font-size: 18px; font-weight: 700; color: #1a1a1a; }
+.logo-text span { color: #16a34a; }
+.nav-btn { background: #16a34a; color: white; padding: 8px 20px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 600; }
+.hero { background: #16a34a; padding: 60px 40px; text-align: center; }
+.hero h1 { font-size: 42px; font-weight: 800; color: white; margin-bottom: 12px; }
+.hero p { font-size: 16px; color: rgba(255,255,255,0.85); max-width: 600px; margin: 0 auto; line-height: 1.7; }
+.hero-meta { font-size: 13px; color: rgba(255,255,255,0.7); margin-top: 12px; }
+.container { max-width: 900px; margin: 0 auto; padding: 60px 40px; }
+.uptime-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 32px; }
+.uptime-card { background: white; border: 1px solid #e2f0e2; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.uptime-num { font-size: 32px; font-weight: 800; color: #16a34a; }
+.uptime-label { font-size: 12px; color: #6b7280; margin-top: 4px; }
+.section { background: white; border-radius: 16px; padding: 32px; margin-bottom: 20px; border: 1px solid #e2f0e2; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.section h2 { font-size: 18px; font-weight: 700; color: #1a1a1a; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #e2f0e2; display: flex; align-items: center; gap: 8px; }
+.section h2 .num { width: 28px; height: 28px; border-radius: 50%; background: #16a34a; color: white; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.section p { font-size: 14px; color: #374151; line-height: 1.8; margin-bottom: 12px; }
+.section p:last-child { margin-bottom: 0; }
+.section ul { margin: 10px 0 12px 20px; }
+.section ul li { font-size: 14px; color: #374151; line-height: 1.8; margin-bottom: 4px; }
+table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+th { background: #16a34a; color: white; padding: 10px 14px; font-size: 12px; font-weight: 600; text-align: left; }
+td { padding: 10px 14px; font-size: 13px; color: #374151; border-bottom: 1px solid #e2f0e2; }
+tr:nth-child(even) td { background: #f0fdf4; }
+.green { color: #16a34a; font-weight: 600; }
+.red { color: #dc2626; font-weight: 600; }
+.amber { color: #d97706; font-weight: 600; }
+.info-box { background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 14px 18px; margin: 12px 0; font-size: 13px; color: #166534; line-height: 1.6; }
+.warn-box { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 14px 18px; margin: 12px 0; font-size: 13px; color: #92400e; line-height: 1.6; }
+.plan-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin: 16px 0; }
+.plan-card { border: 1px solid #e2f0e2; border-radius: 12px; overflow: hidden; }
+.plan-header { padding: 14px 16px; font-weight: 700; font-size: 14px; }
+.plan-body { padding: 14px 16px; }
+.plan-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid #f0f0f0; }
+.plan-row:last-child { border-bottom: none; }
+.plan-key { color: #6b7280; }
+.plan-val { font-weight: 600; }
+.status-indicator { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; margin-bottom: 10px; }
+.status-dot { width: 10px; height: 10px; border-radius: 50%; background: #16a34a; flex-shrink: 0; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+.status-text { font-size: 13px; font-weight: 600; color: #15803d; }
+.status-sub { font-size: 11px; color: #6b7280; margin-left: auto; }
+footer { background: white; border-top: 1px solid #e2f0e2; padding: 24px 40px; text-align: center; }
+.footer-text { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
+.footer-links { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+.footer-links a { color: #16a34a; font-size: 12px; text-decoration: none; }
+@media (max-width: 768px) { .uptime-grid { grid-template-columns: repeat(2,1fr); } .plan-grid { grid-template-columns: 1fr; } nav { padding: 0 16px; } .container { padding: 32px 16px; } .hero { padding: 40px 16px; } .hero h1 { font-size: 28px; } }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="logo">
+    <div class="logo-icon">⚛</div>
+    <div class="logo-text"><span>Quantum</span>Guard</div>
+  </a>
+  <a href="/" class="nav-btn">← Back to App</a>
+</nav>
+
+<div class="hero">
+  <h1>Service Level Agreement</h1>
+  <p>Our commitment to reliability, performance, and support for all QuantumGuard users.</p>
+  <div class="hero-meta">Effective: April 26, 2026 · Last updated: April 26, 2026</div>
+</div>
+
+<div class="container">
+
+  <!-- Live Status -->
+  <div class="status-indicator">
+    <div class="status-dot"></div>
+    <div class="status-text">All Systems Operational</div>
+    <div class="status-sub">quantumguard.site · API · Database — all online</div>
+  </div>
+
+  <!-- Uptime stats -->
+  <div class="uptime-grid">
+    <div class="uptime-card">
+      <div class="uptime-num">99.9%</div>
+      <div class="uptime-label">Uptime Commitment</div>
+    </div>
+    <div class="uptime-card">
+      <div class="uptime-num">&lt;30s</div>
+      <div class="uptime-label">Average Scan Time</div>
+    </div>
+    <div class="uptime-card">
+      <div class="uptime-num">&lt;500ms</div>
+      <div class="uptime-label">API Response Time</div>
+    </div>
+    <div class="uptime-card">
+      <div class="uptime-num">24/7</div>
+      <div class="uptime-label">Service Availability</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">1</span> Overview</h2>
+    <p>This Service Level Agreement (SLA) describes the performance and availability standards that QuantumGuard commits to for users of our quantum vulnerability scanning service. This SLA applies to the hosted version at quantumguard.site.</p>
+    <p>For self-hosted deployments, uptime is determined by your own infrastructure. See our <a href="https://github.com/cybersupe/quantumguard/blob/main/SELF_HOSTING.md" style="color:#16a34a">Self-Hosting Guide</a> for setup instructions.</p>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">2</span> Service Availability</h2>
+    <table>
+      <tr><th>Service Component</th><th>Uptime Target</th><th>Measurement Period</th></tr>
+      <tr><td>Frontend (quantumguard.site)</td><td class="green">99.9%</td><td>Monthly</td></tr>
+      <tr><td>Backend API (quantumguard-api.onrender.com)</td><td class="green">99.5%</td><td>Monthly</td></tr>
+      <tr><td>Authentication (Firebase)</td><td class="green">99.9%</td><td>Monthly</td></tr>
+      <tr><td>Database (Firestore)</td><td class="green">99.9%</td><td>Monthly</td></tr>
+      <tr><td>Scan History</td><td class="green">99.5%</td><td>Monthly</td></tr>
+    </table>
+    <div class="warn-box">⚠ Note: The free tier backend (Render.com) may experience cold starts of up to 50 seconds after 15 minutes of inactivity. This is a characteristic of the free hosting tier and does not count toward downtime calculations. Pro and Enterprise customers receive always-on dedicated infrastructure.</div>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">3</span> Performance Standards</h2>
+    <table>
+      <tr><th>Metric</th><th>Target</th><th>Measurement</th></tr>
+      <tr><td>GitHub repo scan (small — under 50 files)</td><td class="green">&lt; 15 seconds</td><td>95th percentile</td></tr>
+      <tr><td>GitHub repo scan (medium — 50-200 files)</td><td class="green">&lt; 30 seconds</td><td>95th percentile</td></tr>
+      <tr><td>ZIP file scan (under 10MB)</td><td class="green">&lt; 45 seconds</td><td>95th percentile</td></tr>
+      <tr><td>TLS analysis</td><td class="green">&lt; 10 seconds</td><td>95th percentile</td></tr>
+      <tr><td>Agility check</td><td class="green">&lt; 30 seconds</td><td>95th percentile</td></tr>
+      <tr><td>API response (health check)</td><td class="green">&lt; 500ms</td><td>99th percentile</td></tr>
+      <tr><td>PDF/NIST report generation</td><td class="green">&lt; 3 seconds</td><td>95th percentile</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">4</span> Support Response Times</h2>
+    <div class="plan-grid">
+      <div class="plan-card">
+        <div class="plan-header" style="background:#f0fdf4;color:#16a34a;">🆓 Free Plan</div>
+        <div class="plan-body">
+          <div class="plan-row"><span class="plan-key">Critical issues</span><span class="plan-val" style="color:#d97706">72 hours</span></div>
+          <div class="plan-row"><span class="plan-key">General issues</span><span class="plan-val">Best effort</span></div>
+          <div class="plan-row"><span class="plan-key">Support channel</span><span class="plan-val">GitHub Issues</span></div>
+          <div class="plan-row"><span class="plan-key">Email support</span><span class="plan-val">Community</span></div>
+        </div>
+      </div>
+      <div class="plan-card" style="border-color:#16a34a;border-width:2px;">
+        <div class="plan-header" style="background:#16a34a;color:white;">⚡ Pro Plan — $29/mo</div>
+        <div class="plan-body">
+          <div class="plan-row"><span class="plan-key">Critical issues</span><span class="plan-val" style="color:#16a34a">24 hours</span></div>
+          <div class="plan-row"><span class="plan-key">General issues</span><span class="plan-val">48 hours</span></div>
+          <div class="plan-row"><span class="plan-key">Support channel</span><span class="plan-val">Email + GitHub</span></div>
+          <div class="plan-row"><span class="plan-key">Email support</span><span class="plan-val" style="color:#16a34a">✓ Yes</span></div>
+        </div>
+      </div>
+      <div class="plan-card" style="border-color:#7c3aed;border-width:2px;">
+        <div class="plan-header" style="background:#7c3aed;color:white;">🏢 Enterprise</div>
+        <div class="plan-body">
+          <div class="plan-row"><span class="plan-key">Critical issues</span><span class="plan-val" style="color:#7c3aed">4 hours</span></div>
+          <div class="plan-row"><span class="plan-key">General issues</span><span class="plan-val">24 hours</span></div>
+          <div class="plan-row"><span class="plan-key">Support channel</span><span class="plan-val">Dedicated</span></div>
+          <div class="plan-row"><span class="plan-key">Phone support</span><span class="plan-val" style="color:#16a34a">✓ Yes</span></div>
+        </div>
+      </div>
+    </div>
+    <p>To contact support: <strong>thisispayyavula@gmail.com</strong> · GitHub Issues: <strong>github.com/cybersupe/quantumguard/issues</strong></p>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">5</span> Scheduled Maintenance</h2>
+    <p>We perform scheduled maintenance during low-traffic periods to minimize disruption:</p>
+    <ul>
+      <li>Scheduled maintenance window: <strong>Sundays 2:00 AM — 4:00 AM UTC</strong></li>
+      <li>Users will be notified at least <strong>24 hours in advance</strong> via GitHub</li>
+      <li>Emergency maintenance may occur without advance notice for critical security patches</li>
+      <li>Scheduled maintenance does not count toward downtime calculations</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">6</span> Incident Response</h2>
+    <table>
+      <tr><th>Severity</th><th>Definition</th><th>Initial Response</th><th>Resolution Target</th></tr>
+      <tr><td class="red">P1 — Critical</td><td>Service completely unavailable</td><td>30 minutes</td><td>4 hours</td></tr>
+      <tr><td class="amber">P2 — High</td><td>Major feature unavailable</td><td>2 hours</td><td>24 hours</td></tr>
+      <tr><td style="color:#ca8a04;font-weight:600">P3 — Medium</td><td>Minor feature degraded</td><td>8 hours</td><td>72 hours</td></tr>
+      <tr><td class="green">P4 — Low</td><td>Cosmetic or minor issue</td><td>24 hours</td><td>Next release</td></tr>
+    </table>
+    <div class="info-box">✓ All incidents are tracked publicly at github.com/cybersupe/quantumguard/issues. We believe in full transparency about service issues.</div>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">7</span> Data & Security Commitments</h2>
+    <ul>
+      <li>Source code is <strong>never stored</strong> — deleted immediately after scanning</li>
+      <li>All data transmitted over <strong>HTTPS / TLS 1.3</strong></li>
+      <li>Database encrypted at rest using <strong>AES-256</strong> (Google Cloud)</li>
+      <li>GitHub tokens <strong>never persisted</strong> — exist only in request memory</li>
+      <li>Rate limiting applied to prevent abuse and ensure fair access</li>
+      <li>Full codebase open source at <strong>github.com/cybersupe/quantumguard</strong></li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">8</span> Exclusions</h2>
+    <p>The following are excluded from SLA calculations:</p>
+    <ul>
+      <li>Scheduled maintenance windows</li>
+      <li>Free tier cold start delays (up to 50 seconds after inactivity)</li>
+      <li>Issues caused by GitHub API outages or rate limits</li>
+      <li>Force majeure events (natural disasters, internet outages)</li>
+      <li>Issues caused by user error or misuse of the API</li>
+      <li>Third-party service outages (Firebase, Vercel, Render)</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">9</span> Contact & Enterprise Inquiries</h2>
+    <p>For enterprise licensing, custom SLAs, dedicated infrastructure, or compliance requirements:</p>
+    <p><strong>Email:</strong> thisispayyavula@gmail.com</p>
+    <p><strong>Subject line:</strong> "QuantumGuard Enterprise Inquiry"</p>
+    <p><strong>GitHub:</strong> github.com/cybersupe/quantumguard</p>
+    <p><strong>Website:</strong> quantumguard.site</p>
+    <div class="info-box">✓ Enterprise customers receive custom SLAs, dedicated infrastructure, on-premise deployment support, and priority response times. Contact us to discuss your requirements.</div>
+  </div>
+
+</div>
+
+<footer>
+  <div class="footer-text">QuantumGuard by MANGSRI · Open Source · Free Forever · quantumguard.site</div>
+  <div class="footer-links">
+    <a href="/about.html">About</a>
+    <span style="color:#6b7280">·</span>
+    <a href="/privacy.html">Privacy Policy</a>
+    <span style="color:#6b7280">·</span>
+    <a href="/terms.html">Terms of Service</a>
+    <span style="color:#6b7280">·</span>
+    <a href="/sla.html">SLA</a>
+    <span style="color:#6b7280">·</span>
+    <a href="https://github.com/cybersupe/quantumguard" target="_blank">GitHub ↗</a>
+  </div>
+</footer>
+
+</body>
+</html>
