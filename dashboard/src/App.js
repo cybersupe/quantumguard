@@ -2,7 +2,8 @@
 // QuantumGuard — Quantum Cryptography Vulnerability Scanner
 // Copyright (c) 2026 Pavansudheer Payyavula / MANGSRI
 // Licensed under AGPL v3 — github.com/cybersupe/quantumguard
-// ============================================================import { useState, useEffect, useRef } from "react";
+// ============================================================
+import { useState, useEffect, useRef } from "react";
 import "./App.css";
 import emailjs from "@emailjs/browser";
 import { auth, db, signInWithGoogle, canUserScan, incrementScanCount } from "./firebase";
