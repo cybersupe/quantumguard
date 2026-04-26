@@ -1077,9 +1077,24 @@ function Homepage({ onGetStarted }) {
         </button>
       </div>
 
-      <div style={{ background: C.white, borderTop: `1px solid ${C.panelBorder}`, padding: "20px 40px", textAlign: "center", color: C.muted, fontSize: 12 }}>
-        QuantumGuard by MANGSRI · Open Source · Free Forever · quantumguard-one.vercel.app
-      </div>
+      <div style={{
+  background: C.white,
+  borderTop: `1px solid ${C.panelBorder}`,
+  padding: "20px 40px",
+  textAlign: "center",
+  color: C.muted,
+  fontSize: 12
+}}>
+  <div>
+    QuantumGuard by MANGSRI · Open Source · Free Forever · quantumguard-one.vercel.app
+  </div>
+
+  <div style={{ marginTop: 8 }}>
+    <a href="/about.html">About</a> ·{" "}
+    <a href="/privacy.html">Privacy Policy</a> ·{" "}
+    <a href="/terms.html">Terms</a>
+  </div>
+</div>
     </div>
   );
 }
