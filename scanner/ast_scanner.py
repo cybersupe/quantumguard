@@ -4,7 +4,7 @@ def scan_python_ast(code, file_path):
     findings = []
     try:
         tree = ast.parse(code)
-    except:
+    except Exception:
         return findings
 
     for node in ast.walk(tree):
@@ -20,9 +20,10 @@ def scan_python_ast(code, file_path):
                 findings.append({
                     "file": file_path,
                     "line": node.lineno,
-                    "type": "MD5 (AST)",
+                    "code": "hashlib.md5(...)",
+                    "vulnerability": "MD5 detected by AST",
                     "severity": "MEDIUM",
-                    "fix": "Use sha256 instead"
+                    "replacement": "Use hashlib.sha256() or hashlib.sha3_256() instead"
                 })
 
     return findings
