@@ -48,3 +48,286 @@
 ::-webkit-scrollbar-track { background: #0b0c0e; }
 ::-webkit-scrollbar-thumb { background: #2d3139; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #7B5FFF; }
+/* ===== QuantumGuard Landing Page - White + Green SaaS UI ===== */
+
+.landing-page {
+  min-height: 100vh;
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: "Inter", "Segoe UI", Arial, sans-serif;
+}
+
+.landing-nav {
+  height: 72px;
+  padding: 0 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.landing-logo {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.landing-logo span {
+  color: #0f9f4a;
+}
+
+.landing-links {
+  display: flex;
+  gap: 28px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.landing-hero {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 48px;
+  padding: 72px 56px 32px;
+  align-items: center;
+}
+
+.landing-badge {
+  display: inline-block;
+  background: #dcfce7;
+  color: #047857;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 22px;
+}
+
+.landing-title {
+  font-size: 58px;
+  line-height: 1.05;
+  font-weight: 900;
+  letter-spacing: -2px;
+  margin-bottom: 22px;
+}
+
+.landing-title span {
+  color: #0f9f4a;
+}
+
+.landing-subtitle {
+  max-width: 560px;
+  color: #475569;
+  font-size: 18px;
+  line-height: 1.7;
+  margin-bottom: 28px;
+}
+
+.landing-actions {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.landing-primary,
+.landing-secondary {
+  border-radius: 10px;
+  padding: 14px 22px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.landing-primary {
+  background: #0f9f4a;
+  color: white;
+  border: 1px solid #0f9f4a;
+}
+
+.landing-secondary {
+  background: white;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+}
+
+.landing-trust {
+  display: flex;
+  gap: 24px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.landing-preview {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 22px;
+  padding: 24px;
+  box-shadow: 0 25px 70px rgba(15, 23, 42, 0.12);
+}
+
+.preview-top {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  font-weight: 800;
+}
+
+.api-pill {
+  color: #0f9f4a;
+  background: #ecfdf5;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.preview-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 18px;
+  background: #fff;
+}
+
+.preview-number {
+  font-size: 32px;
+  font-weight: 900;
+  color: #0f9f4a;
+}
+
+.preview-label {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.issue-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 13px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.issue-critical {
+  color: #dc2626;
+  font-weight: 900;
+}
+
+.issue-high {
+  color: #ea580c;
+  font-weight: 900;
+}
+
+.issue-medium {
+  color: #ca8a04;
+  font-weight: 900;
+}
+
+.landing-features {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 22px;
+  padding: 32px 56px;
+}
+
+.landing-feature {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 26px;
+  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.06);
+}
+
+.landing-feature h3 {
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+.landing-feature p {
+  color: #64748b;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+.landing-stats {
+  margin: 24px 56px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 26px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  text-align: center;
+}
+
+.stat-number {
+  color: #0f9f4a;
+  font-size: 30px;
+  font-weight: 900;
+}
+
+.stat-label {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.landing-cta {
+  margin: 32px 56px 56px;
+  background: linear-gradient(135deg, #ecfdf5, #ffffff);
+  border: 1px solid #bbf7d0;
+  border-radius: 20px;
+  padding: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.landing-cta p {
+  color: #64748b;
+  margin-top: 6px;
+}
+
+@media (max-width: 900px) {
+  .landing-nav,
+  .landing-hero,
+  .landing-features {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .landing-links {
+    display: none;
+  }
+
+  .landing-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-title {
+    font-size: 42px;
+  }
+
+  .landing-features {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-stats {
+    margin: 24px;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .landing-cta {
+    margin: 24px;
+    flex-direction: column;
+    gap: 18px;
+    text-align: center;
+  }
+}
