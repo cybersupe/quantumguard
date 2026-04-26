@@ -297,6 +297,241 @@ function ScannerPage({ user }) {
   const filtered = result ? result.findings.filter(f => (filter === "ALL" || f.severity === filter) && (search === "" || f.file.toLowerCase().includes(search.toLowerCase()) || f.code.toLowerCase().includes(search.toLowerCase()))) : [];
   const grouped = filtered.reduce((a, f) => { if (!a[f.file]) a[f.file] = []; a[f.file].push(f); return a; }, {});
 
+  const handleNIST = () => {
+    if (!result) return;
+    const NIST_MAP = {
+      RSA: { id: "NIST SP 800-131A", fix: "CRYSTALS-Kyber (ML-KEM) — FIPS 203", level: "CRITICAL" },
+      ECC: { id: "NIST SP 800-186", fix: "CRYSTALS-Dilithium (ML-DSA) — FIPS 204", level: "CRITICAL" },
+      DH: { id: "NIST SP 800-56A", fix: "CRYSTALS-Kyber (ML-KEM) — FIPS 203", level: "HIGH" },
+      DSA: { id: "NIST SP 800-186", fix: "CRYSTALS-Dilithium (ML-DSA) — FIPS 204", level: "HIGH" },
+      MD5: { id: "NIST SP 800-107", fix: "SHA-3-256 — FIPS 202", level: "MEDIUM" },
+      SHA1: { id: "NIST SP 800-107", fix: "SHA-3-256 — FIPS 202", level: "MEDIUM" },
+      RC4: { id: "NIST SP 800-175B", fix: "AES-256-GCM — FIPS 197", level: "CRITICAL" },
+      DES: { id: "NIST SP 800-131A", fix: "AES-256-GCM — FIPS 197", level: "CRITICAL" },
+      ECB: { id: "NIST SP 800-38A", fix: "AES-256-GCM — FIPS 197", level: "HIGH" },
+      TLS: { id: "NIST SP 800-52 Rev 2", fix: "TLS 1.3 — RFC 8446", level: "HIGH" },
+      JWT: { id: "NIST SP 800-131A", fix: "RS256 with post-quantum keys", level: "CRITICAL" },
+      WEAK_RANDOM: { id: "NIST SP 800-90A", fix: "DRBG / secrets module", level: "MEDIUM" },
+    };
+    const getNIST = (vuln) => {
+      const key = Object.keys(NIST_MAP).find(k => vuln.toUpperCase().includes(k));
+      return key ? NIST_MAP[key] : { id: "NIST SP 800-175B", fix: "See NIST PQC standards", level: vuln };
+    };
+    const win = window.open("", "_blank");
+    const critCount = result.findings.filter(f => f.severity === "CRITICAL").length;
+    const highCount = result.findings.filter(f => f.severity === "HIGH").length;
+    const medCount = result.findings.filter(f => f.severity === "MEDIUM").length;
+    const complianceStatus = result.quantum_readiness_score >= 70 ? "COMPLIANT" : result.quantum_readiness_score >= 40 ? "PARTIALLY COMPLIANT" : "NON-COMPLIANT";
+    const statusColor = result.quantum_readiness_score >= 70 ? "#16a34a" : result.quantum_readiness_score >= 40 ? "#d97706" : "#dc2626";
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+<title>QuantumGuard NIST Compliance Report</title>
+<style>
+  body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #f8faf8; color: #1a1a1a; }
+  .header { background: #16a34a; padding: 32px 48px; }
+  .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon { width: 44px; height: 44px; background: rgba(255,255,255,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+  .logo-text { font-size: 22px; font-weight: 800; color: white; }
+  .report-badge { background: rgba(255,255,255,0.2); padding: 6px 16px; border-radius: 20px; color: white; font-size: 12px; font-weight: 600; }
+  h1 { font-size: 28px; font-weight: 800; color: white; margin: 0 0 6px; }
+  .header-sub { font-size: 13px; color: rgba(255,255,255,0.8); }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 48px; }
+  .meta-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 28px; }
+  .meta-card { background: white; border: 1px solid #e2f0e2; border-radius: 12px; padding: 16px; text-align: center; }
+  .meta-label { font-size: 11px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .meta-value { font-size: 28px; font-weight: 800; }
+  .meta-desc { font-size: 11px; color: #6b7280; margin-top: 4px; }
+  .status-box { background: white; border: 2px solid ${statusColor}; border-radius: 12px; padding: 20px 24px; margin-bottom: 28px; display: flex; justify-content: space-between; align-items: center; }
+  .status-label { font-size: 13px; color: #6b7280; margin-bottom: 4px; }
+  .status-value { font-size: 22px; font-weight: 800; color: ${statusColor}; }
+  .section { background: white; border: 1px solid #e2f0e2; border-radius: 12px; margin-bottom: 20px; overflow: hidden; }
+  .section-header { background: #f0fdf4; padding: 14px 20px; border-bottom: 1px solid #e2f0e2; display: flex; justify-content: space-between; align-items: center; }
+  .section-title { font-size: 14px; font-weight: 700; color: #15803d; }
+  .section-body { padding: 20px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { background: #16a34a; color: white; padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 600; }
+  td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+  tr:nth-child(even) td { background: #f9fafb; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+  .CRITICAL { background: #fee2e2; color: #dc2626; }
+  .HIGH { background: #fef3c7; color: #d97706; }
+  .MEDIUM { background: #fef9c3; color: #ca8a04; }
+  .nist-ref { font-family: monospace; font-size: 10px; color: #2563eb; background: #dbeafe; padding: 2px 6px; border-radius: 4px; }
+  .fix { color: #16a34a; font-weight: 500; }
+  .footer { background: #16a34a; padding: 20px 48px; margin-top: 32px; display: flex; justify-content: space-between; align-items: center; }
+  .footer-text { color: rgba(255,255,255,0.8); font-size: 11px; }
+  .footer-logo { color: white; font-weight: 700; font-size: 13px; }
+  .exec-row { display: flex; gap: 32px; }
+  .exec-item { flex: 1; }
+  .exec-label { font-size: 11px; color: #6b7280; margin-bottom: 4px; }
+  .exec-value { font-size: 14px; font-weight: 600; color: #1a1a1a; }
+  @media print { body { background: white; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-top">
+    <div class="logo">
+      <div class="logo-icon">⚛</div>
+      <div class="logo-text">QuantumGuard</div>
+    </div>
+    <div class="report-badge">NIST PQC Compliance Report</div>
+  </div>
+  <h1>Quantum Cryptography Compliance Assessment</h1>
+  <div class="header-sub">Generated: ${new Date().toLocaleString()} &nbsp;·&nbsp; Framework: NIST Post-Quantum Cryptography Standards 2024 &nbsp;·&nbsp; quantumguard.site</div>
+</div>
+
+<div class="container">
+
+  <div class="meta-grid">
+    <div class="meta-card">
+      <div class="meta-label">Quantum Readiness Score</div>
+      <div class="meta-value" style="color:${scoreColor}">${result.quantum_readiness_score}</div>
+      <div class="meta-desc">out of 100</div>
+    </div>
+    <div class="meta-card">
+      <div class="meta-label">Total Findings</div>
+      <div class="meta-value" style="color:#dc2626">${result.total_findings}</div>
+      <div class="meta-desc">vulnerabilities detected</div>
+    </div>
+    <div class="meta-card">
+      <div class="meta-label">Critical</div>
+      <div class="meta-value" style="color:#dc2626">${critCount}</div>
+      <div class="meta-desc">immediate action required</div>
+    </div>
+    <div class="meta-card">
+      <div class="meta-label">High Risk</div>
+      <div class="meta-value" style="color:#d97706">${highCount}</div>
+      <div class="meta-desc">requires attention</div>
+    </div>
+  </div>
+
+  <div class="status-box">
+    <div>
+      <div class="status-label">Overall NIST PQC Compliance Status</div>
+      <div class="status-value">${complianceStatus}</div>
+    </div>
+    <div class="exec-row">
+      <div class="exec-item">
+        <div class="exec-label">Target</div>
+        <div class="exec-value">${result.github_url || "Uploaded ZIP"}</div>
+      </div>
+      <div class="exec-item">
+        <div class="exec-label">Assessment Date</div>
+        <div class="exec-value">${new Date().toLocaleDateString()}</div>
+      </div>
+      <div class="exec-item">
+        <div class="exec-label">Framework</div>
+        <div class="exec-value">NIST FIPS 203/204/205</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">📋 Executive Summary</div>
+    </div>
+    <div class="section-body">
+      <p style="font-size:13px;color:#374151;line-height:1.7;margin-bottom:12px;">
+        This report presents the findings of a quantum cryptography vulnerability assessment conducted using QuantumGuard. The assessment evaluated the target codebase against NIST post-quantum cryptography standards published in 2024, including FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), and FIPS 205 (SLH-DSA).
+      </p>
+      <p style="font-size:13px;color:#374151;line-height:1.7;margin-bottom:12px;">
+        The assessment identified <strong>${result.total_findings} quantum-vulnerable cryptographic implementations</strong> across the codebase, resulting in a Quantum Readiness Score of <strong style="color:${statusColor}">${result.quantum_readiness_score}/100</strong>. Immediate remediation is recommended for all CRITICAL findings to ensure compliance with emerging post-quantum cryptography mandates.
+      </p>
+      <p style="font-size:13px;color:#374151;line-height:1.7;">
+        Organizations must migrate from vulnerable algorithms to NIST-approved post-quantum alternatives before the Year-to-Quantum (Y2Q) deadline, estimated at approximately 2030.
+      </p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">🏛 NIST Framework Reference</div>
+    </div>
+    <div class="section-body">
+      <table>
+        <tr><th>NIST Standard</th><th>Algorithm</th><th>Purpose</th><th>Status</th></tr>
+        <tr><td><span class="nist-ref">FIPS 203</span></td><td>ML-KEM (CRYSTALS-Kyber)</td><td>Key Encapsulation Mechanism</td><td style="color:#16a34a;font-weight:600">✓ Recommended</td></tr>
+        <tr><td><span class="nist-ref">FIPS 204</span></td><td>ML-DSA (CRYSTALS-Dilithium)</td><td>Digital Signature</td><td style="color:#16a34a;font-weight:600">✓ Recommended</td></tr>
+        <tr><td><span class="nist-ref">FIPS 205</span></td><td>SLH-DSA (SPHINCS+)</td><td>Hash-based Signature</td><td style="color:#16a34a;font-weight:600">✓ Recommended</td></tr>
+        <tr><td><span class="nist-ref">FIPS 202</span></td><td>SHA-3 / SHAKE</td><td>Hash Function</td><td style="color:#16a34a;font-weight:600">✓ Quantum Safe</td></tr>
+        <tr><td><span class="nist-ref">NIST SP 800-131A</span></td><td>RSA, DSA, DH, ECC</td><td>Legacy Algorithms</td><td style="color:#dc2626;font-weight:600">✗ Deprecated for PQC</td></tr>
+        <tr><td><span class="nist-ref">NIST SP 800-107</span></td><td>SHA-1, MD5</td><td>Legacy Hash Functions</td><td style="color:#dc2626;font-weight:600">✗ Deprecated</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">🔍 Detailed Findings — ${result.total_findings} Vulnerabilities</div>
+      <div style="font-size:11px;color:#6b7280">Sorted by severity · NIST references included</div>
+    </div>
+    <div class="section-body">
+      <table>
+        <tr><th>Severity</th><th>File</th><th>Line</th><th>Vulnerable Code</th><th>NIST Reference</th><th>Recommended Fix</th></tr>
+        ${result.findings.map(f => {
+          const nist = getNIST(f.vulnerability || f.replacement || "");
+          const sevClass = f.severity;
+          return `<tr>
+            <td><span class="badge ${sevClass}">${f.severity}</span></td>
+            <td style="font-family:monospace;font-size:10px;color:#2563eb">${f.file.split("/").pop()}</td>
+            <td style="font-family:monospace;font-size:10px">${f.line}</td>
+            <td style="font-family:monospace;font-size:10px;max-width:200px;word-break:break-all">${f.code.substring(0,60)}${f.code.length>60?"...":""}</td>
+            <td><span class="nist-ref">${nist.id}</span></td>
+            <td class="fix" style="font-size:10px">${f.replacement}</td>
+          </tr>`;
+        }).join("")}
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">📊 Severity Distribution</div>
+    </div>
+    <div class="section-body">
+      <table>
+        <tr><th>Severity Level</th><th>Count</th><th>Percentage</th><th>Priority</th><th>Recommended Timeline</th></tr>
+        <tr><td><span class="badge CRITICAL">CRITICAL</span></td><td>${critCount}</td><td>${result.total_findings > 0 ? Math.round(critCount/result.total_findings*100) : 0}%</td><td>Immediate</td><td>Fix within 7 days</td></tr>
+        <tr><td><span class="badge HIGH">HIGH</span></td><td>${highCount}</td><td>${result.total_findings > 0 ? Math.round(highCount/result.total_findings*100) : 0}%</td><td>Urgent</td><td>Fix within 30 days</td></tr>
+        <tr><td><span class="badge MEDIUM">MEDIUM</span></td><td>${medCount}</td><td>${result.total_findings > 0 ? Math.round(medCount/result.total_findings*100) : 0}%</td><td>Important</td><td>Fix within 90 days</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">✅ Remediation Recommendations</div>
+    </div>
+    <div class="section-body">
+      <p style="font-size:13px;color:#374151;line-height:1.7;margin-bottom:16px;">Based on the findings, the following remediation steps are recommended in priority order:</p>
+      <table>
+        <tr><th>#</th><th>Action</th><th>Algorithm</th><th>NIST Standard</th><th>Priority</th></tr>
+        <tr><td>1</td><td>Replace all RSA implementations</td><td>CRYSTALS-Kyber (ML-KEM)</td><td><span class="nist-ref">FIPS 203</span></td><td><span class="badge CRITICAL">CRITICAL</span></td></tr>
+        <tr><td>2</td><td>Replace all ECC/ECDSA implementations</td><td>CRYSTALS-Dilithium (ML-DSA)</td><td><span class="nist-ref">FIPS 204</span></td><td><span class="badge CRITICAL">CRITICAL</span></td></tr>
+        <tr><td>3</td><td>Replace RC4, DES, 3DES ciphers</td><td>AES-256-GCM</td><td><span class="nist-ref">FIPS 197</span></td><td><span class="badge CRITICAL">CRITICAL</span></td></tr>
+        <tr><td>4</td><td>Upgrade TLS to version 1.3 minimum</td><td>TLS 1.3 with PQC cipher suites</td><td><span class="nist-ref">NIST SP 800-52 Rev 2</span></td><td><span class="badge HIGH">HIGH</span></td></tr>
+        <tr><td>5</td><td>Replace MD5 and SHA-1 hash functions</td><td>SHA-3-256 or BLAKE3</td><td><span class="nist-ref">FIPS 202</span></td><td><span class="badge MEDIUM">MEDIUM</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <div class="footer-logo">⚛ QuantumGuard</div>
+  <div class="footer-text">Generated by QuantumGuard · quantumguard.site · NIST PQC Framework 2024 · ${new Date().toLocaleDateString()}</div>
+  <div class="footer-text">This report is for informational purposes. Consult a qualified security professional before implementation.</div>
+</div>
+
+<script>window.print();</script>
+</body>
+</html>`);
+    win.document.close();
+  };
+
   const handleCSV = () => {
     if (!result) return;
     const blob = new Blob(["Severity,File,Line,Code,Fix\n" + result.findings.map(f => `"${f.severity}","${f.file}","${f.line}","${f.code.replace(/"/g, "'")}","${f.replacement}"`).join("\n")], { type: "text/csv" });
@@ -388,6 +623,7 @@ function ScannerPage({ user }) {
           <Panel title="Export & Share" accent>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
               <button onClick={handlePDF} style={{ padding: "8px 16px", borderRadius: 8, background: C.green, color: C.white, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>📄 PDF Report</button>
+              <button onClick={handleNIST} style={{ padding: "8px 16px", borderRadius: 8, background: C.blue, color: C.white, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>🏛 NIST Report</button>
               <button onClick={handleCSV} style={{ padding: "8px 16px", borderRadius: 8, background: C.greenLight, color: C.green, border: `1px solid ${C.greenMid}`, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>📊 CSV Export</button>
               <button onClick={() => navigator.clipboard.writeText(result.findings.map(f => `[${f.severity}] ${f.file}:${f.line} — ${f.code} → ${f.replacement}`).join("\n"))} style={{ padding: "8px 16px", borderRadius: 8, background: C.white, color: C.muted, border: `1px solid ${C.panelBorder}`, cursor: "pointer", fontSize: 12 }}>📋 Copy All</button>
               <button onClick={() => { const t = encodeURIComponent("QuantumGuard: " + result.quantum_readiness_score + "/100 — " + result.total_findings + " vulnerabilities\nquantumguard.site #QuantumSecurity"); window.open("https://twitter.com/intent/tweet?text=" + t, "_blank"); }} style={{ padding: "8px 16px", borderRadius: 8, background: "#1DA1F2", color: C.white, border: "none", cursor: "pointer", fontSize: 12 }}>🐦 Share</button>
