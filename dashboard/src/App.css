@@ -153,9 +153,42 @@ body {
     font-size: 22px !important;
   }
 
-  p,
-  span,
-  div {
-    word-break: break-word;
+p {
+  word-break: normal;
+}
+
+span,
+div {
+  word-break: normal;
+}
+  @media (max-width: 768px) {
+  header,
+  nav {
+    height: auto !important;
+    min-height: 70px !important;
+    overflow: hidden !important;
+  }
+
+  nav a,
+  header a {
+    display: none !important;
+  }
+
+  nav a:first-child,
+  header a:first-child {
+    display: flex !important;
+  }
+
+  .logo,
+  [class*="logo"] {
+    white-space: nowrap !important;
+    word-break: normal !important;
+    font-size: 22px !important;
+  }
+
+  .logo span,
+  [class*="logo"] span {
+    word-break: normal !important;
+    white-space: nowrap !important;
   }
 }
