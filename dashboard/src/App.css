@@ -44,72 +44,64 @@ body {
 }
 
 @media (max-width: 768px) {
+
+  /* Hamburger menu */
   .hamburger { display: flex; }
 
-  .main-content {
-    margin-left: 0 !important;
-    width: 100% !important;
-  }
-
+  /* Sidebar */
+  .main-content { margin-left: 0 !important; width: 100% !important; }
   .sidebar {
     position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
+    top: 0 !important; left: 0 !important;
     width: 260px !important;
     height: 100vh !important;
     z-index: 1000 !important;
     transform: translateX(-100%);
     transition: transform 0.25s ease;
   }
+  .sidebar.open { transform: translateX(0) !important; }
 
-  .sidebar.open {
-    transform: translateX(0) !important;
-  }
-
+  /* Dashboard grids */
   .stats-grid,
   .charts-grid,
   .analytics-grid,
   .docs-grid,
-  .tls-grid {
-    grid-template-columns: 1fr !important;
-  }
+  .tls-grid { grid-template-columns: 1fr !important; }
 
-  /* Hide navbar links on mobile */
-  .nav-links {
-    display: none !important;
-  }
+  /* Homepage navbar — hide middle links */
+  .nav-links { display: none !important; }
 
-  /* Hide dashboard preview on mobile */
-  .hero-preview {
-    display: none !important;
-  }
-
-  /* Hero full width on mobile */
+  /* Homepage hero — stack vertically, hide dashboard preview */
   .hero-grid {
     grid-template-columns: 1fr !important;
     gap: 24px !important;
     padding: 32px 16px !important;
   }
+  .hero-preview { display: none !important; }
 
-  /* Stats bar single column */
+  /* Stats bar — 2 columns on mobile */
   .stats-bar-grid {
-    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-columns: repeat(2, 1fr) !important;
     gap: 12px !important;
+    padding: 0 16px !important;
   }
 
-  h1 {
-    font-size: 32px !important;
-    line-height: 1.15 !important;
-  }
+  /* How It Works — stack */
+  .how-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
 
-  /* How it works stacked */
-  .howitworks-grid {
-    grid-template-columns: 1fr !important;
-  }
+  /* Pricing — stack */
+  .pricing-grid { grid-template-columns: 1fr !important; }
 
-  /* Pricing stacked */
-  .pricing-grid {
-    grid-template-columns: 1fr !important;
+  /* General padding fixes */
+  h1 { font-size: 32px !important; line-height: 1.15 !important; }
+  h2 { font-size: 26px !important; }
+
+  /* Homepage sections padding */
+  div[id="howitworks"],
+  div[id="pricing"],
+  div[id="docs"],
+  div[id="features"] {
+    padding: 40px 16px !important;
   }
 }
 
