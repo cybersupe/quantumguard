@@ -1,12 +1,214 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Terms</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terms of Service — QuantumGuard</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', sans-serif; background: #f8faf8; color: #1a1a1a; }
+nav { background: white; border-bottom: 1px solid #e2f0e2; padding: 0 40px; height: 64px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.logo-icon { width: 36px; height: 36px; border-radius: 10px; background: #16a34a; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.logo-text { font-size: 18px; font-weight: 700; color: #1a1a1a; }
+.logo-text span { color: #16a34a; }
+.nav-btn { background: #16a34a; color: white; padding: 8px 20px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 600; }
+.hero { background: #16a34a; padding: 60px 40px; text-align: center; }
+.hero h1 { font-size: 42px; font-weight: 800; color: white; margin-bottom: 12px; }
+.hero p { font-size: 16px; color: rgba(255,255,255,0.85); max-width: 600px; margin: 0 auto; line-height: 1.7; }
+.hero-meta { font-size: 13px; color: rgba(255,255,255,0.7); margin-top: 12px; }
+.container { max-width: 860px; margin: 0 auto; padding: 60px 40px; }
+.summary-box { background: #f0fdf4; border: 1px solid #86efac; border-radius: 12px; padding: 24px; margin-bottom: 32px; }
+.summary-box h3 { font-size: 14px; font-weight: 700; color: #15803d; margin-bottom: 12px; }
+.summary-row { display: flex; gap: 10px; margin-bottom: 8px; align-items: flex-start; font-size: 13px; color: #166534; }
+.summary-row::before { content: "✓"; font-weight: 700; flex-shrink: 0; }
+.section { background: white; border-radius: 16px; padding: 32px; margin-bottom: 20px; border: 1px solid #e2f0e2; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.section h2 { font-size: 18px; font-weight: 700; color: #1a1a1a; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #e2f0e2; display: flex; align-items: center; gap: 8px; }
+.section h2 .num { width: 28px; height: 28px; border-radius: 50%; background: #16a34a; color: white; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.section p { font-size: 14px; color: #374151; line-height: 1.8; margin-bottom: 12px; }
+.section p:last-child { margin-bottom: 0; }
+.section ul { margin: 10px 0 12px 20px; }
+.section ul li { font-size: 14px; color: #374151; line-height: 1.8; margin-bottom: 4px; }
+.allowed { background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 16px; margin: 12px 0; }
+.allowed h4 { font-size: 13px; font-weight: 700; color: #15803d; margin-bottom: 8px; }
+.allowed li { font-size: 13px; color: #166534; }
+.not-allowed { background: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px; padding: 16px; margin: 12px 0; }
+.not-allowed h4 { font-size: 13px; font-weight: 700; color: #991b1b; margin-bottom: 8px; }
+.not-allowed li { font-size: 13px; color: #7f1d1d; }
+.highlight { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 12px 16px; margin: 12px 0; font-size: 13px; color: #92400e; line-height: 1.6; }
+footer { background: white; border-top: 1px solid #e2f0e2; padding: 24px 40px; text-align: center; }
+.footer-text { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
+.footer-links { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+.footer-links a { color: #16a34a; font-size: 12px; text-decoration: none; }
+@media (max-width: 768px) { nav { padding: 0 16px; } .container { padding: 32px 16px; } .hero { padding: 40px 16px; } .hero h1 { font-size: 28px; } }
+</style>
 </head>
-<body style="font-family: Arial; padding: 40px;">
+<body>
+
+<nav>
+  <a href="/" class="logo">
+    <div class="logo-icon">⚛</div>
+    <div class="logo-text"><span>Quantum</span>Guard</div>
+  </a>
+  <a href="/" class="nav-btn">← Back to App</a>
+</nav>
+
+<div class="hero">
   <h1>Terms of Service</h1>
-  <p>This tool is for informational purposes only.</p>
-  <p>We do not guarantee full security detection.</p>
-  <p>Use at your own risk.</p>
+  <p>Please read these terms carefully before using QuantumGuard. By using our service you agree to these terms.</p>
+  <div class="hero-meta">Last updated: April 26, 2026 · Effective immediately</div>
+</div>
+
+<div class="container">
+
+  <!-- Summary -->
+  <div class="summary-box">
+    <h3>📋 Terms Summary — The Short Version</h3>
+    <div class="summary-row">QuantumGuard is free to use for legitimate security scanning purposes</div>
+    <div class="summary-row">You must only scan repositories you own or have permission to scan</div>
+    <div class="summary-row">Results are informational — we do not guarantee 100% detection of all vulnerabilities</div>
+    <div class="summary-row">Do not abuse the service — rate limits apply</div>
+    <div class="summary-row">The service is provided "as is" without warranty</div>
+    <div class="summary-row">All code you scan remains yours — we make no claim over it</div>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">1</span> Acceptance of Terms</h2>
+    <p>By accessing or using QuantumGuard at quantumguard.site, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our service.</p>
+    <p>These terms apply to all users of the service, including users who scan repositories, use the API, or access any part of the platform.</p>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">2</span> Description of Service</h2>
+    <p>QuantumGuard is a free, open-source quantum vulnerability scanner. Our service:</p>
+    <ul>
+      <li>Scans GitHub repositories, ZIP files, and server paths for quantum-vulnerable cryptography</li>
+      <li>Provides a Quantum Readiness Score from 0 to 100</li>
+      <li>Identifies specific vulnerable code with file names, line numbers, and severity ratings</li>
+      <li>Suggests NIST-approved post-quantum replacement algorithms</li>
+      <li>Offers TLS analysis, crypto agility checking, and migration tracking tools</li>
+    </ul>
+    <p>QuantumGuard is provided as an informational tool to help developers identify potential quantum vulnerabilities. Results should be reviewed by qualified security professionals before taking action.</p>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">3</span> Acceptable Use</h2>
+    <div class="allowed">
+      <h4>✅ You MAY use QuantumGuard to:</h4>
+      <ul>
+        <li>Scan your own repositories and codebases</li>
+        <li>Scan repositories you have explicit permission to scan</li>
+        <li>Use results for security audits and compliance</li>
+        <li>Integrate the API into your own security tools</li>
+        <li>Use results for educational or research purposes</li>
+        <li>Share scan reports with your team or clients</li>
+      </ul>
+    </div>
+    <div class="not-allowed">
+      <h4>❌ You MAY NOT use QuantumGuard to:</h4>
+      <ul>
+        <li>Scan repositories you do not own or have permission to scan</li>
+        <li>Attempt to bypass rate limits or abuse the API</li>
+        <li>Use the service for any illegal purpose</li>
+        <li>Attempt to reverse engineer or attack our infrastructure</li>
+        <li>Resell or commercially redistribute the service without permission</li>
+        <li>Use automated tools to scrape or extract data at scale</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">4</span> Intellectual Property</h2>
+    <p>QuantumGuard is released under the GNU Affero General Public License v3 (AGPL v3). You are free to view, use, and modify the source code in accordance with the license terms.</p>
+    <p>The QuantumGuard name, logo, and brand are the property of Pavansudheer Payyavula / MANGSRI. You may not use our brand identity without written permission.</p>
+    <p><strong>Your code remains yours.</strong> We make no claim over any code you scan through our service. Scanning your code does not transfer any rights to us.</p>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">5</span> Rate Limits & Fair Use</h2>
+    <p>To ensure fair access for all users, we enforce the following rate limits:</p>
+    <ul>
+      <li>Free users: 10 scans per day</li>
+      <li>API: 20 requests per minute for /scan-github</li>
+      <li>API: 3 requests per minute for ZIP uploads</li>
+      <li>API: 10 requests per minute for /check-agility and /analyze-tls</li>
+    </ul>
+    <p>Attempting to bypass these limits will result in temporary or permanent suspension of access.</p>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">6</span> Disclaimer of Warranties</h2>
+    <div class="highlight">⚠ Important: QuantumGuard is provided "as is" without warranties of any kind. We do not guarantee that our scanner will detect all quantum vulnerabilities in your code. Security scanning is inherently complex and no tool provides 100% coverage.</div>
+    <p>We expressly disclaim all warranties, whether express or implied, including but not limited to:</p>
+    <ul>
+      <li>Warranties of merchantability or fitness for a particular purpose</li>
+      <li>Warranties that the service will be uninterrupted or error-free</li>
+      <li>Warranties that scan results are complete or accurate</li>
+    </ul>
+    <p>Scan results should be treated as informational guidance and reviewed by qualified security professionals before implementation.</p>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">7</span> Limitation of Liability</h2>
+    <p>To the maximum extent permitted by law, QuantumGuard and its operators shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the service, including but not limited to:</p>
+    <ul>
+      <li>Security breaches resulting from undetected vulnerabilities</li>
+      <li>Data loss or corruption</li>
+      <li>Business interruption</li>
+      <li>Losses resulting from reliance on scan results</li>
+    </ul>
+    <p>Our total liability to you for any claim shall not exceed the amount you paid for the service in the past 12 months (which for free tier users is $0).</p>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">8</span> Service Availability</h2>
+    <p>We strive to keep QuantumGuard available at all times but do not guarantee 100% uptime. The service may be unavailable due to:</p>
+    <ul>
+      <li>Scheduled maintenance</li>
+      <li>Unexpected technical issues</li>
+      <li>Third-party service outages (Vercel, Render, Firebase)</li>
+    </ul>
+    <p>We reserve the right to modify, suspend, or discontinue the service at any time with or without notice.</p>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">9</span> Termination</h2>
+    <p>We reserve the right to terminate or suspend your access to QuantumGuard at any time if you violate these terms, abuse the service, or engage in any activity that is harmful to other users or our infrastructure.</p>
+    <p>You may stop using the service at any time. You can request deletion of your account and data by contacting us at thisispayyavula@gmail.com.</p>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">10</span> Governing Law</h2>
+    <p>These Terms of Service shall be governed by and construed in accordance with the laws of India. Any disputes arising under these terms shall be subject to the exclusive jurisdiction of the courts of India.</p>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">11</span> Changes to Terms</h2>
+    <p>We reserve the right to modify these Terms of Service at any time. Changes will be effective immediately upon posting to this page. We will update the "Last updated" date at the top. Continued use of the service after changes constitutes your acceptance of the new terms.</p>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">12</span> Contact</h2>
+    <p>If you have any questions about these Terms of Service, please contact us:</p>
+    <p><strong>Email:</strong> thisispayyavula@gmail.com</p>
+    <p><strong>Project:</strong> github.com/cybersupe/quantumguard</p>
+    <p><strong>Website:</strong> quantumguard.site</p>
+  </div>
+
+</div>
+
+<footer>
+  <div class="footer-text">QuantumGuard by MANGSRI · Open Source · Free Forever · quantumguard.site</div>
+  <div class="footer-links">
+    <a href="/about.html">About</a>
+    <span style="color:#6b7280">·</span>
+    <a href="/privacy.html">Privacy Policy</a>
+    <span style="color:#6b7280">·</span>
+    <a href="/terms.html">Terms of Service</a>
+    <span style="color:#6b7280">·</span>
+    <a href="https://github.com/cybersupe/quantumguard" target="_blank">GitHub ↗</a>
+  </div>
+</footer>
+
 </body>
 </html>
