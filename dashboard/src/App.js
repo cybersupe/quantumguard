@@ -849,7 +849,7 @@ function Homepage({ onGetStarted }) {
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'Segoe UI', sans-serif" }}>
       {/* Navbar */}
-      <nav style={{ background: C.white, borderBottom: `1px solid ${C.panelBorder}`, padding: "0 40px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", position: "sticky", top: 0, zIndex: 50 }}>
+      <nav style={{ background: C.white, borderBottom: `1px solid ${C.panelBorder}`, padding: "0 16px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", position: "sticky", top: 0, zIndex: 50 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, background: C.green, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>⚛</div>
           <span style={{ fontSize: 18, fontWeight: 700 }}><span style={{ color: C.green }}>Quantum</span>Guard</span>
@@ -896,7 +896,7 @@ function Homepage({ onGetStarted }) {
         </div>
 
         {/* Dashboard preview */}
-        <div style={{ background: C.white, borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.12)", border: `1px solid ${C.panelBorder}`, overflow: "hidden" }}>
+        <div className="hero-preview" style={{ background: C.white, borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.12)", border: `1px solid ${C.panelBorder}`, overflow: "hidden" }}>
           <div style={{ background: C.green, padding: "10px 16px", display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 28, height: 28, borderRadius: 6, background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>⚛</div>
             <span style={{ color: C.white, fontSize: 13, fontWeight: 600 }}>QuantumGuard</span>
@@ -953,7 +953,7 @@ function Homepage({ onGetStarted }) {
       </div>
 
       {/* Stats bar */}
-      <div style={{ background: C.white, borderTop: `1px solid ${C.panelBorder}`, borderBottom: `1px solid ${C.panelBorder}`, padding: "24px 40px" }}>
+      <div style={{ background: C.white, borderTop: `1px solid ${C.panelBorder}`, borderBottom: `1px solid ${C.panelBorder}`, padding: "24px 16px" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 20, textAlign: "center" }}>
           {[["50+", "Vulnerability Checks"], ["8", "Supported Languages"], ["99.9%", "Uptime"], ["< 30s", "Average Scan Time"], ["100%", "Private Scanning"]].map(([num, label], i) => (
             <div key={i}>
