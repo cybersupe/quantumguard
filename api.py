@@ -2,7 +2,8 @@
 # QuantumGuard — Quantum Cryptography Vulnerability Scanner
 # Copyright (c) 2026 Pavansudheer Payyavula / MANGSRI
 # Licensed under AGPL v3 — github.com/cybersupe/quantumguard
-# ============================================================from fastapi import FastAPI, HTTPException, Header, UploadFile, File, Request
+# ============================================================
+from fastapi import FastAPI, HTTPException, Header, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
