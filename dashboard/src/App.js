@@ -855,8 +855,13 @@ function Homepage({ onGetStarted }) {
           <span style={{ fontSize: 18, fontWeight: 700 }}><span style={{ color: C.green }}>Quantum</span>Guard</span>
         </div>
         <div className="nav-links" style={{ display: "flex", alignItems: "center", gap: 32 }}>
-          {["Features", "How It Works", "Pricing", "Documentation"].map(item => (
-            <span key={item} style={{ fontSize: 14, color: C.muted, cursor: "pointer" }}>{item}</span>
+          {[
+            { label: "Features", id: "features" },
+            { label: "How It Works", id: "howitworks" },
+            { label: "Pricing", id: "pricing" },
+            { label: "Documentation", id: "docs" },
+          ].map(item => (
+            <span key={item.id} onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" })} style={{ fontSize: 14, color: C.muted, cursor: "pointer" }} onMouseEnter={e => e.target.style.color = C.green} onMouseLeave={e => e.target.style.color = C.muted}>{item.label}</span>
           ))}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -869,7 +874,7 @@ function Homepage({ onGetStarted }) {
       </nav>
 
       {/* Hero */}
-      <div className="hero-grid" style={{ maxWidth: 1200, margin: "0 auto", padding: "60px 40px 40px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center" }}>
+      <div className="hero-grid" style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center" }}>
         <div>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.greenLighter, border: `1px solid ${C.greenMid}`, borderRadius: 20, padding: "5px 14px", marginBottom: 24 }}>
             <span style={{ fontSize: 12, color: C.green, fontWeight: 600 }}>🛡 Protect Your Code. Secure the Quantum Future.</span>
@@ -954,7 +959,7 @@ function Homepage({ onGetStarted }) {
 
       {/* Stats bar */}
       <div style={{ background: C.white, borderTop: `1px solid ${C.panelBorder}`, borderBottom: `1px solid ${C.panelBorder}`, padding: "24px 16px" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 20, textAlign: "center" }}>
+        <div className="stats-bar-grid" style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 20, textAlign: "center" }}>
           {[["50+", "Vulnerability Checks"], ["8", "Supported Languages"], ["99.9%", "Uptime"], ["< 30s", "Average Scan Time"], ["100%", "Private Scanning"]].map(([num, label], i) => (
             <div key={i}>
               <div style={{ fontSize: 28, fontWeight: 800, color: C.green }}>{num}</div>
@@ -991,7 +996,7 @@ function Homepage({ onGetStarted }) {
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <h2 style={{ fontSize: 36, fontWeight: 800, textAlign: "center", marginBottom: 12, color: C.text }}>How It Works</h2>
           <p style={{ textAlign: "center", color: C.muted, fontSize: 16, marginBottom: 48 }}>Scan your codebase in 30 seconds — no installation needed</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 32, maxWidth: 900, margin: "0 auto" }}>
+          <div className="how-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 32, maxWidth: 900, margin: "0 auto" }}>
             {[
               { step: "1", title: "Paste GitHub URL", desc: "Enter any public or private GitHub repository URL into the scanner. No git installation needed.", icon: "🔗" },
               { step: "2", title: "We Scan Your Code", desc: "Our engine checks every line against 15+ vulnerability patterns across 8 programming languages.", icon: "🔍" },
@@ -1012,7 +1017,7 @@ function Homepage({ onGetStarted }) {
       <div id="pricing" style={{ maxWidth: 1200, margin: "0 auto", padding: "60px 40px" }}>
         <h2 style={{ fontSize: 36, fontWeight: 800, textAlign: "center", marginBottom: 12, color: C.text }}>Simple Pricing</h2>
         <p style={{ textAlign: "center", color: C.muted, fontSize: 16, marginBottom: 40 }}>Start free. Upgrade when you need more.</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 24, maxWidth: 1000, margin: "0 auto" }}>
+        <div className="pricing-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 24, maxWidth: 1000, margin: "0 auto" }}>
           {[
             { name: "Free", price: "$0", period: "forever", color: C.text, features: ["Web scanner", "GitHub URL + ZIP scan", "15+ vulnerability types", "PDF & CSV reports", "TLS Analyzer", "Agility Checker", "10 scans/day"], highlight: false, cta: "Get Started Free" },
             { name: "Pro", price: "$29", period: "/month", color: C.green, features: ["Everything in Free", "Unlimited scans", "AI-powered fix suggestions", "Team members (5 seats)", "API access", "Priority support", "Migration reports"], highlight: true, cta: "Coming Soon" },
