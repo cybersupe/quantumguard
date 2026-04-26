@@ -855,9 +855,14 @@ function Homepage({ onGetStarted }) {
           <span style={{ fontSize: 18, fontWeight: 700 }}><span style={{ color: C.green }}>Quantum</span>Guard</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
-          {["Features", "How It Works", "Pricing", "Documentation"].map(item => (
-            <span key={item} style={{ fontSize: 14, color: C.muted, cursor: "pointer" }}>{item}</span>
-          ))}
+         {[
+  { label: "Features", id: "features" },
+  { label: "How It Works", id: "howitworks" },
+  { label: "Pricing", id: "pricing" },
+  { label: "Documentation", id: "docs" },
+].map(item => (
+  <span key={item.id} onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" })} style={{ fontSize: 14, color: C.muted, cursor: "pointer", transition: "color 0.15s" }} onMouseEnter={e => e.target.style.color = C.green} onMouseLeave={e => e.target.style.color = C.muted}>{item.label}</span>
+))}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, background: C.greenLighter, padding: "6px 12px", borderRadius: 20, border: `1px solid ${C.greenMid}` }}>
@@ -986,7 +991,84 @@ function Homepage({ onGetStarted }) {
         </div>
       </div>
 
-      {/* CTA */}
+     {/* HOW IT WORKS */}
+<div id="howitworks" style={{ background: C.white, borderTop: `1px solid ${C.panelBorder}`, padding: "60px 40px" }}>
+  <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+    <h2 style={{ fontSize: 36, fontWeight: 800, textAlign: "center", marginBottom: 12, color: C.text }}>How It Works</h2>
+    <p style={{ textAlign: "center", color: C.muted, fontSize: 16, marginBottom: 48 }}>Scan your codebase in 30 seconds — no installation needed</p>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 32, maxWidth: 900, margin: "0 auto" }}>
+      {[
+        { step: "1", title: "Paste GitHub URL", desc: "Enter any public or private GitHub repository URL into the scanner. No git installation needed.", icon: "🔗" },
+        { step: "2", title: "We Scan Your Code", desc: "Our engine checks every line against 15+ vulnerability patterns across 8 programming languages.", icon: "🔍" },
+        { step: "3", title: "Get Your Report", desc: "Receive a Quantum Readiness Score with exact fixes, PDF export, and AI-powered migration suggestions.", icon: "📊" },
+      ].map((s, i) => (
+        <div key={i} style={{ textAlign: "center" }}>
+          <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.green, color: C.white, fontSize: 28, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>{s.step}</div>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>{s.icon}</div>
+          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: C.text }}>{s.title}</div>
+          <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.7 }}>{s.desc}</div>
+        </div>
+      ))}
+    </div>
+  </div>
+</div>
+
+{/* PRICING */}
+<div id="pricing" style={{ maxWidth: 1200, margin: "0 auto", padding: "60px 40px" }}>
+  <h2 style={{ fontSize: 36, fontWeight: 800, textAlign: "center", marginBottom: 12, color: C.text }}>Simple Pricing</h2>
+  <p style={{ textAlign: "center", color: C.muted, fontSize: 16, marginBottom: 40 }}>Start free. Upgrade when you need more.</p>
+  <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 24, maxWidth: 1000, margin: "0 auto" }}>
+    {[
+      { name: "Free", price: "$0", period: "forever", color: C.text, features: ["Web scanner", "GitHub URL + ZIP scan", "15+ vulnerability types", "PDF & CSV reports", "TLS Analyzer", "Agility Checker", "10 scans/day"], highlight: false, cta: "Get Started Free" },
+      { name: "Pro", price: "$29", period: "/month", color: C.green, features: ["Everything in Free", "Unlimited scans", "AI-powered fix suggestions", "Team members (5 seats)", "API access", "Priority support", "Migration reports"], highlight: true, cta: "Coming Soon" },
+      { name: "Enterprise", price: "Custom", period: "", color: C.text, features: ["Everything in Pro", "Unlimited team members", "CI/CD integration", "SSO login", "SOC2 compliance", "Dedicated support", "Custom reports"], highlight: false, cta: "Contact Us" },
+    ].map((p, i) => (
+      <div key={i} style={{ background: C.white, borderRadius: 16, padding: 28, border: p.highlight ? `2px solid ${C.green}` : `1px solid ${C.panelBorder}`, boxShadow: p.highlight ? "0 8px 24px rgba(22,163,74,0.15)" : "0 1px 4px rgba(0,0,0,0.04)", position: "relative" }}>
+        {p.highlight && <div style={{ position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)", background: C.green, color: C.white, padding: "4px 16px", borderRadius: 20, fontSize: 12, fontWeight: 600 }}>Most Popular</div>}
+        <div style={{ fontSize: 18, fontWeight: 700, color: C.text, marginBottom: 6 }}>{p.name}</div>
+        <div style={{ fontSize: 36, fontWeight: 800, color: p.color, marginBottom: 4 }}>{p.price}<span style={{ fontSize: 14, color: C.muted, fontWeight: 400 }}>{p.period}</span></div>
+        <div style={{ height: 1, background: C.panelBorder, margin: "16px 0" }}></div>
+        {p.features.map((f, j) => (
+          <div key={j} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "flex-start" }}>
+            <span style={{ color: C.green, fontWeight: 700, fontSize: 13 }}>✓</span>
+            <span style={{ fontSize: 13, color: C.muted }}>{f}</span>
+          </div>
+        ))}
+        <button style={{ width: "100%", marginTop: 20, padding: "11px", borderRadius: 10, background: p.highlight ? C.green : C.white, color: p.highlight ? C.white : C.green, border: `1.5px solid ${C.green}`, cursor: "pointer", fontSize: 14, fontWeight: 600 }}>{p.cta}</button>
+      </div>
+    ))}
+  </div>
+</div>
+
+{/* DOCS SECTION */}
+<div id="docs" style={{ background: C.white, borderTop: `1px solid ${C.panelBorder}`, padding: "60px 40px" }}>
+  <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+    <h2 style={{ fontSize: 36, fontWeight: 800, textAlign: "center", marginBottom: 12, color: C.text }}>Documentation</h2>
+    <p style={{ textAlign: "center", color: C.muted, fontSize: 16, marginBottom: 40 }}>Everything you need to integrate QuantumGuard</p>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 20 }}>
+      {[
+        { icon: "⚡", title: "Quick Start", desc: "Scan your first repo in 30 seconds. No installation required.", steps: ["Paste GitHub URL", "Click Run Scan", "Download report"] },
+        { icon: "🔌", title: "REST API", desc: "Integrate QuantumGuard into your stack with our simple REST API.", steps: ["POST /scan-github", "POST /check-agility", "POST /analyze-tls"] },
+        { icon: "🔄", title: "GitHub Actions", desc: "Auto-scan your repo on every push with our CI/CD workflow.", steps: ["Copy workflow YAML", "Add to .github/workflows/", "Push to trigger scan"] },
+        { icon: "🔒", title: "Private Repos", desc: "Scan private repositories securely using GitHub PAT.", steps: ["Generate GitHub PAT", "Click Private Repo", "Token never stored"] },
+      ].map((d, i) => (
+        <div key={i} style={{ background: C.greenLighter, borderRadius: 12, padding: 24, border: `1px solid ${C.greenMid}` }}>
+          <div style={{ fontSize: 28, marginBottom: 10 }}>{d.icon}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>{d.title}</div>
+          <div style={{ fontSize: 13, color: C.muted, marginBottom: 14, lineHeight: 1.6 }}>{d.desc}</div>
+          {d.steps.map((step, j) => (
+            <div key={j} style={{ display: "flex", gap: 8, marginBottom: 6, alignItems: "center" }}>
+              <div style={{ width: 18, height: 18, borderRadius: "50%", background: C.green, color: C.white, fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{j + 1}</div>
+              <span style={{ fontSize: 12, color: C.textMid }}>{step}</span>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  </div>
+</div>
+      
+{/* CTA */}
       <div style={{ background: C.greenLighter, borderTop: `1px solid ${C.greenMid}`, padding: "60px 40px", textAlign: "center" }}>
         <h2 style={{ fontSize: 32, fontWeight: 800, color: C.text, marginBottom: 12 }}>Ready to secure your code for the quantum future?</h2>
         <p style={{ color: C.muted, marginBottom: 28, fontSize: 15 }}>Join developers who are already using QuantumGuard to protect their applications.</p>
