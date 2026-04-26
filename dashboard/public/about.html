@@ -1,11 +1,165 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>About QuantumGuard</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About — QuantumGuard</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', sans-serif; background: #f8faf8; color: #1a1a1a; }
+nav { background: white; border-bottom: 1px solid #e2f0e2; padding: 0 40px; height: 64px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.logo-icon { width: 36px; height: 36px; border-radius: 10px; background: #16a34a; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.logo-text { font-size: 18px; font-weight: 700; color: #1a1a1a; }
+.logo-text span { color: #16a34a; }
+.nav-btn { background: #16a34a; color: white; padding: 8px 20px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 600; }
+.hero { background: #16a34a; padding: 60px 40px; text-align: center; }
+.hero h1 { font-size: 42px; font-weight: 800; color: white; margin-bottom: 12px; }
+.hero p { font-size: 16px; color: rgba(255,255,255,0.85); max-width: 600px; margin: 0 auto; line-height: 1.7; }
+.container { max-width: 900px; margin: 0 auto; padding: 60px 40px; }
+.section { background: white; border-radius: 16px; padding: 32px; margin-bottom: 24px; border: 1px solid #e2f0e2; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.section h2 { font-size: 22px; font-weight: 700; color: #16a34a; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+.section p { font-size: 14px; color: #374151; line-height: 1.8; margin-bottom: 12px; }
+.section p:last-child { margin-bottom: 0; }
+.stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
+.stat-card { background: white; border: 1px solid #e2f0e2; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.stat-num { font-size: 32px; font-weight: 800; color: #16a34a; }
+.stat-label { font-size: 12px; color: #6b7280; margin-top: 4px; }
+.team-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+.team-card { background: #f0fdf4; border: 1px solid #86efac; border-radius: 12px; padding: 20px; }
+.team-role { font-size: 11px; font-weight: 700; color: #16a34a; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+.team-name { font-size: 15px; font-weight: 700; color: #1a1a1a; margin-bottom: 6px; }
+.team-desc { font-size: 12px; color: #6b7280; line-height: 1.6; }
+.timeline { margin-top: 16px; }
+.timeline-item { display: flex; gap: 16px; margin-bottom: 20px; align-items: flex-start; }
+.timeline-dot { width: 40px; height: 40px; border-radius: 50%; background: #16a34a; color: white; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.timeline-content h3 { font-size: 14px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
+.timeline-content p { font-size: 13px; color: #6b7280; line-height: 1.6; }
+.link-box { background: #f0fdf4; border: 1px solid #86efac; border-radius: 10px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.link-name { font-size: 14px; font-weight: 600; color: #1a1a1a; }
+.link-url { font-size: 12px; color: #16a34a; font-family: monospace; }
+footer { background: white; border-top: 1px solid #e2f0e2; padding: 24px 40px; text-align: center; }
+.footer-text { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
+.footer-links { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+.footer-links a { color: #16a34a; font-size: 12px; text-decoration: none; }
+@media (max-width: 768px) { .stats-grid { grid-template-columns: repeat(2,1fr); } .team-grid { grid-template-columns: 1fr; } nav { padding: 0 16px; } .container { padding: 32px 16px; } .hero { padding: 40px 16px; } .hero h1 { font-size: 28px; } }
+</style>
 </head>
-<body style="font-family: Arial; padding: 40px;">
+<body>
+
+<nav>
+  <a href="/" class="logo">
+    <div class="logo-icon">⚛</div>
+    <div class="logo-text"><span>Quantum</span>Guard</div>
+  </a>
+  <a href="/" class="nav-btn">← Back to App</a>
+</nav>
+
+<div class="hero">
   <h1>About QuantumGuard</h1>
-  <p>QuantumGuard is a cybersecurity platform that scans code and finds weak encryption.</p>
-  <p>It helps developers fix vulnerabilities and prepare for future quantum threats.</p>
+  <p>We built the world's first free quantum vulnerability scanner so every developer can prepare for the quantum computing era — before it's too late.</p>
+</div>
+
+<div class="container">
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-num">15+</div><div class="stat-label">Vulnerability Types</div></div>
+    <div class="stat-card"><div class="stat-num">8</div><div class="stat-label">Languages Supported</div></div>
+    <div class="stat-card"><div class="stat-num">30s</div><div class="stat-label">Average Scan Time</div></div>
+    <div class="stat-card"><div class="stat-num">100%</div><div class="stat-label">Free & Open Source</div></div>
+  </div>
+
+  <!-- Mission -->
+  <div class="section">
+    <h2>🎯 Our Mission</h2>
+    <p>Quantum computers will break RSA, ECC, and most encryption protecting the internet by approximately 2030. This is not a future possibility — it is a certainty. NIST published post-quantum cryptography standards in 2024, and governments around the world are already mandating migration.</p>
+    <p>Yet most developers have no idea which algorithms in their code are vulnerable. Enterprise tools cost $50,000+ per year — completely out of reach for individual developers and small teams.</p>
+    <p><strong>QuantumGuard changes that.</strong> We built a free, open-source scanner that finds quantum-vulnerable code in 30 seconds and tells you exactly what to replace it with. No installation. No signup required. No cost.</p>
+  </div>
+
+  <!-- What We Built -->
+  <div class="section">
+    <h2>🔧 What We Built</h2>
+    <p>QuantumGuard is a full-stack web application with a FastAPI Python backend and React.js frontend. It scans GitHub repositories, uploaded ZIP files, or server paths for 15+ types of quantum-vulnerable cryptography across 8 programming languages.</p>
+    <p>Each finding includes the exact file, line number, vulnerable code, severity rating, and a NIST-approved post-quantum replacement. Users can export results as PDF or CSV, email reports, track migration progress, and use our AI-powered fix assistant.</p>
+    <p>The entire codebase is open source and available at github.com/cybersupe/quantumguard under the AGPL v3 license.</p>
+  </div>
+
+  <!-- Timeline -->
+  <div class="section">
+    <h2>📅 Project Timeline</h2>
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="timeline-dot">2024</div>
+        <div class="timeline-content"><h3>NIST Publishes PQC Standards</h3><p>FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), FIPS 205 (SLH-DSA) finalized. The quantum migration deadline becomes official.</p></div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot">Jan</div>
+        <div class="timeline-content"><h3>Development Begins</h3><p>QuantumGuard started as a project to solve a real problem — no free tool existed to scan code for quantum vulnerabilities.</p></div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot">Apr</div>
+        <div class="timeline-content"><h3>QuantumGuard Launches</h3><p>Live at quantumguard.site. Scanner, TLS Analyzer, Agility Checker, Migration Tracker, AI Fix Assistant all deployed. Team of 3 employees hired.</p></div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot">2030</div>
+        <div class="timeline-content"><h3>Y2Q — Quantum Deadline</h3><p>Year-to-Quantum. Cryptographically relevant quantum computers expected. All RSA and ECC encryption will be breakable.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Team -->
+  <div class="section">
+    <h2>👥 Our Team</h2>
+    <p>QuantumGuard is built by a small team based in India, passionate about making post-quantum security accessible to everyone.</p>
+    <div class="team-grid">
+      <div class="team-card">
+        <div class="team-role">Founder & Lead Developer</div>
+        <div class="team-name">Pavansudheer Payyavula</div>
+        <div class="team-desc">Full-stack development, architecture, product strategy. Built the entire platform from scratch including backend API, frontend dashboard, and scanner engine.</div>
+      </div>
+      <div class="team-card">
+        <div class="team-role">Backend Developer</div>
+        <div class="team-name">Employee 1</div>
+        <div class="team-desc">Python, FastAPI, scanner engine improvements, new vulnerability pattern development, API endpoint development.</div>
+      </div>
+      <div class="team-card">
+        <div class="team-role">Frontend Developer</div>
+        <div class="team-name">Employee 2</div>
+        <div class="team-desc">React.js, UI improvements, mobile responsive design, dashboard enhancements, user experience optimization.</div>
+      </div>
+      <div class="team-card">
+        <div class="team-role">DevOps & Growth</div>
+        <div class="team-name">Employee 3</div>
+        <div class="team-desc">CI/CD pipelines, documentation, marketing, community growth, social media, Product Hunt launch.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Links -->
+  <div class="section">
+    <h2>🔗 Important Links</h2>
+    <div class="link-box"><span class="link-name">Live Application</span><span class="link-url">quantumguard.site</span></div>
+    <div class="link-box"><span class="link-name">GitHub Repository</span><span class="link-url">github.com/cybersupe/quantumguard</span></div>
+    <div class="link-box"><span class="link-name">API Documentation</span><span class="link-url">quantumguard-api.onrender.com/docs</span></div>
+    <div class="link-box"><span class="link-name">Contact</span><span class="link-url">thisispayyavula@gmail.com</span></div>
+  </div>
+
+</div>
+
+<footer>
+  <div class="footer-text">QuantumGuard by MANGSRI · Open Source · Free Forever · quantumguard.site</div>
+  <div class="footer-links">
+    <a href="/about.html">About</a>
+    <span style="color:#6b7280">·</span>
+    <a href="/privacy.html">Privacy Policy</a>
+    <span style="color:#6b7280">·</span>
+    <a href="/terms.html">Terms of Service</a>
+    <span style="color:#6b7280">·</span>
+    <a href="https://github.com/cybersupe/quantumguard" target="_blank">GitHub ↗</a>
+  </div>
+</footer>
+
 </body>
 </html>
