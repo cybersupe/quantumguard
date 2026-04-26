@@ -145,3 +145,56 @@ img, svg, canvas {
     max-width: 100%;
   }
 }
+@media (max-width: 768px) {
+  .hero,
+  .hero-section,
+  .hero-container {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow: hidden !important;
+    padding: 80px 20px 30px !important;
+  }
+
+  .hero-content,
+  .hero-left {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .hero-visual,
+  .hero-right,
+  .dashboard-preview,
+  .phone-mockup {
+    display: none !important;
+  }
+
+  .nav,
+  .navbar,
+  .nav-links {
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+  }
+
+  .logo {
+    flex-shrink: 0 !important;
+  }
+
+  .hero h1 {
+    font-size: 44px !important;
+    line-height: 1.08 !important;
+  }
+
+  .hero p {
+    font-size: 22px !important;
+    line-height: 1.7 !important;
+  }
+
+  .hero button,
+  .hero .btn,
+  .hero a {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
