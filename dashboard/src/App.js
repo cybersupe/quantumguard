@@ -1077,8 +1077,19 @@ function Homepage({ onGetStarted }) {
         </button>
       </div>
 
-      <div style={{ background: C.white, borderTop: `1px solid ${C.panelBorder}`, padding: "20px 40px", textAlign: "center", color: C.muted, fontSize: 12 }}>
-        QuantumGuard by MANGSRI · Open Source · Free Forever · quantumguard.site
+      <div style={{ background: C.white, borderTop: `1px solid ${C.panelBorder}`, padding: "20px 40px", textAlign: "center" }}>
+        <div style={{ color: C.muted, fontSize: 12, marginBottom: 8 }}>
+          QuantumGuard by MANGSRI · Open Source · Free Forever · quantumguard.site
+        </div>
+        <div style={{ display: "flex", justifyContent: "center", gap: 20, flexWrap: "wrap" }}>
+          <a href="/about.html" style={{ color: C.green, fontSize: 12, textDecoration: "none" }}>About</a>
+          <span style={{ color: C.muted, fontSize: 12 }}>·</span>
+          <a href="/privacy.html" style={{ color: C.green, fontSize: 12, textDecoration: "none" }}>Privacy Policy</a>
+          <span style={{ color: C.muted, fontSize: 12 }}>·</span>
+          <a href="/terms.html" style={{ color: C.green, fontSize: 12, textDecoration: "none" }}>Terms of Service</a>
+          <span style={{ color: C.muted, fontSize: 12 }}>·</span>
+          <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer" style={{ color: C.green, fontSize: 12, textDecoration: "none" }}>GitHub ↗</a>
+        </div>
       </div>
     </div>
   );
