@@ -318,7 +318,7 @@ function ScannerPage({ user }) {
 
   return (
     <div style={{ padding: 20 }}>
-      <Panel title="Scan Target" accent>
+      <Panel title="🔗 GitHub Repository Scan" accent>
         <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
           {[{ id: "github", label: "🔗 GitHub URL" }, { id: "zip", label: "📁 Upload ZIP" }, { id: "path", label: "🖥️ Server Path" }].map(m => (
             <button key={m.id} onClick={() => setMode(m.id)} style={btnStyle(mode === m.id)}>{m.label}</button>
