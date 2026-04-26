@@ -2,6 +2,7 @@ import ast
 
 def scan_python_ast(code, file_path):
     findings = []
+
     try:
         tree = ast.parse(code)
     except Exception:
@@ -16,12 +17,13 @@ def scan_python_ast(code, file_path):
             elif hasattr(node.func, "id"):
                 name = node.func.id
 
+            # 🔥 AST detection (clearly visible)
             if name == "md5":
                 findings.append({
                     "file": file_path,
                     "line": node.lineno,
                     "code": "hashlib.md5(...)",
-                    "vulnerability": "MD5 detected by AST",
+                    "vulnerability": "🔥 MD5 (AST ENGINE)",
                     "severity": "MEDIUM",
                     "replacement": "Use hashlib.sha256() or hashlib.sha3_256() instead"
                 })
