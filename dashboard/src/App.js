@@ -390,7 +390,7 @@ function ScannerPage({ user }) {
               <button onClick={handlePDF} style={{ padding: "8px 16px", borderRadius: 8, background: C.green, color: C.white, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>📄 PDF Report</button>
               <button onClick={handleCSV} style={{ padding: "8px 16px", borderRadius: 8, background: C.greenLight, color: C.green, border: `1px solid ${C.greenMid}`, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>📊 CSV Export</button>
               <button onClick={() => navigator.clipboard.writeText(result.findings.map(f => `[${f.severity}] ${f.file}:${f.line} — ${f.code} → ${f.replacement}`).join("\n"))} style={{ padding: "8px 16px", borderRadius: 8, background: C.white, color: C.muted, border: `1px solid ${C.panelBorder}`, cursor: "pointer", fontSize: 12 }}>📋 Copy All</button>
-              <button onClick={() => { const t = encodeURIComponent("QuantumGuard: " + result.quantum_readiness_score + "/100 — " + result.total_findings + " vulnerabilities\nquantumguard-one.vercel.app #QuantumSecurity"); window.open("https://twitter.com/intent/tweet?text=" + t, "_blank"); }} style={{ padding: "8px 16px", borderRadius: 8, background: "#1DA1F2", color: C.white, border: "none", cursor: "pointer", fontSize: 12 }}>🐦 Share</button>
+              <button onClick={() => { const t = encodeURIComponent("QuantumGuard: " + result.quantum_readiness_score + "/100 — " + result.total_findings + " vulnerabilities\nquantumguard.site #QuantumSecurity"); window.open("https://twitter.com/intent/tweet?text=" + t, "_blank"); }} style={{ padding: "8px 16px", borderRadius: 8, background: "#1DA1F2", color: C.white, border: "none", cursor: "pointer", fontSize: 12 }}>🐦 Share</button>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <input value={emailInput} onChange={e => setEmailInput(e.target.value)} placeholder="Email report to..." type="email" style={{ flex: 1, minWidth: 200, padding: "8px 14px", borderRadius: 8, border: `1px solid ${C.panelBorder}`, background: C.input, color: C.text, fontSize: 12 }} />
@@ -1077,24 +1077,9 @@ function Homepage({ onGetStarted }) {
         </button>
       </div>
 
-      <div style={{
-  background: C.white,
-  borderTop: `1px solid ${C.panelBorder}`,
-  padding: "20px 40px",
-  textAlign: "center",
-  color: C.muted,
-  fontSize: 12
-}}>
-  <div>
-    QuantumGuard by MANGSRI · Open Source · Free Forever · quantumguard-one.vercel.app
-  </div>
-
-  <div style={{ marginTop: 8 }}>
-    <a href="/about.html">About</a> ·{" "}
-    <a href="/privacy.html">Privacy Policy</a> ·{" "}
-    <a href="/terms.html">Terms</a>
-  </div>
-</div>
+      <div style={{ background: C.white, borderTop: `1px solid ${C.panelBorder}`, padding: "20px 40px", textAlign: "center", color: C.muted, fontSize: 12 }}>
+        QuantumGuard by MANGSRI · Open Source · Free Forever · quantumguard.site
+      </div>
     </div>
   );
 }
