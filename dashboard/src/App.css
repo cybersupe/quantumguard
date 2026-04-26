@@ -146,3 +146,12 @@ body {
     display: inline-flex !important;
   }
 }
+@media (max-width: 768px) {
+  nav * {
+    display: none !important;
+  }
+
+  nav div:first-child {
+    display: flex !important;
+  }
+}
