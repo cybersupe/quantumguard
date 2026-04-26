@@ -197,5 +197,16 @@ body {
   .sidebar {
     height: 100vh !important;
     padding-bottom: 20px !important;
+    background: #ffffff !important;
+    overflow-y: auto !important;
+  }
+
+  .sidebar nav,
+  .sidebar nav * {
+    display: flex !important;
+  }
+
+  .sidebar nav {
+    flex-direction: column !important;
   }
 }
