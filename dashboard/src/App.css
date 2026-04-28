@@ -109,3 +109,80 @@ body {
 ::-webkit-scrollbar-track { background: #f0f7f0; }
 ::-webkit-scrollbar-thumb { background: #86efac; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #16a34a; }
+@media (max-width: 768px) {
+
+  /* Fix sidebar to full width on mobile */
+  .sidebar {
+    width: 100% !important;
+    max-width: 320px !important;
+  }
+
+  /* Fix Y2Q badge overlapping navbar */
+  .hamburger-top {
+    display: flex !important;
+  }
+
+  /* Fix hero grid to single column */
+  .hero-grid {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+    padding: 24px 16px !important;
+  }
+
+  /* Hide dashboard preview on mobile */
+  .hero-preview {
+    display: none !important;
+  }
+
+  /* Fix stats bar */
+  .stats-bar-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  /* Fix pricing grid */
+  .pricing-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Fix how-it-works grid */
+  .how-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+
+  /* Fix nav links hidden on mobile */
+  .nav-links {
+    display: none !important;
+  }
+
+  /* Fix main content margin */
+  .main-content {
+    margin-left: 0 !important;
+  }
+
+  /* Fix stats grid */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Fix charts grid */
+  .charts-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Fix docs grid */
+  .docs-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Fix TLS grid */
+  .tls-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Fix analytics grid */
+  .analytics-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
