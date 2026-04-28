@@ -1,4 +1,9 @@
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* RESET */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 html, body, #root {
   width: 100%;
@@ -12,6 +17,13 @@ body {
   font-family: "Segoe UI", sans-serif;
 }
 
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f0f7f0; }
+::-webkit-scrollbar-thumb { background: #86efac; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #16a34a; }
+
+/* SIDEBAR OVERLAY */
 .sidebar-overlay {
   position: fixed;
   inset: 0;
@@ -19,12 +31,14 @@ body {
   z-index: 900;
 }
 
+/* MAIN CONTENT */
 .main-content {
   margin-left: 240px;
   width: calc(100% - 240px);
   overflow-x: hidden;
 }
 
+/* HAMBURGER */
 .hamburger {
   display: none;
   position: fixed;
@@ -43,146 +57,121 @@ body {
   justify-content: center;
 }
 
+/* ===================================== */
+/* 🔥 MOBILE FIX (MAIN IMPORTANT PART) */
+/* ===================================== */
+
 @media (max-width: 768px) {
 
-  /* Hamburger menu */
-  .hamburger { display: flex; }
+  /* SHOW HAMBURGER */
+  .hamburger {
+    display: flex;
+  }
 
-  /* Sidebar */
-  .main-content { margin-left: 0 !important; width: 100% !important; }
+  /* REMOVE SIDEBAR SPACE */
+  .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  /* SIDEBAR SLIDE */
   .sidebar {
     position: fixed !important;
-    top: 0 !important; left: 0 !important;
-    width: 260px !important;
-    height: 100vh !important;
-    z-index: 1000 !important;
+    top: 0;
+    left: 0;
+    width: 85% !important;
+    max-width: 320px;
+    height: 100vh;
+    background: white;
+    z-index: 1000;
     transform: translateX(-100%);
-    transition: transform 0.25s ease;
-  }
-  .sidebar.open { transform: translateX(0) !important; }
-
-  /* Dashboard grids */
-  .stats-grid,
-  .charts-grid,
-  .analytics-grid,
-  .docs-grid,
-  .tls-grid { grid-template-columns: 1fr !important; }
-
-  /* Homepage navbar — hide middle links */
-  .nav-links { display: none !important; }
-
-  /* Homepage hero — stack vertically, hide dashboard preview */
-  .hero-grid {
-    grid-template-columns: 1fr !important;
-    gap: 24px !important;
-    padding: 32px 16px !important;
-  }
-  .hero-preview { display: none !important; }
-
-  /* Stats bar — 2 columns on mobile */
-  .stats-bar-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 12px !important;
-    padding: 0 16px !important;
+    transition: transform 0.3s ease;
   }
 
-  /* How It Works — stack */
-  .how-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
-
-  /* Pricing — stack */
-  .pricing-grid { grid-template-columns: 1fr !important; }
-
-  /* General padding fixes */
-  h1 { font-size: 32px !important; line-height: 1.15 !important; }
-  h2 { font-size: 26px !important; }
-
-  /* Homepage sections padding */
-  div[id="howitworks"],
-  div[id="pricing"],
-  div[id="docs"],
-  div[id="features"] {
-    padding: 40px 16px !important;
-  }
-}
-
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #f0f7f0; }
-::-webkit-scrollbar-thumb { background: #86efac; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #16a34a; }
-@media (max-width: 768px) {
-
-  /* Fix sidebar to full width on mobile */
-  .sidebar {
-    width: 100% !important;
-    max-width: 320px !important;
+  .sidebar.open {
+    transform: translateX(0);
   }
 
-  /* Fix Y2Q badge overlapping navbar */
-  .hamburger-top {
-    display: flex !important;
-  }
-
-  /* Fix hero grid to single column */
-  .hero-grid {
-    grid-template-columns: 1fr !important;
-    gap: 24px !important;
-    padding: 24px 16px !important;
-  }
-
-  /* Hide dashboard preview on mobile */
+  /* 🔴 REMOVE PROBLEM ELEMENTS */
+  .nav-links,
+  .nav-actions,
+  .navbar-buttons,
+  .header-actions,
+  .countdown-badge,
+  .deadline-badge,
+  .y2q-badge,
   .hero-preview {
     display: none !important;
   }
 
-  /* Fix stats bar */
-  .stats-bar-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 12px !important;
+  /* NAVBAR CLEAN */
+  .navbar,
+  .topbar,
+  .header {
+    width: 100%;
+    padding: 12px 16px;
+    overflow: hidden;
   }
 
-  /* Fix pricing grid */
-  .pricing-grid {
+  .logo {
+    font-size: 20px !important;
+    white-space: nowrap;
+  }
+
+  /* HERO SECTION */
+  .hero-grid {
+    display: grid;
     grid-template-columns: 1fr !important;
+    gap: 20px;
+    padding: 28px 16px;
   }
 
-  /* Fix how-it-works grid */
+  h1 {
+    font-size: 36px !important;
+    line-height: 1.2;
+  }
+
+  h2 {
+    font-size: 24px !important;
+  }
+
+  p {
+    font-size: 16px !important;
+    line-height: 1.6;
+  }
+
+  /* BUTTONS FULL WIDTH */
+  .hero-grid button,
+  .hero-grid a {
+    width: 100%;
+    max-width: 100%;
+    text-align: center;
+  }
+
+  /* GRIDS → STACK */
+  .stats-grid,
+  .charts-grid,
+  .analytics-grid,
+  .docs-grid,
+  .tls-grid,
+  .pricing-grid,
   .how-grid {
     grid-template-columns: 1fr !important;
-    gap: 20px !important;
+    gap: 16px;
   }
 
-  /* Fix nav links hidden on mobile */
-  .nav-links {
-    display: none !important;
-  }
-
-  /* Fix main content margin */
-  .main-content {
-    margin-left: 0 !important;
-  }
-
-  /* Fix stats grid */
-  .stats-grid {
+  /* STATS BAR */
+  .stats-bar-grid {
     grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px;
+    padding: 0 12px;
   }
 
-  /* Fix charts grid */
-  .charts-grid {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* Fix docs grid */
-  .docs-grid {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* Fix TLS grid */
-  .tls-grid {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* Fix analytics grid */
-  .analytics-grid {
-    grid-template-columns: 1fr !important;
+  /* SECTION PADDING */
+  div[id="howitworks"],
+  div[id="pricing"],
+  div[id="docs"],
+  div[id="features"] {
+    padding: 32px 16px !important;
   }
 }
