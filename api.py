@@ -1,19 +1,27 @@
 # ============================================================
-# QuantumGuard — Quantum Cryptography Vulnerability Scanner
+# QuantumGuard — FastAPI Backend
 # Copyright (c) 2026 Pavansudheer Payyavula / MANGSRI
 # Licensed under AGPL v3 — github.com/cybersupe/quantumguard
+# Standards: NIST FIPS 203, FIPS 204, FIPS 205
 # ============================================================
+
 from fastapi import FastAPI, HTTPException, Header, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from pydantic import BaseModel
+from typing import Optional
 from scanner.scan import scan_directory, calculate_score
-import os, shutil, uuid, zipfile, io, requests
+import os, shutil, uuid, zipfile, io, requests, ssl, socket
+import datetime
 
 limiter = Limiter(key_func=get_remote_address)
-app = FastAPI(title="QuantumGuard API")
+app = FastAPI(
+    title="QuantumGuard API",
+    description="Post-quantum cryptography vulnerability scanner — Mangsri QuantumGuard LLC",
+    version="2.0",
+)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -26,24 +34,205 @@ app.add_middleware(
 )
 
 API_KEY = os.getenv("API_KEY", "quantumguard-secret-2026")
-MAX_ZIP_SIZE = 10 * 1024 * 1024
+MAX_ZIP_SIZE = 10 * 1024 * 1024  # 10 MB
+
 
 class ScanRequest(BaseModel):
     directory: str
 
-from typing import Optional
 
 class GitScanRequest(BaseModel):
     github_url: str
     github_token: Optional[str] = None
 
+
 def verify_key(key: str):
     if key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
+
+def _download_github_zip(github_url: str, github_token: Optional[str] = None) -> bytes:
+    """Download a GitHub repo as ZIP. Tries main then master branch."""
+    parts = github_url.rstrip("/").split("/")
+    owner = parts[-2]
+    repo = parts[-1].replace(".git", "")
+
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "QuantumGuard/2.0"}
+    if github_token:
+        headers["Authorization"] = f"token {github_token}"
+
+    for branch in ["main", "master"]:
+        zip_url = f"https://api.github.com/repos/{owner}/{repo}/zipball/{branch}"
+        response = requests.get(zip_url, headers=headers, timeout=30, allow_redirects=True)
+        if response.status_code == 200:
+            return response.content, owner, repo
+
+    raise HTTPException(status_code=400, detail="Could not download repo. Make sure it is public.")
+
+
+# ── TLS ANALYZER ─────────────────────────────────────────────
+
+# PQC/hybrid KEM indicators — only these make a connection truly "Post-Quantum Safe"
+PQC_INDICATORS = [
+    "KYBER", "MLKEM", "ML_KEM", "X25519KYBER768",
+    "X25519MLKEM768", "P256KYBER768DRAFT00",
+    "NTRU", "FRODO", "SABER", "BIKE", "HQC",
+]
+
+# Cipher suites considered strong (quantum-resilient symmetric component)
+STRONG_CIPHERS = ["AES_256", "AES-256", "CHACHA20"]
+ACCEPTABLE_CIPHERS = ["AES_128", "AES-128"]
+
+# Key exchange methods
+FORWARD_SECRECY_KX = ["ECDHE", "DHE", "X25519", "X448"]
+
+
+def _analyze_tls_score(tls_version: str, cipher_name: str, cipher_bits: int) -> dict:
+    """
+    Accurate TLS scoring. Separates:
+    - TLS version score
+    - Cipher strength score
+    - Key exchange score
+    - PQC readiness (separate from classical strength)
+
+    Does NOT mark anything as quantum_safe unless actual PQC/hybrid KEM detected.
+    """
+    score = 0
+    issues = []
+    strengths = []
+    labels = []
+
+    cipher_upper = cipher_name.upper()
+
+    # ── TLS Version (max 30 points) ──────────────────────────
+    if tls_version == "TLSv1.3":
+        score += 30
+        strengths.append("TLS 1.3 — latest standard")
+    elif tls_version == "TLSv1.2":
+        score += 15
+        issues.append("TLS 1.2 detected — upgrade to TLS 1.3 recommended")
+    elif tls_version in ("TLSv1.1", "TLSv1.0"):
+        score += 0
+        issues.append(f"{tls_version} is deprecated and insecure — upgrade to TLS 1.3 immediately")
+    else:
+        score += 0
+        issues.append(f"Unknown TLS version: {tls_version}")
+
+    # ── Cipher Strength (max 40 points) ──────────────────────
+    if any(strong in cipher_upper for strong in STRONG_CIPHERS):
+        score += 40
+        strengths.append("AES-256/ChaCha20 — quantum-resilient symmetric encryption")
+    elif any(ok in cipher_upper for ok in ACCEPTABLE_CIPHERS):
+        score += 20
+        issues.append(
+            "AES-128 detected — secure classically, but Grover's algorithm reduces effective "
+            "quantum security to ~64 bits. Upgrade to AES-256 for stronger quantum resilience."
+        )
+    elif cipher_bits and cipher_bits >= 256:
+        score += 30
+    elif cipher_bits and cipher_bits >= 128:
+        score += 15
+        issues.append(f"Cipher key size {cipher_bits}-bit — recommend 256-bit minimum for quantum resilience")
+    else:
+        issues.append("Weak or unknown cipher strength")
+
+    # ── Key Exchange (max 20 points) ─────────────────────────
+    has_pqc_kx = any(pqc in cipher_upper for pqc in PQC_INDICATORS)
+    has_forward_secrecy = any(kx in cipher_upper for kx in FORWARD_SECRECY_KX)
+
+    if has_pqc_kx:
+        score += 20
+        strengths.append("Post-Quantum / Hybrid KEM key exchange detected!")
+    elif has_forward_secrecy:
+        score += 10
+        # Do NOT say this is quantum safe — ECDHE is classical only
+        strengths.append("Forward secrecy via ECDHE/DHE")
+        issues.append(
+            "ECDHE/DHE key exchange provides forward secrecy but is NOT quantum-safe. "
+            "Shor's Algorithm will break ECDH. Upgrade to CRYSTALS-Kyber (ML-KEM FIPS 203) hybrid."
+        )
+    else:
+        issues.append("No forward secrecy detected — static RSA key exchange is quantum-vulnerable")
+
+    # ── Quantum Safety Label ─────────────────────────────────
+    # ONLY mark as quantum safe if actual PQC KEM is detected
+    quantum_safe = has_pqc_kx
+
+    if quantum_safe:
+        labels.append("Post-Quantum Safe")
+    elif tls_version == "TLSv1.3" and any(strong in cipher_upper for strong in STRONG_CIPHERS):
+        labels.append("Modern TLS Secure")
+        labels.append("Not Post-Quantum Safe Yet")
+        labels.append("PQC Upgrade Recommended")
+    elif tls_version in ("TLSv1.3", "TLSv1.2"):
+        labels.append("Not Post-Quantum Safe Yet")
+        labels.append("PQC Upgrade Recommended")
+    else:
+        labels.append("Insecure TLS Configuration")
+        labels.append("PQC Upgrade Required")
+
+    score = max(0, min(100, score))
+
+    return {
+        "tls_score": score,
+        "quantum_safe": quantum_safe,
+        "labels": labels,
+        "strengths": strengths,
+        "issues": issues,
+        "has_forward_secrecy": has_forward_secrecy,
+        "has_pqc_kex": has_pqc_kx,
+    }
+
+
+def _analyze_certificate(cert: dict) -> dict:
+    """Analyze certificate separately from crypto score."""
+    cert_info = {}
+    cert_issues = []
+
+    exp_str = cert.get("notAfter", "")
+    cert_info["cert_expires"] = exp_str
+
+    if exp_str:
+        try:
+            exp_date = datetime.datetime.strptime(exp_str, "%b %d %H:%M:%S %Y %Z")
+            days_remaining = (exp_date - datetime.datetime.utcnow()).days
+            cert_info["days_until_expiry"] = days_remaining
+            if days_remaining < 0:
+                cert_issues.append("CRITICAL: Certificate has already expired!")
+            elif days_remaining < 14:
+                cert_issues.append(f"URGENT: Certificate expires in {days_remaining} days!")
+            elif days_remaining < 30:
+                cert_issues.append(f"WARNING: Certificate expires in {days_remaining} days — renew soon")
+            elif days_remaining < 60:
+                cert_issues.append(f"NOTICE: Certificate expires in {days_remaining} days")
+        except ValueError:
+            cert_info["days_until_expiry"] = None
+
+    # Subject/issuer info
+    subject = dict(x[0] for x in cert.get("subject", []))
+    issuer = dict(x[0] for x in cert.get("issuer", []))
+    cert_info["subject_cn"] = subject.get("commonName", "")
+    cert_info["issuer_cn"] = issuer.get("commonName", "")
+
+    # SAN
+    san = cert.get("subjectAltName", [])
+    cert_info["san_count"] = len(san)
+
+    return cert_info, cert_issues
+
+
+# ── API ROUTES ────────────────────────────────────────────────
+
 @app.get("/")
 def root():
-    return {"message": "QuantumGuard API is running!"}
+    return {
+        "message": "QuantumGuard API is running!",
+        "version": "2.0",
+        "company": "Mangsri QuantumGuard LLC",
+        "website": "https://quantumguard.site",
+        "standards": ["NIST FIPS 203", "NIST FIPS 204", "NIST FIPS 205"],
+    }
+
 
 @app.post("/scan")
 @limiter.limit("10/minute")
@@ -51,78 +240,103 @@ def scan(request: Request, body: ScanRequest, x_api_key: str = Header(...)):
     verify_key(x_api_key)
     if not os.path.exists(body.directory):
         raise HTTPException(status_code=404, detail="Directory not found")
+
     findings = scan_directory(body.directory)
     score = calculate_score(findings)
-    return {"quantum_readiness_score": score, "total_findings": len(findings), "findings": findings}
+    severity_summary = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0}
+    for f in findings:
+        sev = f.get("severity", "MEDIUM")
+        severity_summary[sev] = severity_summary.get(sev, 0) + 1
+
+    return {
+        "quantum_readiness_score": score,
+        "total_findings": len(findings),
+        "severity_summary": severity_summary,
+        "findings": findings,
+    }
+
 
 @app.post("/public-scan-zip")
 @limiter.limit("3/minute")
 async def public_scan_zip(request: Request, file: UploadFile = File(...)):
     if not file.filename.endswith(".zip"):
         raise HTTPException(status_code=400, detail="Only ZIP files allowed")
+
     contents = await file.read()
     if len(contents) > MAX_ZIP_SIZE:
         raise HTTPException(status_code=400, detail="ZIP file too large. Maximum 10MB allowed")
+
     temp_dir = f"/tmp/qg-{uuid.uuid4().hex[:8]}"
     try:
         os.makedirs(temp_dir, exist_ok=True)
         with zipfile.ZipFile(io.BytesIO(contents)) as z:
             z.extractall(temp_dir)
+
         findings = scan_directory(temp_dir)
         score = calculate_score(findings)
-        return {"filename": file.filename, "quantum_readiness_score": score, "total_findings": len(findings), "findings": findings}
+        severity_summary = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0}
+        for f in findings:
+            sev = f.get("severity", "MEDIUM")
+            severity_summary[sev] = severity_summary.get(sev, 0) + 1
+
+        return {
+            "filename": file.filename,
+            "quantum_readiness_score": score,
+            "total_findings": len(findings),
+            "severity_summary": severity_summary,
+            "findings": findings,
+        }
     except zipfile.BadZipFile:
         raise HTTPException(status_code=400, detail="Invalid ZIP file")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Scan error: {str(e)}")
     finally:
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
+
 
 @app.post("/scan-github")
 @limiter.limit("20/minute")
 async def scan_github(request: Request, body: GitScanRequest):
     if "github.com" not in body.github_url:
         raise HTTPException(status_code=400, detail="Only GitHub URLs allowed")
+
     temp_dir = None
     try:
-        parts = body.github_url.rstrip("/").split("/")
-        owner = parts[-2]
-        repo = parts[-1].replace(".git", "")
-
-        headers = {
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "QuantumGuard"
-        }
-
-        if body.github_token:
-            headers["Authorization"] = f"token {body.github_token}"
-
-        zip_url = f"https://api.github.com/repos/{owner}/{repo}/zipball/main"
-        response = requests.get(zip_url, headers=headers, timeout=30, allow_redirects=True)
-
-        if response.status_code != 200:
-            zip_url = f"https://api.github.com/repos/{owner}/{repo}/zipball/master"
-            response = requests.get(zip_url, headers=headers, timeout=30, allow_redirects=True)
-
-        if response.status_code != 200:
-            raise HTTPException(status_code=400, detail="Could not download repo. Make sure it is public.")
+        zip_content, owner, repo = _download_github_zip(body.github_url, body.github_token)
 
         temp_dir = f"/tmp/qg-{uuid.uuid4().hex[:8]}"
         os.makedirs(temp_dir, exist_ok=True)
-
-        with zipfile.ZipFile(io.BytesIO(response.content)) as z:
+        with zipfile.ZipFile(io.BytesIO(zip_content)) as z:
             z.extractall(temp_dir)
 
         findings = scan_directory(temp_dir)
         score = calculate_score(findings)
+
+        severity_summary = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0}
+        confidence_summary = {"HIGH": 0, "MEDIUM": 0, "LOW": 0}
+        for f in findings:
+            sev = f.get("severity", "MEDIUM")
+            conf = f.get("confidence", "MEDIUM")
+            severity_summary[sev] = severity_summary.get(sev, 0) + 1
+            confidence_summary[conf] = confidence_summary.get(conf, 0) + 1
+
         return {
             "github_url": body.github_url,
             "repo": f"{owner}/{repo}",
             "quantum_readiness_score": score,
             "total_findings": len(findings),
-            "findings": findings
+            "severity_summary": severity_summary,
+            "confidence_summary": confidence_summary,
+            "findings": findings,
+            "meta": {
+                "tool": "QuantumGuard v2.0",
+                "standards": ["NIST FIPS 203", "NIST FIPS 204", "NIST FIPS 205"],
+                "company": "Mangsri QuantumGuard LLC",
+                "website": "https://quantumguard.site",
+            }
         }
+
     except HTTPException:
         raise
     except Exception as e:
@@ -130,34 +344,29 @@ async def scan_github(request: Request, body: GitScanRequest):
     finally:
         if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
+
 
 @app.post("/check-agility")
 @limiter.limit("10/minute")
 async def check_agility(request: Request, body: GitScanRequest):
     if "github.com" not in body.github_url:
         raise HTTPException(status_code=400, detail="Only GitHub URLs allowed")
+
     temp_dir = None
     try:
-        parts = body.github_url.rstrip("/").split("/")
-        owner = parts[-2]
-        repo = parts[-1].replace(".git", "")
-        headers = {"Accept": "application/vnd.github+json", "User-Agent": "QuantumGuard"}
-        if body.github_token:
-            headers["Authorization"] = f"token {body.github_token}"
-        zip_url = f"https://api.github.com/repos/{owner}/{repo}/zipball/main"
-        response = requests.get(zip_url, headers=headers, timeout=30, allow_redirects=True)
-        if response.status_code != 200:
-            zip_url = f"https://api.github.com/repos/{owner}/{repo}/zipball/master"
-            response = requests.get(zip_url, headers=headers, timeout=30, allow_redirects=True)
-        if response.status_code != 200:
-            raise HTTPException(status_code=400, detail="Could not download repo.")
+        zip_content, owner, repo = _download_github_zip(body.github_url, body.github_token)
+
         temp_dir = f"/tmp/qg-{uuid.uuid4().hex[:8]}"
         os.makedirs(temp_dir, exist_ok=True)
-        with zipfile.ZipFile(io.BytesIO(response.content)) as z:
+        with zipfile.ZipFile(io.BytesIO(zip_content)) as z:
             z.extractall(temp_dir)
+
         from scanner.scan import check_crypto_agility
         result = check_crypto_agility(temp_dir)
+        result["repo"] = f"{owner}/{repo}"
+        result["github_url"] = body.github_url
         return result
+
     except HTTPException:
         raise
     except Exception as e:
@@ -166,13 +375,23 @@ async def check_agility(request: Request, body: GitScanRequest):
         if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
 
+
 @app.post("/analyze-tls")
 @limiter.limit("10/minute")
 async def analyze_tls(request: Request, body: dict):
-    import ssl, socket
-    domain = body.get("domain", "").strip().replace("https://", "").replace("http://", "").split("/")[0]
+    """
+    Improved TLS analyzer.
+    - Does NOT wrongly mark ECDHE as quantum-safe
+    - Separates cert expiry from crypto score
+    - Uses accurate labels: Modern TLS Secure / Not Post-Quantum Safe Yet / PQC Upgrade Recommended
+    - Only marks quantum_safe=True if actual PQC/hybrid KEM is detected
+    """
+    raw_domain = body.get("domain", "").strip()
+    domain = raw_domain.replace("https://", "").replace("http://", "").split("/")[0]
+
     if not domain:
         raise HTTPException(status_code=400, detail="Domain required")
+
     try:
         ctx = ssl.create_default_context()
         with socket.create_connection((domain, 443), timeout=10) as sock:
@@ -180,42 +399,76 @@ async def analyze_tls(request: Request, body: dict):
                 tls_version = ssock.version()
                 cipher = ssock.cipher()
                 cert = ssock.getpeercert()
-                cipher_name = cipher[0] if cipher else "Unknown"
-                cipher_bits = cipher[2] if cipher else 0
-                quantum_safe = tls_version == "TLSv1.3" and "ECDHE" in cipher_name
-                score = 0
-                if tls_version == "TLSv1.3": score += 40
-                elif tls_version == "TLSv1.2": score += 20
-                if "ECDHE" in cipher_name: score += 20
-                if cipher_bits and cipher_bits >= 256: score += 20
-                if "AES_256" in cipher_name: score += 20
-                import datetime
-                exp = cert.get("notAfter", "")
-                issues = []
-                if tls_version != "TLSv1.3":
-                    issues.append(f"Using {tls_version} — upgrade to TLS 1.3")
-                if "RSA" in cipher_name and "ECDHE" not in cipher_name:
-                    issues.append("RSA key exchange is quantum-vulnerable")
-                if cipher_bits and cipher_bits < 256:
-                    issues.append(f"Cipher key size {cipher_bits} bits — use 256-bit minimum")
-                return {
-                    "domain": domain,
-                    "tls_version": tls_version,
-                    "cipher_suite": cipher_name,
-                    "cipher_bits": cipher_bits,
-                    "quantum_safe": quantum_safe,
-                    "tls_score": score,
-                    "cert_expires": exp,
-                    "issues": issues,
-                    "recommendation": "Upgrade to TLS 1.3 with CRYSTALS-Kyber when available" if not quantum_safe else "Good — use TLS 1.3 with post-quantum cipher suites when standardized"
-                }
+
+        cipher_name = cipher[0] if cipher else "Unknown"
+        cipher_bits = cipher[2] if cipher else 0
+
+        # Score analysis (separated from cert)
+        analysis = _analyze_tls_score(tls_version, cipher_name, cipher_bits)
+
+        # Certificate analysis (separate)
+        cert_info, cert_issues = _analyze_certificate(cert)
+
+        # NIST recommendation
+        if analysis["quantum_safe"]:
+            nist_recommendation = "Already using PQC — maintain and monitor NIST updates"
+        elif tls_version == "TLSv1.3":
+            nist_recommendation = (
+                "Upgrade key exchange to CRYSTALS-Kyber hybrid (X25519Kyber768) per NIST FIPS 203. "
+                "Google Chrome already supports this as an experiment."
+            )
+        else:
+            nist_recommendation = (
+                "Step 1: Upgrade to TLS 1.3. "
+                "Step 2: Upgrade cipher to AES-256-GCM. "
+                "Step 3: Deploy CRYSTALS-Kyber hybrid KEM per NIST FIPS 203."
+            )
+
+        return {
+            "domain": domain,
+            "tls_version": tls_version,
+            "cipher_suite": cipher_name,
+            "cipher_bits": cipher_bits,
+            # Core result
+            "quantum_safe": analysis["quantum_safe"],
+            "tls_score": analysis["tls_score"],
+            "labels": analysis["labels"],
+            # Detailed breakdown
+            "strengths": analysis["strengths"],
+            "issues": analysis["issues"] + cert_issues,
+            "crypto_issues": analysis["issues"],
+            "cert_issues": cert_issues,
+            # Certificate (separate from score)
+            "certificate": cert_info,
+            # Flags
+            "has_forward_secrecy": analysis["has_forward_secrecy"],
+            "has_pqc_key_exchange": analysis["has_pqc_kex"],
+            # Recommendation
+            "nist_recommendation": nist_recommendation,
+            "nist_standard": "CRYSTALS-Kyber (ML-KEM) — NIST FIPS 203",
+            "meta": {
+                "tool": "QuantumGuard TLS Analyzer v2.0",
+                "company": "Mangsri QuantumGuard LLC",
+                "website": "https://quantumguard.site",
+                "note": "quantum_safe=True only when actual PQC/hybrid KEM is detected in cipher suite",
+            }
+        }
+
     except ssl.SSLError as e:
         raise HTTPException(status_code=400, detail=f"SSL Error: {str(e)}")
     except socket.timeout:
-        raise HTTPException(status_code=400, detail="Connection timed out")
+        raise HTTPException(status_code=408, detail="Connection timed out")
+    except socket.gaierror:
+        raise HTTPException(status_code=400, detail=f"Cannot resolve domain: {domain}")
     except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Error: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"TLS analysis error: {str(e)}")
+
 
 @app.get("/health")
 def health():
-    return {"status": "healthy"}
+    return {
+        "status": "healthy",
+        "version": "2.0",
+        "tool": "QuantumGuard",
+        "company": "Mangsri QuantumGuard LLC",
+    }
