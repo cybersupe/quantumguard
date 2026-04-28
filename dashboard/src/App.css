@@ -175,3 +175,51 @@ body {
     padding: 32px 16px !important;
   }
 }
+@media (max-width: 768px) {
+  body {
+    overflow-x: hidden !important;
+  }
+
+  nav,
+  header,
+  .navbar,
+  .topbar,
+  .header {
+    max-width: 100vw !important;
+    overflow: hidden !important;
+  }
+
+  nav a:not(:first-child),
+  nav button,
+  header a:not(:first-child),
+  header button {
+    display: none !important;
+  }
+
+  .hero-grid,
+  .hero,
+  section {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  h1 {
+    font-size: 34px !important;
+    line-height: 1.15 !important;
+    word-break: break-word !important;
+  }
+
+  .hero-preview,
+  [class*="preview"],
+  [class*="dashboard-preview"],
+  [class*="badge"],
+  [class*="countdown"] {
+    display: none !important;
+  }
+
+  [class*="grid"] {
+    grid-template-columns: 1fr !important;
+  }
+}
