@@ -223,3 +223,92 @@ body {
     grid-template-columns: 1fr !important;
   }
 }
+/* ===== FINAL MOBILE FIX FOR QUANTUMGUARD HOMEPAGE ===== */
+@media (max-width: 768px) {
+  html,
+  body,
+  #root {
+    width: 100%;
+    overflow-x: hidden !important;
+  }
+
+  /* Homepage navbar */
+  nav {
+    height: 58px !important;
+    padding: 0 14px !important;
+    max-width: 100vw !important;
+    overflow: hidden !important;
+  }
+
+  /* Hide desktop nav links */
+  nav .nav-links {
+    display: none !important;
+  }
+
+  /* Hide right badges/buttons on mobile */
+  nav > div:nth-child(3) {
+    display: none !important;
+  }
+
+  /* Hide red urgency bar below navbar */
+  nav + div {
+    display: none !important;
+  }
+
+  /* Hero mobile layout */
+  .hero-grid {
+    grid-template-columns: 1fr !important;
+    padding: 34px 18px !important;
+    gap: 24px !important;
+    max-width: 100vw !important;
+  }
+
+  .hero-preview {
+    display: none !important;
+  }
+
+  h1 {
+    font-size: 38px !important;
+    line-height: 1.15 !important;
+  }
+
+  p {
+    font-size: 16px !important;
+    line-height: 1.6 !important;
+  }
+
+  /* Hero buttons full width */
+  .hero-grid button,
+  .hero-grid a {
+    width: 100% !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  .stats-grid,
+  .charts-grid,
+  .analytics-grid,
+  .docs-grid,
+  .tls-grid,
+  .pricing-grid,
+  .how-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  div[id="features"],
+  div[id="howitworks"],
+  div[id="pricing"],
+  div[id="docs"] {
+    padding: 36px 18px !important;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  .sidebar {
+    width: 85% !important;
+    max-width: 320px !important;
+  }
+}
