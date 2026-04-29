@@ -330,15 +330,7 @@ function NISTReportPage() {
 
   const handleExportPDF = () => {
     const win = window.open("", "_blank");
-    const csvRows = ["Severity,File,Line,Vulnerability,Code,Replacement",
-      ...result.findings.map(f => [
-        f.severity, f.file, f.line, f.vulnerability,
-        '"' + (f.code || "").replace(/"/g, "'").replace(/\n/g, " ") + '"',
-        f.replacement
-      ].join(","))
-    ].join("\n");
-    const csvUrl = "data:text/csv;charset=utf-8," + encodeURIComponent(csvRows);
-            win.document.write(`<!DOCTYPE html><html><head><title>QuantumGuard NIST Report</title>
+    win.document.write(`<!DOCTYPE html><html><head><title>QuantumGuard NIST Report</title>
     <style>body{font-family:sans-serif;padding:40px;color:#1a1a1a}h1{color:#16a34a}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #e2f0e2;padding:8px 12px;text-align:left;font-size:12px}th{background:#f0fdf4;font-weight:700}tr:nth-child(even){background:#f8faf8}.CRITICAL{color:#dc2626;font-weight:700}.HIGH{color:#d97706;font-weight:700}.MEDIUM{color:#ca8a04;font-weight:700}</style>
     </head><body>
     <h1>⚛ QuantumGuard — NIST SP 800-53 Report</h1>
@@ -633,6 +625,15 @@ function ScannerPage({ user }) {
 
   const handleNIST = () => {
     if (!result) return;
+    const csvRows = ["Severity,File,Line,Vulnerability,Code,Replacement",
+      ...result.findings.map(f => [
+        f.severity, f.file, f.line, f.vulnerability,
+        '"' + (f.code || "").replace(/"/g, "'").replace(/
+/g, " ") + '"',
+        f.replacement
+      ].join(","))
+    ].join("\n");
+    const csvUrl = "data:text/csv;charset=utf-8," + encodeURIComponent(csvRows);
     const win = window.open("", "_blank");
     const score = result.quantum_readiness_score;
     const status = score >= 70 ? "COMPLIANT" : score >= 40 ? "PARTIALLY COMPLIANT" : "NON-COMPLIANT";
