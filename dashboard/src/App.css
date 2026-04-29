@@ -312,3 +312,33 @@ body {
     max-width: 320px !important;
   }
 }
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  .sidebar {
+    width: 82% !important;
+    max-width: 280px !important;
+    z-index: 1000 !important;
+  }
+
+  .sidebar-overlay {
+    z-index: 900 !important;
+  }
+
+  .app-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 800;
+  }
+
+  .stats-grid,
+  .charts-grid,
+  .analytics-grid,
+  .docs-grid,
+  .tls-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
