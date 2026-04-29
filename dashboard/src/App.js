@@ -3,6 +3,7 @@ import "./App.css";
 import emailjs from "@emailjs/browser";
 import { auth, db, signInWithGoogle, canUserScan, incrementScanCount } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
+import LandingPage from "./LandingPage";
 import { collection, addDoc, getDocs, query, where, orderBy } from "firebase/firestore";
 
 const API = "https://quantumguard-api.onrender.com";
@@ -1588,7 +1589,7 @@ export default function App() {
   const handleLogin = async () => { try { await signInWithGoogle(); } catch (e) { console.error(e); } };
   const handleLogout = async () => { try { await signOut(auth); setUser(null); } catch (e) { console.error(e); } };
 
-  if (active === "home") return <Homepage onGetStarted={() => setActive("scan")} />;
+  if (active === "home") return <LandingPage onStart={() => setActive("scan")} />;
 
   const pageTitle = { scan: "Threat Scanner", agility: "Agility Checker", tls: "TLS Analyzer", history: "Scan History", migration: "Migration Tracker", dashboard: "Analytics", docs: "Documentation" };
 
