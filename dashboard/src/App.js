@@ -136,12 +136,7 @@ function TopBar({ title, user, onLogin, onLogout, onHamburger }) {
       <span style={{ color: C.muted, fontSize: 13 }}>QuantumGuard</span>
       <span style={{ color: C.greenMid, fontSize: 13 }}>›</span>
       <span style={{ color: C.text, fontSize: 14, fontWeight: 600 }}>{title}</span>
-      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, background: C.greenLighter, padding: "4px 10px", borderRadius: 20, border: `1px solid ${C.greenMid}` }}>
-          <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.green }}></div>
-          <span style={{ fontSize: 11, color: C.green, fontWeight: 600 }}>API Online</span>
-        </div>
-        <span style={{ fontSize: 11, color: C.muted }}>{new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</span>
+      <div className="topbar-right" style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
         {user ? (
           <button onClick={onLogout} style={{ background: "transparent", border: `1px solid ${C.panelBorder}`, borderRadius: 8, padding: "4px 12px", cursor: "pointer", color: C.muted, fontSize: 11 }}>
             {user.displayName?.split(" ")[0]} · Sign Out
