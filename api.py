@@ -25,11 +25,19 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# ── CORS — explicit origins fix for Render proxy ─────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://quantumguard.site",
+        "https://www.quantumguard.site",
+        "https://quantumguard-one.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+    ],
     allow_credentials=False,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -72,31 +80,18 @@ def _download_github_zip(github_url: str, github_token: Optional[str] = None) ->
 
 # ── TLS ANALYZER ─────────────────────────────────────────────
 
-# PQC/hybrid KEM indicators — only these make a connection truly "Post-Quantum Safe"
 PQC_INDICATORS = [
     "KYBER", "MLKEM", "ML_KEM", "X25519KYBER768",
     "X25519MLKEM768", "P256KYBER768DRAFT00",
     "NTRU", "FRODO", "SABER", "BIKE", "HQC",
 ]
 
-# Cipher suites considered strong (quantum-resilient symmetric component)
 STRONG_CIPHERS = ["AES_256", "AES-256", "CHACHA20"]
 ACCEPTABLE_CIPHERS = ["AES_128", "AES-128"]
-
-# Key exchange methods
 FORWARD_SECRECY_KX = ["ECDHE", "DHE", "X25519", "X448"]
 
 
 def _analyze_tls_score(tls_version: str, cipher_name: str, cipher_bits: int) -> dict:
-    """
-    Accurate TLS scoring. Separates:
-    - TLS version score
-    - Cipher strength score
-    - Key exchange score
-    - PQC readiness (separate from classical strength)
-
-    Does NOT mark anything as quantum_safe unless actual PQC/hybrid KEM detected.
-    """
     score = 0
     issues = []
     strengths = []
@@ -104,7 +99,7 @@ def _analyze_tls_score(tls_version: str, cipher_name: str, cipher_bits: int) -> 
 
     cipher_upper = cipher_name.upper()
 
-    # ── TLS Version (max 30 points) ──────────────────────────
+    # TLS Version (max 30 points)
     if tls_version == "TLSv1.3":
         score += 30
         strengths.append("TLS 1.3 — latest standard")
@@ -118,7 +113,7 @@ def _analyze_tls_score(tls_version: str, cipher_name: str, cipher_bits: int) -> 
         score += 0
         issues.append(f"Unknown TLS version: {tls_version}")
 
-    # ── Cipher Strength (max 40 points) ──────────────────────
+    # Cipher Strength (max 40 points)
     if any(strong in cipher_upper for strong in STRONG_CIPHERS):
         score += 40
         strengths.append("AES-256/ChaCha20 — quantum-resilient symmetric encryption")
@@ -136,7 +131,7 @@ def _analyze_tls_score(tls_version: str, cipher_name: str, cipher_bits: int) -> 
     else:
         issues.append("Weak or unknown cipher strength")
 
-    # ── Key Exchange (max 20 points) ─────────────────────────
+    # Key Exchange (max 20 points)
     has_pqc_kx = any(pqc in cipher_upper for pqc in PQC_INDICATORS)
     has_forward_secrecy = any(kx in cipher_upper for kx in FORWARD_SECRECY_KX)
 
@@ -145,7 +140,6 @@ def _analyze_tls_score(tls_version: str, cipher_name: str, cipher_bits: int) -> 
         strengths.append("Post-Quantum / Hybrid KEM key exchange detected!")
     elif has_forward_secrecy:
         score += 10
-        # Do NOT say this is quantum safe — ECDHE is classical only
         strengths.append("Forward secrecy via ECDHE/DHE")
         issues.append(
             "ECDHE/DHE key exchange provides forward secrecy but is NOT quantum-safe. "
@@ -154,8 +148,6 @@ def _analyze_tls_score(tls_version: str, cipher_name: str, cipher_bits: int) -> 
     else:
         issues.append("No forward secrecy detected — static RSA key exchange is quantum-vulnerable")
 
-    # ── Quantum Safety Label ─────────────────────────────────
-    # ONLY mark as quantum safe if actual PQC KEM is detected
     quantum_safe = has_pqc_kx
 
     if quantum_safe:
@@ -185,7 +177,6 @@ def _analyze_tls_score(tls_version: str, cipher_name: str, cipher_bits: int) -> 
 
 
 def _analyze_certificate(cert: dict) -> dict:
-    """Analyze certificate separately from crypto score."""
     cert_info = {}
     cert_issues = []
 
@@ -208,13 +199,11 @@ def _analyze_certificate(cert: dict) -> dict:
         except ValueError:
             cert_info["days_until_expiry"] = None
 
-    # Subject/issuer info
     subject = dict(x[0] for x in cert.get("subject", []))
     issuer = dict(x[0] for x in cert.get("issuer", []))
     cert_info["subject_cn"] = subject.get("commonName", "")
     cert_info["issuer_cn"] = issuer.get("commonName", "")
 
-    # SAN
     san = cert.get("subjectAltName", [])
     cert_info["san_count"] = len(san)
 
@@ -379,13 +368,6 @@ async def check_agility(request: Request, body: GitScanRequest):
 @app.post("/analyze-tls")
 @limiter.limit("10/minute")
 async def analyze_tls(request: Request, body: dict):
-    """
-    Improved TLS analyzer.
-    - Does NOT wrongly mark ECDHE as quantum-safe
-    - Separates cert expiry from crypto score
-    - Uses accurate labels: Modern TLS Secure / Not Post-Quantum Safe Yet / PQC Upgrade Recommended
-    - Only marks quantum_safe=True if actual PQC/hybrid KEM is detected
-    """
     raw_domain = body.get("domain", "").strip()
     domain = raw_domain.replace("https://", "").replace("http://", "").split("/")[0]
 
@@ -403,13 +385,9 @@ async def analyze_tls(request: Request, body: dict):
         cipher_name = cipher[0] if cipher else "Unknown"
         cipher_bits = cipher[2] if cipher else 0
 
-        # Score analysis (separated from cert)
         analysis = _analyze_tls_score(tls_version, cipher_name, cipher_bits)
-
-        # Certificate analysis (separate)
         cert_info, cert_issues = _analyze_certificate(cert)
 
-        # NIST recommendation
         if analysis["quantum_safe"]:
             nist_recommendation = "Already using PQC — maintain and monitor NIST updates"
         elif tls_version == "TLSv1.3":
@@ -429,21 +407,16 @@ async def analyze_tls(request: Request, body: dict):
             "tls_version": tls_version,
             "cipher_suite": cipher_name,
             "cipher_bits": cipher_bits,
-            # Core result
             "quantum_safe": analysis["quantum_safe"],
             "tls_score": analysis["tls_score"],
             "labels": analysis["labels"],
-            # Detailed breakdown
             "strengths": analysis["strengths"],
             "issues": analysis["issues"] + cert_issues,
             "crypto_issues": analysis["issues"],
             "cert_issues": cert_issues,
-            # Certificate (separate from score)
             "certificate": cert_info,
-            # Flags
             "has_forward_secrecy": analysis["has_forward_secrecy"],
             "has_pqc_key_exchange": analysis["has_pqc_kex"],
-            # Recommendation
             "nist_recommendation": nist_recommendation,
             "nist_standard": "CRYSTALS-Kyber (ML-KEM) — NIST FIPS 203",
             "meta": {
@@ -462,6 +435,123 @@ async def analyze_tls(request: Request, body: dict):
         raise HTTPException(status_code=400, detail=f"Cannot resolve domain: {domain}")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"TLS analysis error: {str(e)}")
+
+
+@app.post("/ai-fix")
+@limiter.limit("10/minute")
+async def ai_fix(request: Request, body: dict):
+    """Generate AI-powered fix suggestion for a vulnerability finding."""
+    finding = body.get("finding", {})
+    if not finding:
+        raise HTTPException(status_code=400, detail="Finding required")
+
+    vuln = finding.get("vulnerability", "")
+    code = finding.get("code", "")
+    replacement = finding.get("replacement", "")
+    severity = finding.get("severity", "")
+    risk = finding.get("risk_explanation", "")
+
+    fix_map = {
+        "RSA": f"""# BEFORE (Quantum-Vulnerable):
+{code}
+
+# AFTER (NIST FIPS 203 — CRYSTALS-Kyber ML-KEM):
+# Install: pip install liboqs-python
+import oqs
+
+# Key Generation
+kem = oqs.KeyEncapsulation("Kyber768")
+public_key = kem.generate_keypair()
+
+# Encryption
+ciphertext, shared_secret = kem.encap_secret(public_key)
+
+# Decryption
+shared_secret = kem.decap_secret(ciphertext)
+
+# Why: RSA is broken by Shor's Algorithm on quantum computers.
+# CRYSTALS-Kyber (ML-KEM) is NIST FIPS 203 approved — the official replacement.""",
+
+        "ECC": f"""# BEFORE (Quantum-Vulnerable):
+{code}
+
+# AFTER (NIST FIPS 204 — CRYSTALS-Dilithium ML-DSA):
+# Install: pip install liboqs-python
+import oqs
+
+# Signing
+signer = oqs.Signature("Dilithium3")
+public_key = signer.generate_keypair()
+signature = signer.sign(message)
+
+# Verification
+verifier = oqs.Signature("Dilithium3")
+is_valid = verifier.verify(message, signature, public_key)
+
+# Why: ECC/ECDSA is broken by Shor's Algorithm.
+# CRYSTALS-Dilithium (ML-DSA) is NIST FIPS 204 approved.""",
+
+        "MD5": f"""# BEFORE (Broken Hash):
+{code}
+
+# AFTER (NIST FIPS 202 — SHA-3):
+import hashlib
+
+# Replace md5 with sha3_256
+hash_value = hashlib.sha3_256(data).hexdigest()
+
+# Or for higher security:
+hash_value = hashlib.sha3_512(data).hexdigest()
+
+# Why: MD5 is cryptographically broken. Grover's algorithm
+# further reduces effective security. SHA-3 is quantum-resilient.""",
+
+        "SHA1": f"""# BEFORE (Deprecated Hash):
+{code}
+
+# AFTER (NIST FIPS 202 — SHA-3):
+import hashlib
+
+# Replace sha1 with sha3_256
+hash_value = hashlib.sha3_256(data).hexdigest()
+
+# Why: SHA-1 is deprecated and broken. Grover's algorithm
+# halves effective security to ~80 bits. SHA-3 is the standard.""",
+
+        "DH": f"""# BEFORE (Quantum-Vulnerable Key Exchange):
+{code}
+
+# AFTER (NIST FIPS 203 — CRYSTALS-Kyber ML-KEM):
+import oqs
+
+kem = oqs.KeyEncapsulation("Kyber768")
+public_key = kem.generate_keypair()
+ciphertext, shared_secret_enc = kem.encap_secret(public_key)
+shared_secret_dec = kem.decap_secret(ciphertext)
+
+# Why: Diffie-Hellman is broken by Shor's Algorithm.
+# ML-KEM provides quantum-safe key exchange per NIST FIPS 203.""",
+    }
+
+    # Get fix for this vulnerability type
+    fix_text = None
+    for key in fix_map:
+        if vuln.startswith(key):
+            fix_text = fix_map[key]
+            break
+
+    if not fix_text:
+        fix_text = f"""# BEFORE (Vulnerable):
+{code}
+
+# Recommended replacement: {replacement}
+
+# Risk: {risk}
+
+# Migration Priority: {severity}
+# Reference: https://csrc.nist.gov/projects/post-quantum-cryptography"""
+
+    return {"fix": fix_text, "vulnerability": vuln, "replacement": replacement}
 
 
 @app.get("/health")
