@@ -204,41 +204,31 @@ function Badge({ text, color, bg }) {
 // NIST REPORT PAGE
 // ══════════════════════════════════════════════════════════════
 
-const RAW_FINDINGS = [
-  { file: "tests/TestVulnerable.java", line: 8,  code: "// RSA - QUANTUM VULNERABLE",                                        vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
-  { file: "tests/TestVulnerable.java", line: 9,  code: 'KeyPairGenerator rsaGen = KeyPairGenerator.getInstance("RSA");',    vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
-  { file: "tests/TestVulnerable.java", line: 10, code: "rsaGen.initialize(2048);",                                           vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
-  { file: "tests/TestVulnerable.java", line: 12, code: "// ECC - QUANTUM VULNERABLE",                                        vulnerability: "ECC",  severity: "CRITICAL", replacement: "CRYSTALS-Dilithium" },
-  { file: "tests/TestVulnerable.java", line: 13, code: 'KeyPairGenerator ecGen = KeyPairGenerator.getInstance("EC");',      vulnerability: "ECC",  severity: "CRITICAL", replacement: "CRYSTALS-Dilithium" },
-  { file: "tests/TestVulnerable.java", line: 15, code: "// DH - QUANTUM VULNERABLE",                                         vulnerability: "DH",   severity: "HIGH",     replacement: "CRYSTALS-Kyber" },
-  { file: "tests/TestVulnerable.java", line: 16, code: 'KeyPairGenerator dhGen = KeyPairGenerator.getInstance("DH");',      vulnerability: "DH",   severity: "HIGH",     replacement: "CRYSTALS-Kyber" },
-  { file: "tests/TestVulnerable.java", line: 18, code: "// MD5 - QUANTUM VULNERABLE",                                        vulnerability: "MD5",  severity: "MEDIUM",   replacement: "SHA-3 or SPHINCS+" },
-  { file: "tests/TestVulnerable.java", line: 19, code: 'MessageDigest md5 = MessageDigest.getInstance("MD5");',             vulnerability: "MD5",  severity: "MEDIUM",   replacement: "SHA-3 or SPHINCS+" },
-  { file: "tests/TestVulnerable.java", line: 21, code: "// SHA1 - QUANTUM VULNERABLE",                                       vulnerability: "SHA1", severity: "MEDIUM",   replacement: "SHA-3 or SPHINCS+" },
-  { file: "tests/TestVulnerable.java", line: 22, code: 'MessageDigest sha1 = MessageDigest.getInstance("SHA-1");',          vulnerability: "SHA1", severity: "MEDIUM",   replacement: "SHA-3 or SPHINCS+" },
-  { file: "tests/test_vulnerable.js",  line: 2,  code: "const NodeRSA = require('node-rsa');",                              vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
-  { file: "tests/test_vulnerable.js",  line: 3,  code: "const elliptic = require('elliptic');",                             vulnerability: "ECC",  severity: "CRITICAL", replacement: "CRYSTALS-Dilithium" },
+// Clean deduplicated findings — no comment lines, unique per file+line+vuln
+const NIST_FINDINGS = [
+  // ── TestVulnerable.java ──
+  { file: "tests/TestVulnerable.java", line: 9,  code: 'KeyPairGenerator rsaGen = KeyPairGenerator.getInstance("RSA");', vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
+  { file: "tests/TestVulnerable.java", line: 13, code: 'KeyPairGenerator ecGen = KeyPairGenerator.getInstance("EC");',   vulnerability: "ECC",  severity: "CRITICAL", replacement: "CRYSTALS-Dilithium" },
+  { file: "tests/TestVulnerable.java", line: 16, code: 'KeyPairGenerator dhGen = KeyPairGenerator.getInstance("DH");',   vulnerability: "DH",   severity: "HIGH",     replacement: "CRYSTALS-Kyber" },
+  { file: "tests/TestVulnerable.java", line: 19, code: 'MessageDigest md5 = MessageDigest.getInstance("MD5");',          vulnerability: "MD5",  severity: "MEDIUM",   replacement: "SHA-3 or SPHINCS+" },
+  { file: "tests/TestVulnerable.java", line: 22, code: 'MessageDigest sha1 = MessageDigest.getInstance("SHA-1");',       vulnerability: "SHA1", severity: "MEDIUM",   replacement: "SHA-3 or SPHINCS+" },
+  // ── test_vulnerable.js ──
+  { file: "tests/test_vulnerable.js",  line: 2,  code: "const NodeRSA = require('node-rsa');",                           vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
+  { file: "tests/test_vulnerable.js",  line: 3,  code: "const elliptic = require('elliptic');",                          vulnerability: "ECC",  severity: "CRITICAL", replacement: "CRYSTALS-Dilithium" },
   { file: "tests/test_vulnerable.js",  line: 6,  code: "const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {", vulnerability: "RSA", severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
-  { file: "tests/test_vulnerable.js",  line: 11, code: "const ec = new elliptic.ec('secp256k1');",                          vulnerability: "ECC",  severity: "CRITICAL", replacement: "CRYSTALS-Dilithium" },
-  { file: "tests/test_vulnerable.js",  line: 15, code: "const dh = crypto.createDiffieHellman(2048);",                     vulnerability: "DH",   severity: "HIGH",     replacement: "CRYSTALS-Kyber" },
-  { file: "tests/test_vulnerable.js",  line: 19, code: "const md5Hash = crypto.createHash('md5').update('password').digest('hex');", vulnerability: "MD5", severity: "MEDIUM", replacement: "SHA-3 or SPHINCS+" },
+  { file: "tests/test_vulnerable.js",  line: 11, code: "const ec = new elliptic.ec('secp256k1');",                       vulnerability: "ECC",  severity: "CRITICAL", replacement: "CRYSTALS-Dilithium" },
+  { file: "tests/test_vulnerable.js",  line: 15, code: "const dh = crypto.createDiffieHellman(2048);",                    vulnerability: "DH",   severity: "HIGH",     replacement: "CRYSTALS-Kyber" },
+  { file: "tests/test_vulnerable.js",  line: 19, code: "const md5Hash = crypto.createHash('md5').update('password').digest('hex');", vulnerability: "MD5",  severity: "MEDIUM", replacement: "SHA-3 or SPHINCS+" },
   { file: "tests/test_vulnerable.js",  line: 22, code: "const sha1Hash = crypto.createHash('sha1').update('data').digest('hex');",   vulnerability: "SHA1", severity: "MEDIUM", replacement: "SHA-3 or SPHINCS+" },
-  { file: "tests/test_vulnerable.py",  line: 1,  code: "from Crypto.PublicKey import RSA",                                  vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
-  { file: "tests/test_vulnerable.py",  line: 2,  code: "from Crypto.Cipher import PKCS1_OAEP",                              vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
-  { file: "tests/test_vulnerable.py",  line: 7,  code: "key = RSA.generate(2048)",                                          vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
-  { file: "tests/test_vulnerable.py",  line: 8,  code: "cipher = PKCS1_OAEP.new(key)",                                      vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
-  { file: "tests/test_vulnerable.py",  line: 12, code: "md5_hash = hashlib.md5(data).hexdigest()",                          vulnerability: "MD5",  severity: "MEDIUM",   replacement: "SHA-3 or SPHINCS+" },
-  { file: "tests/test_vulnerable.py",  line: 15, code: "sha1_hash = hashlib.sha1(data).hexdigest()",                        vulnerability: "SHA1", severity: "MEDIUM",   replacement: "SHA-3 or SPHINCS+" },
-  { file: "tests/test_vulnerable.py",  line: 17, code: "# ECDSA - QUANTUM VULNERABLE",                                      vulnerability: "ECC",  severity: "CRITICAL", replacement: "CRYSTALS-Dilithium" },
-  { file: "tests/test_vulnerable.py",  line: 17, code: "# ECDSA - QUANTUM VULNERABLE",                                      vulnerability: "DSA",  severity: "HIGH",     replacement: "CRYSTALS-Dilithium" },
-  { file: "tests/test_vulnerable.py",  line: 18, code: "from Crypto.PublicKey import ECC",                                  vulnerability: "ECC",  severity: "CRITICAL", replacement: "CRYSTALS-Dilithium" },
-  { file: "tests/test_vulnerable.py",  line: 19, code: "ecc_key = ECC.generate(curve='P-256')",                             vulnerability: "ECC",  severity: "CRITICAL", replacement: "CRYSTALS-Dilithium" },
+  // ── test_vulnerable.py ──
+  { file: "tests/test_vulnerable.py",  line: 1,  code: "from Crypto.PublicKey import RSA",                                vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
+  { file: "tests/test_vulnerable.py",  line: 2,  code: "from Crypto.Cipher import PKCS1_OAEP",                            vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
+  { file: "tests/test_vulnerable.py",  line: 7,  code: "key = RSA.generate(2048)",                                        vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
+  { file: "tests/test_vulnerable.py",  line: 12, code: "md5_hash = hashlib.md5(data).hexdigest()",                        vulnerability: "MD5",  severity: "MEDIUM",   replacement: "SHA-3 or SPHINCS+" },
+  { file: "tests/test_vulnerable.py",  line: 15, code: "sha1_hash = hashlib.sha1(data).hexdigest()",                      vulnerability: "SHA1", severity: "MEDIUM",   replacement: "SHA-3 or SPHINCS+" },
+  { file: "tests/test_vulnerable.py",  line: 18, code: "from Crypto.PublicKey import ECC",                                vulnerability: "ECC",  severity: "CRITICAL", replacement: "CRYSTALS-Dilithium" },
+  { file: "tests/test_vulnerable.py",  line: 19, code: "ecc_key = ECC.generate(curve='P-256')",                          vulnerability: "ECC",  severity: "CRITICAL", replacement: "CRYSTALS-Dilithium" },
 ];
-
-// Deduplicate by file + line + vulnerability
-const NIST_FINDINGS = RAW_FINDINGS.filter((f, i, arr) =>
-  arr.findIndex(x => x.file === f.file && x.line === f.line && x.vulnerability === f.vulnerability) === i
-);
 
 const NIST_CONTROLS = [
   { id: "SC-12", name: "Cryptographic Key Establishment & Management", family: "System & Comms Protection",   vulns: ["RSA","ECC","DH"],        status: "FAIL" },
