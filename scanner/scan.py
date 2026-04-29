@@ -11,6 +11,7 @@ import json
 from datetime import datetime
 from scanner.patterns import VULNERABLE_PATTERNS, SEVERITY_SCORE
 from scanner.ast_scanner import scan_python_ast
+from scanner.js_ast_scanner import scan_js_directory  # ← NEW
 
 # ── Directories to always skip ────────────────────────────
 SKIP_DIRS = {
@@ -298,6 +299,9 @@ def scan_directory(directory):
 
         if file_count >= MAX_FILES:
             break
+
+    # ── JS/TS AST scan (NEW) ──────────────────────────────
+    all_findings += scan_js_directory(directory)
 
     # Global deduplication across all files
     return _deduplicate_findings(all_findings)
