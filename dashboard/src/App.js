@@ -132,7 +132,7 @@ function TopBar({ title, user, onLogin, onLogout, onHamburger }) {
       display: "flex", alignItems: "center", padding: "0 20px", gap: 12,
       boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
     }}>
-      <button onClick={onHamburger} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 20, padding: "0 4px", display: "none" }} className="hamburger-top">☰</button>
+      <button onClick={onHamburger} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 20, padding: "0 4px" }} className="hamburger-top">☰</button>
       <span style={{ color: C.muted, fontSize: 13 }}>QuantumGuard</span>
       <span style={{ color: C.greenMid, fontSize: 13 }}>›</span>
       <span style={{ color: C.text, fontSize: 14, fontWeight: 600 }}>{title}</span>
@@ -1431,7 +1431,7 @@ export default function App() {
 
       <Sidebar active={active} setActive={setActive} user={user} onLogin={handleLogin} onLogout={handleLogout} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="main-content" style={{ marginLeft: 240, flex: 1, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <div className="main-content" style={{ flex: 1, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <TopBar title={pageTitle[active] || active} user={user} onLogin={handleLogin} onLogout={handleLogout} onHamburger={() => setSidebarOpen(!sidebarOpen)} />
         <div style={{ flex: 1, overflowY: "auto" }}>
           {active === "scan" && <ScannerPage user={user} />}
