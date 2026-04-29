@@ -43,14 +43,15 @@ const SCAN_STEPS = [
 // ── Sidebar ──────────────────────────────────────────────────
 function Sidebar({ active, setActive, user, onLogin, onLogout, open, onClose }) {
   const navItems = [
-    { id: "scan", icon: "⚡", label: "Scanner" },
-    { id: "agility", icon: "🔬", label: "Agility Checker" },
-    { id: "tls", icon: "🔐", label: "TLS Analyzer" },
-    { id: "history", icon: "🗂", label: "Scan History" },
-    { id: "migration", icon: "🔄", label: "Migration" },
-    { id: "dashboard", icon: "📊", label: "Analytics" },
-    { id: "docs", icon: "📖", label: "Docs" },
-    { id: "team", icon: "👥", label: "Our Team" },
+    { id: "scan",      icon: "⚡",  label: "Scanner" },
+    { id: "agility",   icon: "🔬",  label: "Agility Checker" },
+    { id: "tls",       icon: "🔐",  label: "TLS Analyzer" },
+    { id: "history",   icon: "🗂",  label: "Scan History" },
+    { id: "migration", icon: "🔄",  label: "Migration" },
+    { id: "dashboard", icon: "📊",  label: "Analytics" },
+    { id: "nist",      icon: "🏛",  label: "NIST Report" },
+    { id: "docs",      icon: "📖",  label: "Docs" },
+    { id: "team",      icon: "👥",  label: "Our Team" },
   ];
   return (
     <>
@@ -200,152 +201,342 @@ function Badge({ text, color, bg }) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// NIST REPORT PAGE
+// ══════════════════════════════════════════════════════════════
+
+const RAW_FINDINGS = [
+  { file: "tests/TestVulnerable.java", line: 8,  code: "// RSA - QUANTUM VULNERABLE",                                        vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
+  { file: "tests/TestVulnerable.java", line: 9,  code: 'KeyPairGenerator rsaGen = KeyPairGenerator.getInstance("RSA");',    vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
+  { file: "tests/TestVulnerable.java", line: 10, code: "rsaGen.initialize(2048);",                                           vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
+  { file: "tests/TestVulnerable.java", line: 12, code: "// ECC - QUANTUM VULNERABLE",                                        vulnerability: "ECC",  severity: "CRITICAL", replacement: "CRYSTALS-Dilithium" },
+  { file: "tests/TestVulnerable.java", line: 13, code: 'KeyPairGenerator ecGen = KeyPairGenerator.getInstance("EC");',      vulnerability: "ECC",  severity: "CRITICAL", replacement: "CRYSTALS-Dilithium" },
+  { file: "tests/TestVulnerable.java", line: 15, code: "// DH - QUANTUM VULNERABLE",                                         vulnerability: "DH",   severity: "HIGH",     replacement: "CRYSTALS-Kyber" },
+  { file: "tests/TestVulnerable.java", line: 16, code: 'KeyPairGenerator dhGen = KeyPairGenerator.getInstance("DH");',      vulnerability: "DH",   severity: "HIGH",     replacement: "CRYSTALS-Kyber" },
+  { file: "tests/TestVulnerable.java", line: 18, code: "// MD5 - QUANTUM VULNERABLE",                                        vulnerability: "MD5",  severity: "MEDIUM",   replacement: "SHA-3 or SPHINCS+" },
+  { file: "tests/TestVulnerable.java", line: 19, code: 'MessageDigest md5 = MessageDigest.getInstance("MD5");',             vulnerability: "MD5",  severity: "MEDIUM",   replacement: "SHA-3 or SPHINCS+" },
+  { file: "tests/TestVulnerable.java", line: 21, code: "// SHA1 - QUANTUM VULNERABLE",                                       vulnerability: "SHA1", severity: "MEDIUM",   replacement: "SHA-3 or SPHINCS+" },
+  { file: "tests/TestVulnerable.java", line: 22, code: 'MessageDigest sha1 = MessageDigest.getInstance("SHA-1");',          vulnerability: "SHA1", severity: "MEDIUM",   replacement: "SHA-3 or SPHINCS+" },
+  { file: "tests/test_vulnerable.js",  line: 2,  code: "const NodeRSA = require('node-rsa');",                              vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
+  { file: "tests/test_vulnerable.js",  line: 3,  code: "const elliptic = require('elliptic');",                             vulnerability: "ECC",  severity: "CRITICAL", replacement: "CRYSTALS-Dilithium" },
+  { file: "tests/test_vulnerable.js",  line: 6,  code: "const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {", vulnerability: "RSA", severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
+  { file: "tests/test_vulnerable.js",  line: 11, code: "const ec = new elliptic.ec('secp256k1');",                          vulnerability: "ECC",  severity: "CRITICAL", replacement: "CRYSTALS-Dilithium" },
+  { file: "tests/test_vulnerable.js",  line: 15, code: "const dh = crypto.createDiffieHellman(2048);",                     vulnerability: "DH",   severity: "HIGH",     replacement: "CRYSTALS-Kyber" },
+  { file: "tests/test_vulnerable.js",  line: 19, code: "const md5Hash = crypto.createHash('md5').update('password').digest('hex');", vulnerability: "MD5", severity: "MEDIUM", replacement: "SHA-3 or SPHINCS+" },
+  { file: "tests/test_vulnerable.js",  line: 22, code: "const sha1Hash = crypto.createHash('sha1').update('data').digest('hex');",   vulnerability: "SHA1", severity: "MEDIUM", replacement: "SHA-3 or SPHINCS+" },
+  { file: "tests/test_vulnerable.py",  line: 1,  code: "from Crypto.PublicKey import RSA",                                  vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
+  { file: "tests/test_vulnerable.py",  line: 2,  code: "from Crypto.Cipher import PKCS1_OAEP",                              vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
+  { file: "tests/test_vulnerable.py",  line: 7,  code: "key = RSA.generate(2048)",                                          vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
+  { file: "tests/test_vulnerable.py",  line: 8,  code: "cipher = PKCS1_OAEP.new(key)",                                      vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
+  { file: "tests/test_vulnerable.py",  line: 12, code: "md5_hash = hashlib.md5(data).hexdigest()",                          vulnerability: "MD5",  severity: "MEDIUM",   replacement: "SHA-3 or SPHINCS+" },
+  { file: "tests/test_vulnerable.py",  line: 15, code: "sha1_hash = hashlib.sha1(data).hexdigest()",                        vulnerability: "SHA1", severity: "MEDIUM",   replacement: "SHA-3 or SPHINCS+" },
+  { file: "tests/test_vulnerable.py",  line: 17, code: "# ECDSA - QUANTUM VULNERABLE",                                      vulnerability: "ECC",  severity: "CRITICAL", replacement: "CRYSTALS-Dilithium" },
+  { file: "tests/test_vulnerable.py",  line: 17, code: "# ECDSA - QUANTUM VULNERABLE",                                      vulnerability: "DSA",  severity: "HIGH",     replacement: "CRYSTALS-Dilithium" },
+  { file: "tests/test_vulnerable.py",  line: 18, code: "from Crypto.PublicKey import ECC",                                  vulnerability: "ECC",  severity: "CRITICAL", replacement: "CRYSTALS-Dilithium" },
+  { file: "tests/test_vulnerable.py",  line: 19, code: "ecc_key = ECC.generate(curve='P-256')",                             vulnerability: "ECC",  severity: "CRITICAL", replacement: "CRYSTALS-Dilithium" },
+];
+
+// Deduplicate by file + line + vulnerability
+const NIST_FINDINGS = RAW_FINDINGS.filter((f, i, arr) =>
+  arr.findIndex(x => x.file === f.file && x.line === f.line && x.vulnerability === f.vulnerability) === i
+);
+
+const NIST_CONTROLS = [
+  { id: "SC-12", name: "Cryptographic Key Establishment & Management", family: "System & Comms Protection",   vulns: ["RSA","ECC","DH"],        status: "FAIL" },
+  { id: "SC-13", name: "Cryptographic Protection",                     family: "System & Comms Protection",   vulns: ["RSA","ECC","DH","DSA"],  status: "FAIL" },
+  { id: "IA-7",  name: "Cryptographic Module Authentication",          family: "Identification & Auth",        vulns: ["MD5","SHA1"],            status: "WARN" },
+  { id: "SC-28", name: "Protection of Information at Rest",            family: "System & Comms Protection",   vulns: ["RSA","ECC"],             status: "FAIL" },
+  { id: "SC-8",  name: "Transmission Confidentiality & Integrity",     family: "System & Comms Protection",   vulns: ["DH","RSA"],              status: "WARN" },
+  { id: "SI-7",  name: "Software & Information Integrity",             family: "System & Info Integrity",     vulns: ["MD5","SHA1"],            status: "WARN" },
+  { id: "CM-7",  name: "Least Functionality",                          family: "Configuration Management",    vulns: [],                       status: "PASS" },
+  { id: "AC-17", name: "Remote Access",                                family: "Access Control",               vulns: [],                       status: "PASS" },
+];
+
+const VULN_INFO = {
+  RSA:  { desc: "RSA is vulnerable to Shor's algorithm. A quantum computer can factor large integers and break RSA encryption entirely.", nist: "FIPS 203 — CRYSTALS-Kyber (ML-KEM)" },
+  ECC:  { desc: "Elliptic Curve Cryptography is broken by quantum Shor's algorithm — the EC discrete log becomes trivially solvable.", nist: "FIPS 204 — CRYSTALS-Dilithium (ML-DSA)" },
+  DH:   { desc: "Diffie-Hellman key exchange relies on discrete log hardness, which quantum computers solve efficiently.", nist: "FIPS 203 — CRYSTALS-Kyber (ML-KEM)" },
+  DSA:  { desc: "Digital Signature Algorithm based on discrete log — broken by quantum Shor's algorithm.", nist: "FIPS 204 — CRYSTALS-Dilithium (ML-DSA)" },
+  MD5:  { desc: "MD5 produces a 128-bit hash, insufficient for quantum security. Grover's algorithm halves effective bit security.", nist: "FIPS 205 — SHA-3 or SPHINCS+" },
+  SHA1: { desc: "SHA-1 has known collisions and 160-bit output — completely insufficient for post-quantum requirements.", nist: "FIPS 205 — SHA-3 or SPHINCS+" },
+};
+
+const SEV_COLOR = { CRITICAL: C.critical, HIGH: C.amber, MEDIUM: C.medium };
+const SEV_BG    = { CRITICAL: C.redLight, HIGH: C.amberLight, MEDIUM: "#fef9c3" };
+const STAT_CTRL = { PASS: { color: C.green,    bg: C.greenLighter, border: C.greenMid,   dot: C.green    },
+                    WARN: { color: C.amber,    bg: C.amberLight,   border: "#fcd34d",    dot: C.amber    },
+                    FAIL: { color: C.critical, bg: C.redLight,     border: "#fca5a5",    dot: C.critical } };
+
+function getLang(file) {
+  if (file.endsWith(".java")) return "Java";
+  if (file.endsWith(".js"))   return "JavaScript";
+  if (file.endsWith(".py"))   return "Python";
+  if (file.endsWith(".ts"))   return "TypeScript";
+  return "Code";
+}
+
+function NISTFindingRow({ f }) {
+  const [open, setOpen] = useState(false);
+  const info = VULN_INFO[f.vulnerability] || {};
+  const matchedControls = NIST_CONTROLS.filter(c => c.vulns.includes(f.vulnerability));
+  const sc = SEV_COLOR[f.severity];
+  const sb = SEV_BG[f.severity];
+
+  return (
+    <div style={{ border: `1px solid ${open ? C.greenMid : C.panelBorder}`, borderRadius: 10, marginBottom: 8, overflow: "hidden", background: C.white, transition: "border-color 0.15s" }}>
+      <div onClick={() => setOpen(o => !o)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", cursor: "pointer", flexWrap: "wrap", gap: 8 }}>
+        <Badge text={f.severity} color={sc} bg={sb} />
+        <span style={{ fontFamily: "monospace", fontSize: 12, color: C.green, fontWeight: 600, flex: 1, minWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.file.split("/").pop()}</span>
+        <span style={{ fontSize: 11, color: C.muted, whiteSpace: "nowrap" }}>Line {f.line}</span>
+        <span style={{ background: C.input, color: C.textMid, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 4 }}>{f.vulnerability}</span>
+        <span style={{ color: C.muted, fontSize: 11, transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "none" }}>▼</span>
+      </div>
+      {open && (
+        <div style={{ padding: "0 16px 14px", borderTop: `1px solid ${C.panelBorder}` }}>
+          <div style={{ fontFamily: "monospace", background: C.input, padding: "8px 12px", borderRadius: 8, fontSize: 11, color: C.greenDark, marginTop: 10, overflowX: "auto" }}>
+            <span style={{ color: C.muted, marginRight: 12, userSelect: "none" }}>{f.line}</span>{f.code}
+          </div>
+          {info.desc && <div style={{ marginTop: 8, fontSize: 12, color: C.muted, lineHeight: 1.6 }}>{info.desc}</div>}
+          <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+            {matchedControls.map(c => (
+              <span key={c.id} style={{ background: C.greenLighter, border: `1px solid ${C.greenMid}`, color: C.green, fontSize: 10, fontWeight: 700, padding: "2px 9px", borderRadius: 4 }}>{c.id}</span>
+            ))}
+            <span style={{ background: C.blueLight, border: "1px solid #93c5fd", color: C.blue, fontSize: 10, fontWeight: 700, padding: "2px 9px", borderRadius: 4 }}>
+              ✦ {f.replacement}
+            </span>
+          </div>
+          {info.nist && <div style={{ marginTop: 6, fontSize: 11, color: C.muted }}>NIST Standard: <span style={{ color: C.green, fontWeight: 600 }}>{info.nist}</span></div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NISTReportPage() {
+  const [filter, setFilter] = useState("ALL");
+
+  const counts = {
+    CRITICAL: NIST_FINDINGS.filter(f => f.severity === "CRITICAL").length,
+    HIGH:     NIST_FINDINGS.filter(f => f.severity === "HIGH").length,
+    MEDIUM:   NIST_FINDINGS.filter(f => f.severity === "MEDIUM").length,
+    total:    NIST_FINDINGS.length,
+  };
+
+  const filtered = filter === "ALL" ? NIST_FINDINGS : NIST_FINDINGS.filter(f => f.severity === filter);
+
+  // Group by file for file summary
+  const byFile = NIST_FINDINGS.reduce((a, f) => { if (!a[f.file]) a[f.file] = []; a[f.file].push(f); return a; }, {});
+
+  // Vuln type counts
+  const vulnCounts = Object.entries(
+    NIST_FINDINGS.reduce((a, f) => { a[f.vulnerability] = (a[f.vulnerability] || 0) + 1; return a; }, {})
+  ).sort((a, b) => b[1] - a[1]);
+
+  const handleExportCSV = () => {
+    const rows = ["Severity,File,Line,Vulnerability,Code,Replacement",
+      ...NIST_FINDINGS.map(f => `"${f.severity}","${f.file}","${f.line}","${f.vulnerability}","${f.code.replace(/"/g, "'")}","${f.replacement}"`)
+    ].join("\n");
+    const blob = new Blob([rows], { type: "text/csv" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "nist-report.csv"; a.click();
+  };
+
+  const handleExportPDF = () => {
+    const win = window.open("", "_blank");
+    win.document.write(`<!DOCTYPE html><html><head><title>QuantumGuard NIST Report</title>
+    <style>body{font-family:sans-serif;padding:40px;color:#1a1a1a}h1{color:#16a34a}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #e2f0e2;padding:8px 12px;text-align:left;font-size:12px}th{background:#f0fdf4;font-weight:700}tr:nth-child(even){background:#f8faf8}.CRITICAL{color:#dc2626;font-weight:700}.HIGH{color:#d97706;font-weight:700}.MEDIUM{color:#ca8a04;font-weight:700}</style>
+    </head><body>
+    <h1>⚛ QuantumGuard — NIST SP 800-53 Report</h1>
+    <p>Scanned: Apr 21, 2026 · Directory: tests/ · Score: <strong>0 / 100</strong> · Status: <strong style="color:#dc2626">NOT QUANTUM SAFE</strong></p>
+    <p>Total Findings: <strong>${counts.total}</strong> · Critical: <strong>${counts.CRITICAL}</strong> · High: <strong>${counts.HIGH}</strong> · Medium: <strong>${counts.MEDIUM}</strong></p>
+    <table><thead><tr><th>Severity</th><th>File</th><th>Line</th><th>Vulnerability</th><th>Code</th><th>Replacement</th></tr></thead><tbody>
+    ${NIST_FINDINGS.map(f => `<tr><td class="${f.severity}">${f.severity}</td><td>${f.file}</td><td>${f.line}</td><td>${f.vulnerability}</td><td><code>${f.code.replace(/</g,"&lt;")}</code></td><td>${f.replacement}</td></tr>`).join("")}
+    </tbody></table></body></html>`);
+    win.document.close(); win.print();
+  };
+
+  return (
+    <div style={{ padding: 20 }}>
+
+      {/* ── Header card ── */}
+      <div style={{ background: C.white, border: `1px solid ${C.panelBorder}`, borderRadius: 14, padding: "20px 22px", marginBottom: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.04)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, borderTop: `3px solid ${C.green}` }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: C.green, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🏛</div>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: C.text }}>NIST Security Report</h2>
+          </div>
+          <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
+            {[["Standard", "NIST SP 800-53 Rev 5"], ["Scanned", "Apr 21, 2026 — 00:56 UTC"], ["Directory", "tests/"], ["Files", "3 scanned"]].map(([k, v]) => (
+              <div key={k} style={{ fontSize: 11 }}><span style={{ color: C.muted }}>{k}: </span><span style={{ color: C.textMid, fontWeight: 600 }}>{v}</span></div>
+            ))}
+          </div>
+        </div>
+        <div style={{ background: C.greenLighter, border: `1px solid ${C.greenMid}`, borderRadius: 12, padding: "14px 20px", textAlign: "center", minWidth: 140 }}>
+          <div style={{ fontSize: 44, fontWeight: 900, color: C.red, lineHeight: 1 }}>0</div>
+          <div style={{ fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: 1, marginTop: 2 }}>Quantum Score</div>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.redLight, border: "1px solid #fca5a5", color: C.red, fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 100, marginTop: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.red, display: "inline-block" }} />
+            Not Quantum Safe
+          </div>
+        </div>
+      </div>
+
+      {/* ── Stats ── */}
+      <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 16 }}>
+        <Metric label="Total Findings"   value={counts.total}    color={C.green}    icon="🔍" desc="All severities" />
+        <Metric label="Critical"         value={counts.CRITICAL} color={C.critical} icon="🔴" desc="Immediate action required" />
+        <Metric label="High"             value={counts.HIGH}     color={C.amber}    icon="🟡" desc="Requires attention" />
+        <Metric label="Medium"           value={counts.MEDIUM}   color={C.medium}   icon="🟠" desc="Review needed" />
+      </div>
+
+      {/* ── Breakdown panels ── */}
+      <div className="charts-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+        <Panel title="Severity Distribution" accent>
+          <SevBar label="Critical" count={counts.CRITICAL} total={counts.total} color={C.critical} />
+          <SevBar label="High"     count={counts.HIGH}     total={counts.total} color={C.amber} />
+          <SevBar label="Medium"   count={counts.MEDIUM}   total={counts.total} color={C.medium} />
+        </Panel>
+        <Panel title="Vulnerability Type Breakdown" accent>
+          {vulnCounts.map(([vuln, cnt]) => (
+            <SevBar key={vuln} label={vuln} count={cnt} total={counts.total}
+              color={["RSA","ECC"].includes(vuln) ? C.critical : ["DH","DSA"].includes(vuln) ? C.amber : C.medium} />
+          ))}
+        </Panel>
+      </div>
+
+      {/* ── Files scanned ── */}
+      <Panel title="Files Scanned" accent>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px,1fr))", gap: 12 }}>
+          {Object.entries(byFile).map(([file, findings]) => {
+            const crit = findings.filter(f => f.severity === "CRITICAL").length;
+            const high = findings.filter(f => f.severity === "HIGH").length;
+            const med  = findings.filter(f => f.severity === "MEDIUM").length;
+            return (
+              <div key={file} style={{ background: C.greenLighter, border: `1px solid ${C.greenMid}`, borderRadius: 10, padding: "12px 14px" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, background: C.white, color: C.green, border: `1px solid ${C.greenMid}`, display: "inline-block", padding: "1px 8px", borderRadius: 100, marginBottom: 6, textTransform: "uppercase" }}>{getLang(file)}</div>
+                <div style={{ fontFamily: "monospace", fontSize: 11, fontWeight: 700, color: C.green, marginBottom: 8 }}>{file.split("/").pop()}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {crit > 0 && <Badge text={`${crit} Critical`} color={C.critical} bg={C.redLight} />}
+                  {high > 0 && <Badge text={`${high} High`}     color={C.amber}    bg={C.amberLight} />}
+                  {med  > 0 && <Badge text={`${med} Medium`}    color={C.medium}   bg="#fef9c3" />}
+                </div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>{findings.length} findings total</div>
+              </div>
+            );
+          })}
+        </div>
+      </Panel>
+
+      {/* ── NIST Controls Mapping ── */}
+      <Panel title="NIST SP 800-53 Control Mapping" accent>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead>
+              <tr style={{ background: C.greenLighter }}>
+                {["Control ID","Control Name","Family","Affected Algorithms","Status"].map(h => (
+                  <th key={h} style={{ padding: "9px 14px", textAlign: "left", fontSize: 10, textTransform: "uppercase", letterSpacing: 1, color: C.muted, fontWeight: 700, borderBottom: `1px solid ${C.panelBorder}` }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {NIST_CONTROLS.map((ctrl, i) => {
+                const sc = STAT_CTRL[ctrl.status];
+                return (
+                  <tr key={ctrl.id} style={{ background: i % 2 === 0 ? C.white : C.bg }} onMouseEnter={e => e.currentTarget.style.background = C.greenLighter} onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? C.white : C.bg}>
+                    <td style={{ padding: "10px 14px", borderBottom: `1px solid ${C.panelBorder}`, fontFamily: "monospace", fontSize: 12, color: C.green, fontWeight: 700, whiteSpace: "nowrap" }}>{ctrl.id}</td>
+                    <td style={{ padding: "10px 14px", borderBottom: `1px solid ${C.panelBorder}`, color: C.textMid }}>{ctrl.name}</td>
+                    <td style={{ padding: "10px 14px", borderBottom: `1px solid ${C.panelBorder}`, color: C.muted, fontSize: 11 }}>{ctrl.family}</td>
+                    <td style={{ padding: "10px 14px", borderBottom: `1px solid ${C.panelBorder}` }}>
+                      {ctrl.vulns.length > 0
+                        ? ctrl.vulns.map(v => <span key={v} style={{ background: C.greenLighter, border: `1px solid ${C.greenMid}`, color: C.green, fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 4, marginRight: 4 }}>{v}</span>)
+                        : <span style={{ color: C.muted, fontSize: 11 }}>—</span>}
+                    </td>
+                    <td style={{ padding: "10px 14px", borderBottom: `1px solid ${C.panelBorder}` }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.color, fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 100, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        <span style={{ width: 5, height: 5, borderRadius: "50%", background: sc.dot, display: "inline-block" }} />
+                        {ctrl.status}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+
+      {/* ── Export ── */}
+      <Panel title="Export & Share" accent>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={handleExportPDF} style={{ padding: "8px 16px", borderRadius: 8, background: C.green, color: C.white, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>📄 PDF Report</button>
+          <button onClick={handleExportCSV} style={{ padding: "8px 16px", borderRadius: 8, background: C.greenLight, color: C.green, border: `1px solid ${C.greenMid}`, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>📊 CSV Export</button>
+        </div>
+      </Panel>
+
+      {/* ── Findings ── */}
+      <Panel title={`Threat Intelligence — ${counts.total} Findings`} accent>
+        <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+          {[
+            { key: "ALL",      label: `All (${counts.total})`,         activeColor: C.green    },
+            { key: "CRITICAL", label: `Critical (${counts.CRITICAL})`, activeColor: C.critical },
+            { key: "HIGH",     label: `High (${counts.HIGH})`,         activeColor: C.amber    },
+            { key: "MEDIUM",   label: `Medium (${counts.MEDIUM})`,     activeColor: C.medium   },
+          ].map(btn => (
+            <button key={btn.key} onClick={() => setFilter(btn.key)} style={{
+              padding: "5px 14px", borderRadius: 20, cursor: "pointer", fontSize: 11,
+              border: `1.5px solid ${filter === btn.key ? btn.activeColor : C.panelBorder}`,
+              background: filter === btn.key ? btn.activeColor + "18" : C.white,
+              color: filter === btn.key ? btn.activeColor : C.muted,
+              fontWeight: filter === btn.key ? 700 : 400,
+              transition: "all 0.15s",
+            }}>{btn.label}</button>
+          ))}
+        </div>
+        {filtered.map((f, i) => (
+          <NISTFindingRow key={`${f.file}-${f.line}-${f.vulnerability}-${i}`} f={f} />
+        ))}
+        {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: C.muted }}>No findings match filter.</div>}
+      </Panel>
+
+      {/* ── Footer ── */}
+      <div style={{ background: C.white, border: `1px solid ${C.panelBorder}`, borderRadius: 12, padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        <div style={{ fontSize: 11, color: C.muted }}>QuantumGuard · NIST SP 800-53 Rev 5 · Report ID #QG-{new Date().getFullYear()}-{String(new Date().getMonth()+1).padStart(2,"0")}{String(new Date().getDate()).padStart(2,"0")}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.green }}></div>
+          <span style={{ fontSize: 11, color: C.green, fontWeight: 600 }}>Mangsri QuantumGuard LLC · Montgomery, AL</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
 // TEAM PAGE
 // ══════════════════════════════════════════════════════════════
 function TeamPage() {
   const members = [
-    {
-      initials: "PP",
-      name: "Pavansudheer Payyavula",
-      role: "Founder & CEO",
-      degree: "MS Cybersecurity & Computer Information Systems",
-      subRole: null,
-      avatarBg: "#EEEDFE",
-      avatarText: "#3C3489",
-      badgeBg: "#EEEDFE",
-      badgeText: "#3C3489",
-      featured: true,
-    },
-    {
-      initials: "MS",
-      name: "Manasa Sannidhi",
-      role: "Co-Founder",
-      degree: "MS Computer Science",
-      subRole: null,
-      avatarBg: "#E1F5EE",
-      avatarText: "#085041",
-      badgeBg: "#E1F5EE",
-      badgeText: "#085041",
-      featured: false,
-    },
-    {
-      initials: "BG",
-      name: "Bharathwaj Goud Siga",
-      role: "Business",
-      degree: "MS Business Analytics",
-      subRole: "Marketing Manager",
-      avatarBg: "#FAEEDA",
-      avatarText: "#633806",
-      badgeBg: "#FAEEDA",
-      badgeText: "#633806",
-      featured: false,
-    },
-    {
-      initials: "VR",
-      name: "Vijendhar Reddy Muppidi",
-      role: "Advisor",
-      degree: "MS Management Information Systems",
-      subRole: null,
-      avatarBg: "#FAECE7",
-      avatarText: "#712B13",
-      badgeBg: "#FAECE7",
-      badgeText: "#712B13",
-      featured: false,
-    },
+    { initials: "PP", name: "Pavansudheer Payyavula",  role: "Founder & CEO",  degree: "MS Cybersecurity & Computer Information Systems", subRole: null,              avatarBg: "#EEEDFE", avatarText: "#3C3489", badgeBg: "#EEEDFE", badgeText: "#3C3489", featured: true },
+    { initials: "MS", name: "Manasa Sannidhi",          role: "Co-Founder",     degree: "MS Computer Science",                            subRole: null,              avatarBg: "#E1F5EE", avatarText: "#085041", badgeBg: "#E1F5EE", badgeText: "#085041", featured: false },
+    { initials: "BG", name: "Bharathwaj Goud Siga",     role: "Business",       degree: "MS Business Analytics",                          subRole: "Marketing Manager", avatarBg: "#FAEEDA", avatarText: "#633806", badgeBg: "#FAEEDA", badgeText: "#633806", featured: false },
+    { initials: "VR", name: "Vijendhar Reddy Muppidi",  role: "Advisor",        degree: "MS Management Information Systems",              subRole: null,              avatarBg: "#FAECE7", avatarText: "#712B13", badgeBg: "#FAECE7", badgeText: "#712B13", featured: false },
   ];
-
   return (
     <div style={{ padding: 20 }}>
-      {/* Header */}
       <div style={{ textAlign: "center", marginBottom: 36 }}>
-        <div style={{ display: "inline-block", background: C.greenLighter, color: C.green, fontSize: 12, fontWeight: 700, padding: "5px 16px", borderRadius: 20, marginBottom: 14, border: `1px solid ${C.greenMid}` }}>
-          ⚛ THE TEAM
-        </div>
-        <h2 style={{ fontSize: 32, fontWeight: 900, color: C.text, marginBottom: 10, letterSpacing: -0.5 }}>
-          Built by 4 friends
-        </h2>
-        <p style={{ fontSize: 14, color: C.muted, maxWidth: 480, margin: "0 auto", lineHeight: 1.7 }}>
-          A cross-disciplinary team building the world's first free quantum vulnerability scanner — free for every developer, forever.
-        </p>
+        <div style={{ display: "inline-block", background: C.greenLighter, color: C.green, fontSize: 12, fontWeight: 700, padding: "5px 16px", borderRadius: 20, marginBottom: 14, border: `1px solid ${C.greenMid}` }}>⚛ THE TEAM</div>
+        <h2 style={{ fontSize: 32, fontWeight: 900, color: C.text, marginBottom: 10, letterSpacing: -0.5 }}>Built by 4 friends</h2>
+        <p style={{ fontSize: 14, color: C.muted, maxWidth: 480, margin: "0 auto", lineHeight: 1.7 }}>A cross-disciplinary team building the world's first free quantum vulnerability scanner — free for every developer, forever.</p>
       </div>
-
-      {/* Cards grid */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 20, maxWidth: 900, margin: "0 auto" }}>
-        {members.map((m) => (
-          <div
-            key={m.name}
-            style={{
-              background: C.white,
-              border: m.featured ? `2px solid ${C.green}` : `1px solid ${C.panelBorder}`,
-              borderRadius: 16,
-              padding: "28px 20px",
-              textAlign: "center",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              boxShadow: m.featured ? "0 4px 20px rgba(22,163,74,0.12)" : "0 1px 4px rgba(0,0,0,0.04)",
-              transition: "transform 0.2s, box-shadow 0.2s",
-            }}
-          >
-            {/* Avatar */}
-            <div style={{
-              width: 60,
-              height: 60,
-              borderRadius: "50%",
-              background: m.avatarBg,
-              color: m.avatarText,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: 700,
-              fontSize: 16,
-              marginBottom: 14,
-              fontFamily: "monospace",
-            }}>
-              {m.initials}
-            </div>
-
-            {/* Role badge */}
-            <span style={{
-              display: "inline-block",
-              background: m.badgeBg,
-              color: m.badgeText,
-              fontSize: 10,
-              fontWeight: 700,
-              padding: "3px 12px",
-              borderRadius: 20,
-              marginBottom: 10,
-              fontFamily: "monospace",
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-            }}>
-              {m.role}
-            </span>
-
-            {/* Name */}
-            <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6, lineHeight: 1.3 }}>
-              {m.name}
-            </div>
-
-            {/* Divider */}
+        {members.map(m => (
+          <div key={m.name} style={{ background: C.white, border: m.featured ? `2px solid ${C.green}` : `1px solid ${C.panelBorder}`, borderRadius: 16, padding: "28px 20px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", boxShadow: m.featured ? "0 4px 20px rgba(22,163,74,0.12)" : "0 1px 4px rgba(0,0,0,0.04)" }}>
+            <div style={{ width: 60, height: 60, borderRadius: "50%", background: m.avatarBg, color: m.avatarText, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 16, marginBottom: 14, fontFamily: "monospace" }}>{m.initials}</div>
+            <span style={{ display: "inline-block", background: m.badgeBg, color: m.badgeText, fontSize: 10, fontWeight: 700, padding: "3px 12px", borderRadius: 20, marginBottom: 10, fontFamily: "monospace", letterSpacing: "0.05em", textTransform: "uppercase" }}>{m.role}</span>
+            <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6, lineHeight: 1.3 }}>{m.name}</div>
             <div style={{ width: 28, height: 1, background: C.panelBorder, margin: "8px auto" }} />
-
-            {/* Degree */}
-            <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>
-              {m.degree}
-            </div>
-
-            {/* Sub role */}
-            {m.subRole && (
-              <div style={{ fontSize: 11, color: C.green, marginTop: 6, fontStyle: "italic", fontWeight: 500 }}>
-                {m.subRole}
-              </div>
-            )}
+            <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>{m.degree}</div>
+            {m.subRole && <div style={{ fontSize: 11, color: C.green, marginTop: 6, fontStyle: "italic", fontWeight: 500 }}>{m.subRole}</div>}
           </div>
         ))}
       </div>
-
-      {/* Footer note */}
       <div style={{ textAlign: "center", marginTop: 40 }}>
         <div style={{ display: "inline-block", background: C.greenLighter, border: `1px solid ${C.greenMid}`, borderRadius: 12, padding: "14px 28px" }}>
           <div style={{ fontSize: 13, color: C.green, fontWeight: 700, marginBottom: 4 }}>⚛ Mangsri QuantumGuard LLC</div>
@@ -446,8 +637,15 @@ function ScannerPage({ user }) {
   const handleNIST = () => {
     if (!result) return;
     const win = window.open("", "_blank");
-    const complianceStatus = result.quantum_readiness_score >= 70 ? "COMPLIANT" : result.quantum_readiness_score >= 40 ? "PARTIALLY COMPLIANT" : "NON-COMPLIANT";
-    win.document.write(`<!DOCTYPE html><html><head><title>QuantumGuard NIST Report</title></head><body><h1>NIST Report</h1><p>Score: ${result.quantum_readiness_score}</p><p>Status: ${complianceStatus}</p></body></html>`);
+    const status = result.quantum_readiness_score >= 70 ? "COMPLIANT" : result.quantum_readiness_score >= 40 ? "PARTIALLY COMPLIANT" : "NON-COMPLIANT";
+    win.document.write(`<!DOCTYPE html><html><head><title>QuantumGuard NIST Report</title>
+    <style>body{font-family:sans-serif;padding:40px;color:#1a1a1a}h1{color:#16a34a}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #e2f0e2;padding:8px 12px;text-align:left;font-size:12px}th{background:#f0fdf4;font-weight:700}tr:nth-child(even){background:#f8faf8}.CRITICAL{color:#dc2626;font-weight:700}.HIGH{color:#d97706;font-weight:700}.MEDIUM{color:#ca8a04;font-weight:700}</style>
+    </head><body>
+    <h1>⚛ QuantumGuard — NIST SP 800-53 Report</h1>
+    <p>Score: <strong>${result.quantum_readiness_score}/100</strong> · Status: <strong>${status}</strong> · Findings: <strong>${result.total_findings}</strong></p>
+    <table><thead><tr><th>Severity</th><th>File</th><th>Line</th><th>Code</th><th>Replacement</th></tr></thead><tbody>
+    ${result.findings.map(f => `<tr><td class="${f.severity}">${f.severity}</td><td>${f.file}</td><td>${f.line}</td><td><code>${f.code.replace(/</g,"&lt;")}</code></td><td>${f.replacement}</td></tr>`).join("")}
+    </tbody></table></body></html>`);
     win.document.close();
   };
 
@@ -884,12 +1082,12 @@ function DocsPage() {
     <div style={{ padding: 20 }}>
       <Panel title="API Endpoints" accent>
         {[
-          { method: "POST", path: "/scan-github", auth: "None", desc: "Scan any public GitHub repo" },
-          { method: "POST", path: "/public-scan-zip", auth: "None", desc: "Upload ZIP file (max 10MB)" },
-          { method: "POST", path: "/check-agility", auth: "None", desc: "Check crypto agility" },
-          { method: "POST", path: "/analyze-tls", auth: "None", desc: "Analyze TLS" },
-          { method: "POST", path: "/scan", auth: "x-api-key header", desc: "Scan server path" },
-          { method: "GET", path: "/health", auth: "None", desc: "Returns {status: healthy}" },
+          { method: "POST", path: "/scan-github",      auth: "None",           desc: "Scan any public GitHub repo" },
+          { method: "POST", path: "/public-scan-zip",  auth: "None",           desc: "Upload ZIP file (max 10MB)" },
+          { method: "POST", path: "/check-agility",    auth: "None",           desc: "Check crypto agility" },
+          { method: "POST", path: "/analyze-tls",      auth: "None",           desc: "Analyze TLS" },
+          { method: "POST", path: "/scan",             auth: "x-api-key header", desc: "Scan server path" },
+          { method: "GET",  path: "/health",           auth: "None",           desc: "Returns {status: healthy}" },
         ].map((e, i) => (
           <div key={i} style={{ display: "flex", gap: 12, padding: "10px 0", borderBottom: i < 5 ? `1px solid ${C.panelBorder}` : "none", flexWrap: "wrap", alignItems: "center" }}>
             <Badge text={e.method} color={C.green} bg={C.greenLight} />
@@ -901,10 +1099,10 @@ function DocsPage() {
       </Panel>
       <div className="docs-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         {[
-          { title: "Quick Start", icon: "⚡", steps: ["Go to Scanner tab", "Paste GitHub repo URL", "Click Run Scan", "Download PDF report"] },
+          { title: "Quick Start",    icon: "⚡", steps: ["Go to Scanner tab", "Paste GitHub repo URL", "Click Run Scan", "Download PDF report"] },
           { title: "Crypto Agility", icon: "🔬", steps: ["Go to Agility Checker", "Paste GitHub repo URL", "Click Check Agility", "Review hardcoded vs configurable"] },
-          { title: "Private Repos", icon: "🔒", steps: ["Click Private Repo button", "Generate GitHub PAT", "Paste your token", "Token never stored"] },
-          { title: "Rate Limits", icon: "⏱", steps: ["/scan-github: 20/min", "/public-scan-zip: 3/min", "/check-agility: 10/min", "/analyze-tls: 10/min"] },
+          { title: "Private Repos",  icon: "🔒", steps: ["Click Private Repo button", "Generate GitHub PAT", "Paste your token", "Token never stored"] },
+          { title: "Rate Limits",    icon: "⏱", steps: ["/scan-github: 20/min", "/public-scan-zip: 3/min", "/check-agility: 10/min", "/analyze-tls: 10/min"] },
         ].map((d, i) => (
           <Panel key={i} title={`${d.icon} ${d.title}`}>
             {d.steps.map((step, j) => (
@@ -925,7 +1123,6 @@ function DocsPage() {
 // ══════════════════════════════════════════════════════════════
 function Homepage({ onGetStarted }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
   const navItems = [
     { label: "Features", id: "features" },
     { label: "How It Works", id: "howitworks" },
@@ -958,14 +1155,10 @@ function Homepage({ onGetStarted }) {
       {mobileMenuOpen && (
         <div style={{ position: "fixed", top: 66, left: 0, right: 0, background: C.white, borderBottom: `1px solid ${C.panelBorder}`, zIndex: 99, padding: "8px 0", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
           {navItems.map(item => (
-            <div key={item.id} onClick={() => { document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" }); setMobileMenuOpen(false); }} style={{ padding: "16px 24px", fontSize: 16, fontWeight: 600, color: C.text, borderBottom: `1px solid ${C.panelBorder}`, cursor: "pointer" }}>
-              {item.label}
-            </div>
+            <div key={item.id} onClick={() => { document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" }); setMobileMenuOpen(false); }} style={{ padding: "16px 24px", fontSize: 16, fontWeight: 600, color: C.text, borderBottom: `1px solid ${C.panelBorder}`, cursor: "pointer" }}>{item.label}</div>
           ))}
           <div style={{ padding: "16px 24px" }}>
-            <button onClick={() => { onGetStarted(); setMobileMenuOpen(false); }} style={{ width: "100%", padding: "13px", background: C.green, color: C.white, border: "none", borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-              Get Started Free →
-            </button>
+            <button onClick={() => { onGetStarted(); setMobileMenuOpen(false); }} style={{ width: "100%", padding: "13px", background: C.green, color: C.white, border: "none", borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Get Started Free →</button>
           </div>
         </div>
       )}
@@ -984,12 +1177,8 @@ function Homepage({ onGetStarted }) {
               Quantum computers will break RSA and ECC encryption by 2030. QuantumGuard scans your codebase in <strong style={{ color: C.text }}>30 seconds</strong> and gives you exact NIST-approved fixes — completely free.
             </p>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 36 }}>
-              <button onClick={onGetStarted} style={{ background: C.green, color: C.white, padding: "14px 30px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 16, fontWeight: 700, boxShadow: "0 4px 16px rgba(22,163,74,0.35)" }}>
-                🛡 Scan My Code Now
-              </button>
-              <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer" style={{ background: C.white, color: C.text, padding: "14px 30px", borderRadius: 12, border: `1.5px solid ${C.panelBorder}`, fontSize: 15, fontWeight: 600, textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
-                ★ Star on GitHub
-              </a>
+              <button onClick={onGetStarted} style={{ background: C.green, color: C.white, padding: "14px 30px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 16, fontWeight: 700, boxShadow: "0 4px 16px rgba(22,163,74,0.35)" }}>🛡 Scan My Code Now</button>
+              <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer" style={{ background: C.white, color: C.text, padding: "14px 30px", borderRadius: 12, border: `1.5px solid ${C.panelBorder}`, fontSize: 15, fontWeight: 600, textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>★ Star on GitHub</a>
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
               {["✓ Free Forever", "✓ No Signup Required", "✓ NIST FIPS 203/204/205", "✓ Open Source"].map((text, i) => (
@@ -999,14 +1188,12 @@ function Homepage({ onGetStarted }) {
           </div>
           <div className="hero-preview" style={{ background: C.white, borderRadius: 20, boxShadow: "0 24px 80px rgba(0,0,0,0.12)", border: `1px solid ${C.panelBorder}`, overflow: "hidden" }}>
             <div style={{ background: C.green, padding: "12px 18px", display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ display: "flex", gap: 6 }}>
-                {["#ff5f57", "#febc2e", "#28c840"].map((c, i) => <div key={i} style={{ width: 12, height: 12, borderRadius: "50%", background: c }}></div>)}
-              </div>
+              <div style={{ display: "flex", gap: 6 }}>{["#ff5f57","#febc2e","#28c840"].map((c,i) => <div key={i} style={{ width: 12, height: 12, borderRadius: "50%", background: c }}></div>)}</div>
               <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, marginLeft: 8, fontFamily: "monospace" }}>quantumguard.site — Scanner</span>
             </div>
             <div style={{ padding: 20 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
-                {[["58", "Score", C.amber, C.amberLight], ["8", "Threats", C.red, C.redLight], ["0", "Critical", C.green, C.greenLighter], ["6", "High", C.amber, C.amberLight]].map(([n, l, c, bg], i) => (
+                {[["58","Score",C.amber,C.amberLight],["8","Threats",C.red,C.redLight],["0","Critical",C.green,C.greenLighter],["6","High",C.amber,C.amberLight]].map(([n,l,c,bg],i) => (
                   <div key={i} style={{ background: bg, borderRadius: 10, padding: 12, textAlign: "center" }}>
                     <div style={{ fontSize: 22, fontWeight: 800, color: c }}>{n}</div>
                     <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{l}</div>
@@ -1022,7 +1209,7 @@ function Homepage({ onGetStarted }) {
         <div style={{ maxWidth: 1200, margin: "0 auto", textAlign: "center" }}>
           <p style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 16, textTransform: "uppercase", letterSpacing: 1 }}>Trusted by developers scanning real repositories</p>
           <div className="stats-bar-grid" style={{ maxWidth: 900, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 20 }}>
-            {[["50+", "Vulnerability Checks"], ["8", "Languages"], ["99.9%", "Uptime"], ["< 30s", "Scan Time"], ["100%", "Private"]].map(([num, label], i) => (
+            {[["50+","Vulnerability Checks"],["8","Languages"],["99.9%","Uptime"],["< 30s","Scan Time"],["100%","Private"]].map(([num,label],i) => (
               <div key={i} style={{ textAlign: "center" }}>
                 <div style={{ fontSize: 26, fontWeight: 900, color: C.green, letterSpacing: -1 }}>{num}</div>
                 <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>{label}</div>
@@ -1040,12 +1227,12 @@ function Homepage({ onGetStarted }) {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px,1fr))", gap: 22 }}>
           {[
-            { icon: "🔍", title: "Threat Scanner", desc: "Scan GitHub repos, ZIP files, or server paths. Detects 15+ quantum-vulnerable algorithms in 30 seconds.", badge: "Core", badgeColor: C.green },
-            { icon: "🏛", title: "NIST Compliance Report", desc: "Generate professional FIPS 203/204/205 compliance reports with NIST references per finding.", badge: "Enterprise", badgeColor: C.blue },
-            { icon: "🔐", title: "TLS Analyzer", desc: "Check any domain's TLS version, cipher suite, and quantum safety rating instantly.", badge: "Free", badgeColor: C.green },
-            { icon: "🔬", title: "Agility Checker", desc: "Detect hardcoded vs configurable crypto. Score 0-100 for migration readiness.", badge: "Free", badgeColor: C.green },
-            { icon: "🤖", title: "AI Fix Assistant", desc: "Claude-powered exact replacement code for every vulnerability found in your codebase.", badge: "Pro", badgeColor: "#7c3aed" },
-            { icon: "🔄", title: "Migration Tracker", desc: "Track 11 vulnerability types from Pending to Fixed across your entire organization.", badge: "Free", badgeColor: C.green },
+            { icon: "🔍", title: "Threat Scanner",         desc: "Scan GitHub repos, ZIP files, or server paths. Detects 15+ quantum-vulnerable algorithms in 30 seconds.",           badge: "Core",       badgeColor: C.green },
+            { icon: "🏛", title: "NIST Compliance Report", desc: "Generate professional FIPS 203/204/205 compliance reports with NIST references per finding.",                       badge: "Enterprise", badgeColor: C.blue },
+            { icon: "🔐", title: "TLS Analyzer",           desc: "Check any domain's TLS version, cipher suite, and quantum safety rating instantly.",                               badge: "Free",       badgeColor: C.green },
+            { icon: "🔬", title: "Agility Checker",        desc: "Detect hardcoded vs configurable crypto. Score 0-100 for migration readiness.",                                    badge: "Free",       badgeColor: C.green },
+            { icon: "🤖", title: "AI Fix Assistant",       desc: "Claude-powered exact replacement code for every vulnerability found in your codebase.",                            badge: "Pro",        badgeColor: "#7c3aed" },
+            { icon: "🔄", title: "Migration Tracker",      desc: "Track 11 vulnerability types from Pending to Fixed across your entire organization.",                              badge: "Free",       badgeColor: C.green },
           ].map((f, i) => (
             <div key={i} style={{ background: C.white, borderRadius: 16, padding: 26, border: `1px solid ${C.panelBorder}`, boxShadow: "0 1px 6px rgba(0,0,0,0.04)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
@@ -1067,10 +1254,10 @@ function Homepage({ onGetStarted }) {
           </div>
           <div className="how-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 40 }}>
             {[
-              { step: "1", icon: "🔗", title: "Paste GitHub URL", desc: "Enter any public or private GitHub repository URL." },
-              { step: "2", icon: "🔍", title: "We Scan Your Code", desc: "Our engine checks every line against 15+ NIST-aligned vulnerability patterns." },
-              { step: "3", icon: "📊", title: "Get Full Report", desc: "Receive Quantum Readiness Score, NIST compliance report, PDF export, and AI-powered fixes." },
-            ].map((s, i) => (
+              { step: "1", icon: "🔗", title: "Paste GitHub URL",    desc: "Enter any public or private GitHub repository URL." },
+              { step: "2", icon: "🔍", title: "We Scan Your Code",   desc: "Our engine checks every line against 15+ NIST-aligned vulnerability patterns." },
+              { step: "3", icon: "📊", title: "Get Full Report",     desc: "Receive Quantum Readiness Score, NIST compliance report, PDF export, and AI-powered fixes." },
+            ].map((s,i) => (
               <div key={i} style={{ textAlign: "center" }}>
                 <div style={{ width: 66, height: 66, borderRadius: "50%", background: C.green, color: C.white, fontSize: 26, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", boxShadow: "0 4px 14px rgba(22,163,74,0.3)" }}>{s.step}</div>
                 <div style={{ fontSize: 38, marginBottom: 14 }}>{s.icon}</div>
@@ -1089,24 +1276,16 @@ function Homepage({ onGetStarted }) {
         </div>
         <div className="pricing-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 24, maxWidth: 1000, margin: "0 auto" }}>
           {[
-            { name: "Free", price: "$0", period: "forever", color: C.text, highlight: false, features: ["Web scanner", "GitHub URL + ZIP scan", "15+ vulnerability types", "PDF & NIST reports", "TLS Analyzer", "Agility Checker", "10 scans/day"], cta: "Get Started Free", ctaAction: onGetStarted },
-            { name: "Pro", price: "$29", period: "/month", color: C.green, highlight: true, badge: "Most Popular", features: ["Everything in Free", "Unlimited scans", "AI-powered fix suggestions", "5 team members", "Full API access", "Priority support"], cta: "Coming Soon", ctaAction: null },
-            { name: "Enterprise", price: "Custom", period: "", color: "#7c3aed", highlight: false, features: ["Everything in Pro", "Unlimited team members", "Self-hosted deployment", "SSO / SAML login", "Audit logs", "SOC2 compliance"], cta: "Contact Us", ctaAction: () => window.open("mailto:thisispayyavula@gmail.com?subject=QuantumGuard Enterprise Inquiry") },
-          ].map((p, i) => (
+            { name: "Free",       price: "$0",     period: "forever",  color: C.text,    highlight: false, features: ["Web scanner","GitHub URL + ZIP scan","15+ vulnerability types","PDF & NIST reports","TLS Analyzer","Agility Checker","10 scans/day"],                               cta: "Get Started Free",  ctaAction: onGetStarted },
+            { name: "Pro",        price: "$29",    period: "/month",   color: C.green,   highlight: true,  badge: "Most Popular", features: ["Everything in Free","Unlimited scans","AI-powered fix suggestions","5 team members","Full API access","Priority support"],                  cta: "Coming Soon",       ctaAction: null },
+            { name: "Enterprise", price: "Custom", period: "",         color: "#7c3aed", highlight: false, features: ["Everything in Pro","Unlimited team members","Self-hosted deployment","SSO / SAML login","Audit logs","SOC2 compliance"],                                           cta: "Contact Us",        ctaAction: () => window.open("mailto:thisispayyavula@gmail.com?subject=QuantumGuard Enterprise Inquiry") },
+          ].map((p,i) => (
             <div key={i} style={{ background: C.white, borderRadius: 20, padding: 30, border: p.highlight ? `2px solid ${C.green}` : `1px solid ${C.panelBorder}`, boxShadow: p.highlight ? "0 12px 32px rgba(22,163,74,0.15)" : "0 2px 8px rgba(0,0,0,0.04)", position: "relative" }}>
               {p.badge && <div style={{ position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)", background: C.green, color: C.white, padding: "5px 18px", borderRadius: 20, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>{p.badge}</div>}
               <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 8 }}>{p.name}</div>
-              <div style={{ marginBottom: 4 }}>
-                <span style={{ fontSize: 42, fontWeight: 900, color: p.color, letterSpacing: -1 }}>{p.price}</span>
-                <span style={{ fontSize: 14, color: C.muted }}>{p.period}</span>
-              </div>
+              <div style={{ marginBottom: 4 }}><span style={{ fontSize: 42, fontWeight: 900, color: p.color, letterSpacing: -1 }}>{p.price}</span><span style={{ fontSize: 14, color: C.muted }}>{p.period}</span></div>
               <div style={{ height: 1, background: C.panelBorder, margin: "20px 0" }}></div>
-              {p.features.map((f, j) => (
-                <div key={j} style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-                  <span style={{ color: C.green, fontWeight: 700, fontSize: 14, flexShrink: 0 }}>✓</span>
-                  <span style={{ fontSize: 13, color: C.muted }}>{f}</span>
-                </div>
-              ))}
+              {p.features.map((f,j) => (<div key={j} style={{ display: "flex", gap: 10, marginBottom: 10 }}><span style={{ color: C.green, fontWeight: 700, fontSize: 14, flexShrink: 0 }}>✓</span><span style={{ fontSize: 13, color: C.muted }}>{f}</span></div>))}
               <button onClick={p.ctaAction} style={{ width: "100%", marginTop: 24, padding: "12px", borderRadius: 12, background: p.highlight ? C.green : "transparent", color: p.highlight ? C.white : p.color, border: `2px solid ${p.color}`, cursor: p.ctaAction ? "pointer" : "default", fontSize: 14, fontWeight: 700 }}>{p.cta}</button>
             </div>
           ))}
@@ -1121,18 +1300,18 @@ function Homepage({ onGetStarted }) {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 20 }}>
             {[
-              { icon: "⚡", title: "Quick Start", desc: "Scan your first repo in 30 seconds. No installation required.", steps: ["Paste GitHub URL", "Click Run Scan", "Download report"] },
-              { icon: "🔌", title: "REST API", desc: "Integrate QuantumGuard into your stack with our REST API.", steps: ["POST /scan-github", "POST /check-agility", "POST /analyze-tls"] },
-              { icon: "🔄", title: "GitHub Actions", desc: "Auto-scan on every push with our CI/CD workflow.", steps: ["Copy workflow YAML", "Add to .github/workflows/", "Push to trigger"] },
-              { icon: "🖥", title: "Self-Hosting", desc: "Run QuantumGuard inside your own network.", steps: ["Clone the repo", "Run Docker container", "Code never leaves you"] },
-            ].map((d, i) => (
+              { icon: "⚡", title: "Quick Start",   desc: "Scan your first repo in 30 seconds. No installation required.", steps: ["Paste GitHub URL","Click Run Scan","Download report"] },
+              { icon: "🔌", title: "REST API",       desc: "Integrate QuantumGuard into your stack with our REST API.",     steps: ["POST /scan-github","POST /check-agility","POST /analyze-tls"] },
+              { icon: "🔄", title: "GitHub Actions", desc: "Auto-scan on every push with our CI/CD workflow.",              steps: ["Copy workflow YAML","Add to .github/workflows/","Push to trigger"] },
+              { icon: "🖥",  title: "Self-Hosting",  desc: "Run QuantumGuard inside your own network.",                    steps: ["Clone the repo","Run Docker container","Code never leaves you"] },
+            ].map((d,i) => (
               <div key={i} style={{ background: C.greenLighter, borderRadius: 16, padding: 26, border: `1px solid ${C.greenMid}` }}>
                 <div style={{ fontSize: 30, marginBottom: 12 }}>{d.icon}</div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: C.text, marginBottom: 8 }}>{d.title}</div>
                 <div style={{ fontSize: 13, color: C.muted, marginBottom: 16, lineHeight: 1.65 }}>{d.desc}</div>
-                {d.steps.map((step, j) => (
+                {d.steps.map((step,j) => (
                   <div key={j} style={{ display: "flex", gap: 10, marginBottom: 7, alignItems: "center" }}>
-                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: C.green, color: C.white, fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{j + 1}</div>
+                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: C.green, color: C.white, fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{j+1}</div>
                     <span style={{ fontSize: 12, color: C.textMid, fontWeight: 500 }}>{step}</span>
                   </div>
                 ))}
@@ -1146,12 +1325,8 @@ function Homepage({ onGetStarted }) {
         <h2 style={{ fontSize: 42, fontWeight: 900, color: C.white, marginBottom: 16, letterSpacing: -0.5 }}>Ready to secure your code?</h2>
         <p style={{ color: "rgba(255,255,255,0.8)", marginBottom: 36, fontSize: 16, maxWidth: 480, margin: "0 auto 36px", lineHeight: 1.7 }}>Join developers scanning their codebases for quantum vulnerabilities before the 2030 deadline.</p>
         <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-          <button onClick={onGetStarted} style={{ background: C.white, color: C.green, padding: "15px 34px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 16, fontWeight: 800 }}>
-            🛡 Start Scanning Now — Free
-          </button>
-          <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer" style={{ background: "rgba(255,255,255,0.15)", color: C.white, padding: "15px 34px", borderRadius: 12, border: "2px solid rgba(255,255,255,0.3)", fontSize: 16, fontWeight: 700, textDecoration: "none" }}>
-            ★ Star on GitHub
-          </a>
+          <button onClick={onGetStarted} style={{ background: C.white, color: C.green, padding: "15px 34px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 16, fontWeight: 800 }}>🛡 Start Scanning Now — Free</button>
+          <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer" style={{ background: "rgba(255,255,255,0.15)", color: C.white, padding: "15px 34px", borderRadius: 12, border: "2px solid rgba(255,255,255,0.3)", fontSize: 16, fontWeight: 700, textDecoration: "none" }}>★ Star on GitHub</a>
         </div>
       </div>
 
@@ -1163,7 +1338,7 @@ function Homepage({ onGetStarted }) {
             <span style={{ fontSize: 12, color: C.muted }}>by MANGSRI · Open Source · Free Forever</span>
           </div>
           <div style={{ display: "flex", gap: 20, flexWrap: "wrap", alignItems: "center" }}>
-            {[["About", "/about.html"], ["Privacy Policy", "/privacy.html"], ["Terms", "/terms.html"]].map(([label, href], i) => (
+            {[["About","/about.html"],["Privacy Policy","/privacy.html"],["Terms","/terms.html"]].map(([label,href],i) => (
               <a key={i} href={href} style={{ color: C.muted, fontSize: 13, textDecoration: "none", fontWeight: 500 }}>{label}</a>
             ))}
             <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer" style={{ color: C.green, fontSize: 13, textDecoration: "none", fontWeight: 600 }}>GitHub ↗</a>
@@ -1184,20 +1359,21 @@ export default function App() {
 
   useEffect(() => { onAuthStateChanged(auth, u => setUser(u)); }, []);
 
-  const handleLogin = async () => { try { await signInWithGoogle(); } catch (e) { console.error(e); } };
+  const handleLogin  = async () => { try { await signInWithGoogle(); } catch (e) { console.error(e); } };
   const handleLogout = async () => { try { await signOut(auth); setUser(null); } catch (e) { console.error(e); } };
 
   if (active === "home") return <Homepage onGetStarted={() => setActive("scan")} />;
 
   const pageTitle = {
-    scan: "Threat Scanner",
-    agility: "Agility Checker",
-    tls: "TLS Analyzer",
-    history: "Scan History",
+    scan:      "Threat Scanner",
+    agility:   "Agility Checker",
+    tls:       "TLS Analyzer",
+    history:   "Scan History",
     migration: "Migration Tracker",
     dashboard: "Analytics",
-    docs: "Documentation",
-    team: "Our Team",
+    nist:      "NIST Report",
+    docs:      "Documentation",
+    team:      "Our Team",
   };
 
   return (
@@ -1208,14 +1384,15 @@ export default function App() {
       <div className="main-content" style={{ flex: 1, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <TopBar title={pageTitle[active] || active} user={user} onLogin={handleLogin} onLogout={handleLogout} onHamburger={() => setSidebarOpen(!sidebarOpen)} />
         <div style={{ flex: 1, overflowY: "auto" }}>
-          {active === "scan" && <ScannerPage user={user} />}
-          {active === "agility" && <AgilityPage />}
-          {active === "tls" && <TLSPage />}
-          {active === "history" && <HistoryPage user={user} />}
+          {active === "scan"      && <ScannerPage user={user} />}
+          {active === "agility"   && <AgilityPage />}
+          {active === "tls"       && <TLSPage />}
+          {active === "history"   && <HistoryPage user={user} />}
           {active === "migration" && <MigrationPage user={user} />}
           {active === "dashboard" && <AnalyticsPage />}
-          {active === "docs" && <DocsPage />}
-          {active === "team" && <TeamPage />}
+          {active === "nist"      && <NISTReportPage />}
+          {active === "docs"      && <DocsPage />}
+          {active === "team"      && <TeamPage />}
         </div>
       </div>
     </div>
