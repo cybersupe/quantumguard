@@ -342,3 +342,28 @@ body {
     grid-template-columns: 1fr !important;
   }
 }
+@media (max-width: 768px) {
+  nav a,
+  nav .nav-links,
+  nav [class*="navLinks"] {
+    display: none !important;
+  }
+
+  .hero-preview,
+  [class*="preview"],
+  [class*="dashboard"],
+  [class*="mockup"] {
+    display: none !important;
+  }
+
+  h1 {
+    font-size: 46px !important;
+    line-height: 1.05 !important;
+    word-break: normal !important;
+  }
+
+  section {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+}
