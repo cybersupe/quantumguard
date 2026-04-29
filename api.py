@@ -25,19 +25,52 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# ── CORS — explicit origins fix for Render proxy ─────────
+# ── CORS — manual middleware to bypass Render proxy issues ──
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as StarletteRequest
+from starlette.responses import Response
+
+ALLOWED_ORIGINS = [
+    "https://quantumguard.site",
+    "https://www.quantumguard.site",
+    "https://quantumguard-one.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+]
+
+class CORSManualMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: StarletteRequest, call_next):
+        origin = request.headers.get("origin", "")
+        # Allow the origin if it matches, otherwise allow all (for API tools)
+        allow_origin = origin if origin in ALLOWED_ORIGINS else "*"
+
+        # Handle preflight OPTIONS request
+        if request.method == "OPTIONS":
+            return Response(
+                status_code=200,
+                headers={
+                    "Access-Control-Allow-Origin": allow_origin,
+                    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "*",
+                    "Access-Control-Max-Age": "86400",
+                },
+            )
+
+        response = await call_next(request)
+        response.headers["Access-Control-Allow-Origin"] = allow_origin
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
+
+app.add_middleware(CORSManualMiddleware)
+
+# Also keep FastAPI built-in CORS as fallback
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://quantumguard.site",
-        "https://www.quantumguard.site",
-        "https://quantumguard-one.vercel.app",
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=["*"],
     allow_credentials=False,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
