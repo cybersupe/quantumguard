@@ -44,15 +44,18 @@ body {
 }
 
 @media (max-width: 768px) {
-
   /* Hamburger menu */
   .hamburger { display: flex; }
+  .hamburger-top { display: flex !important; }
 
-  /* Sidebar */
+  /* Main content full width */
   .main-content { margin-left: 0 !important; width: 100% !important; }
+
+  /* Sidebar slide-in */
   .sidebar {
     position: fixed !important;
-    top: 0 !important; left: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
     width: 260px !important;
     height: 100vh !important;
     z-index: 1000 !important;
@@ -61,17 +64,18 @@ body {
   }
   .sidebar.open { transform: translateX(0) !important; }
 
-  /* Dashboard grids */
+  /* Dashboard grids - single column */
   .stats-grid,
   .charts-grid,
   .analytics-grid,
   .docs-grid,
   .tls-grid { grid-template-columns: 1fr !important; }
 
-  /* Homepage navbar — hide middle links */
+  /* Homepage navbar - hide middle links and right side buttons */
   .nav-links { display: none !important; }
+  nav > div:last-child { display: none !important; }
 
-  /* Homepage hero — stack vertically, hide dashboard preview */
+  /* Homepage hero - stack vertically, hide dashboard preview */
   .hero-grid {
     grid-template-columns: 1fr !important;
     gap: 24px !important;
@@ -79,20 +83,20 @@ body {
   }
   .hero-preview { display: none !important; }
 
-  /* Stats bar — 2 columns on mobile */
+  /* Stats bar - 2 columns on mobile */
   .stats-bar-grid {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 12px !important;
     padding: 0 16px !important;
   }
 
-  /* How It Works — stack */
+  /* How It Works - stack */
   .how-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
 
-  /* Pricing — stack */
+  /* Pricing - stack */
   .pricing-grid { grid-template-columns: 1fr !important; }
 
-  /* General padding fixes */
+  /* Typography */
   h1 { font-size: 32px !important; line-height: 1.15 !important; }
   h2 { font-size: 26px !important; }
 
@@ -105,12 +109,8 @@ body {
   }
 }
 
+/* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #f0f7f0; }
 ::-webkit-scrollbar-thumb { background: #86efac; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #16a34a; }
-@media (max-width: 768px) {
-  .hamburger-top {
-    display: flex !important;
-  }
-}
