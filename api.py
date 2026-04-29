@@ -672,3 +672,61 @@ def health():
         "tool": "QuantumGuard",
         "company": "Mangsri QuantumGuard LLC",
     }
+
+
+@app.get("/badge/{owner}/{repo}")
+async def get_badge(owner: str, repo: str):
+    from fastapi.responses import Response
+    try:
+        github_url = f"https://github.com/{owner}/{repo}"
+        zip_content, owner_, repo_ = _download_github_zip(github_url)
+        temp_dir = f"/tmp/qg-badge-{uuid.uuid4().hex[:8]}"
+        os.makedirs(temp_dir, exist_ok=True)
+        try:
+            with zipfile.ZipFile(io.BytesIO(zip_content)) as z:
+                z.extractall(temp_dir)
+            findings = scan_directory(temp_dir)
+            score = calculate_score(findings)
+        finally:
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+        if score >= 80:
+            color = "#16a34a"
+            left_color = "#15803d"
+            right_text = f"{score}/100 safe"
+        elif score >= 50:
+            color = "#d97706"
+            left_color = "#b45309"
+            right_text = f"{score}/100 at risk"
+        else:
+            color = "#dc2626"
+            left_color = "#b91c1c"
+            right_text = f"{score}/100 vulnerable"
+    except Exception:
+        color = "#6b7280"
+        left_color = "#4b5563"
+        right_text = "unknown"
+
+    left_text = "QuantumGuard"
+    lw = len(left_text) * 7 + 20
+    rw = len(right_text) * 7 + 20
+    tw = lw + rw
+    svg = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{tw}" height="20">'
+        f'<defs><linearGradient id="s" x2="0" y2="100%">'
+        f'<stop offset="0" stop-color="#bbb" stop-opacity=".1"/>'
+        f'<stop offset="1" stop-opacity=".1"/></linearGradient>'
+        f'<clipPath id="r"><rect width="{tw}" height="20" rx="3"/></clipPath></defs>'
+        f'<g clip-path="url(#r)">'
+        f'<rect width="{lw}" height="20" fill="{left_color}"/>'
+        f'<rect x="{lw}" width="{rw}" height="20" fill="{color}"/>'
+        f'<rect width="{tw}" height="20" fill="url(#s)"/></g>'
+        f'<g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11">'
+        f'<text x="{lw//2}" y="15" fill="#010101" fill-opacity=".3">{left_text}</text>'
+        f'<text x="{lw//2}" y="14">{left_text}</text>'
+        f'<text x="{lw + rw//2}" y="15" fill="#010101" fill-opacity=".3">{right_text}</text>'
+        f'<text x="{lw + rw//2}" y="14">{right_text}</text>'
+        f'</g></svg>'
+    )
+    return Response(content=svg, media_type="image/svg+xml",
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
