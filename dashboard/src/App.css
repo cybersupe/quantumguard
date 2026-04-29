@@ -367,3 +367,6 @@ body {
     padding-right: 20px !important;
   }
 }
+html {
+  scroll-behavior: smooth;
+}
