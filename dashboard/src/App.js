@@ -625,15 +625,6 @@ function ScannerPage({ user }) {
 
   const handleNIST = () => {
     if (!result) return;
-    const csvRows = ["Severity,File,Line,Vulnerability,Code,Replacement",
-      ...result.findings.map(f => [
-        f.severity, f.file, f.line, f.vulnerability,
-        '"' + (f.code || "").replace(/"/g, "'").replace(/[\r\n]+/g, " ") + '"',
-        f.replacement
-      ].join(","))
-    ].join("\n");
-    const csvUrl = "data:text/csv;charset=utf-8," + encodeURIComponent(csvRows);
-    const win = window.open("", "_blank");
     const score = result.quantum_readiness_score;
     const status = score >= 70 ? "COMPLIANT" : score >= 40 ? "PARTIALLY COMPLIANT" : "NON-COMPLIANT";
     const scoreColor = score >= 70 ? "#16a34a" : score >= 40 ? "#d97706" : "#dc2626";
@@ -643,9 +634,11 @@ function ScannerPage({ user }) {
     const high = result.findings.filter(f => f.severity === "HIGH").length;
     const medium = result.findings.filter(f => f.severity === "MEDIUM").length;
     const total = result.total_findings;
-    const sevColor = s => s === "CRITICAL" ? "#dc2626" : s === "HIGH" ? "#d97706" : "#ca8a04";
-    const sevBg = s => s === "CRITICAL" ? "#fee2e2" : s === "HIGH" ? "#fef3c7" : "#fef9c3";
     const pct = (n) => total > 0 ? Math.round(n / total * 100) : 0;
+    const sevColor = (s) => s === "CRITICAL" ? "#dc2626" : s === "HIGH" ? "#d97706" : "#ca8a04";
+    const sevBg = (s) => s === "CRITICAL" ? "#fee2e2" : s === "HIGH" ? "#fef3c7" : "#fef9c3";
+    const ctrlColor = (s) => s === "FAIL" ? "#dc2626" : s === "WARN" ? "#d97706" : "#16a34a";
+    const ctrlBg = (s) => s === "FAIL" ? "#fee2e2" : s === "WARN" ? "#fef3c7" : "#dcfce7";
     const grouped = result.findings.reduce((a, f) => { if (!a[f.file]) a[f.file] = []; a[f.file].push(f); return a; }, {});
     const nistControls = [
       { id: "SC-12", name: "Cryptographic Key Establishment & Management", status: critical > 0 ? "FAIL" : "PASS" },
@@ -657,18 +650,17 @@ function ScannerPage({ user }) {
       { id: "CM-7",  name: "Least Functionality",                          status: "PASS" },
       { id: "AC-17", name: "Remote Access",                                status: "PASS" },
     ];
-    const ctrlColor = s => s === "FAIL" ? "#dc2626" : s === "WARN" ? "#d97706" : "#16a34a";
-    const ctrlBg    = s => s === "FAIL" ? "#fee2e2" : s === "WARN" ? "#fef3c7" : "#dcfce7";
-
-    const csvRows = ["Severity,File,Line,Vulnerability,Code,Replacement",
+    const csvData = ["Severity,File,Line,Vulnerability,Code,Replacement",
       ...result.findings.map(f => [
         f.severity, f.file, f.line, f.vulnerability,
-        '"' + (f.code || "").replace(/"/g, "'").replace(/\n/g, " ") + '"',
+        '"' + (f.code || "").replace(/"/g, "'").replace(/[\r\n]+/g, " ") + '"',
         f.replacement
       ].join(","))
     ].join("\n");
-    const csvUrl = "data:text/csv;charset=utf-8," + encodeURIComponent(csvRows);
-            win.document.write(`<!DOCTYPE html><html><head><title>QuantumGuard NIST Report</title>
+    const csvHref = "data:text/csv;charset=utf-8," + encodeURIComponent(csvData);
+    const target = file ? file.name : (input || "scan");
+    const win = window.open("", "_blank");
+    win.document.write(`<!DOCTYPE html><html><head><title>QuantumGuard NIST Report</title>
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
       body{font-family:"Segoe UI",sans-serif;background:#f8faf8;color:#1a1a1a;font-size:13px}
@@ -676,26 +668,23 @@ function ScannerPage({ user }) {
       .wrap{max-width:1100px;margin:0 auto;padding:32px 24px 60px}
       .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;border-bottom:3px solid #16a34a;margin-bottom:28px;flex-wrap:wrap;gap:16px}
       .logo-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-      .logo-icon{width:38px;height:38px;background:#16a34a;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;flex-shrink:0}
+      .logo-icon{width:38px;height:38px;background:#16a34a;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff}
       .logo-name{font-size:22px;font-weight:900}.logo-name span{color:#16a34a}
-      .report-title{font-size:15px;font-weight:700;color:#374151;margin-bottom:4px}
-      .meta-row{display:flex;gap:20px;flex-wrap:wrap;margin-top:6px}
-      .meta-item{font-size:11px;color:#9ca3af}.meta-item strong{color:#374151}
-      .score-box{background:#fff;border:2px solid #86efac;border-radius:14px;padding:18px 24px;text-align:center;min-width:150px;box-shadow:0 2px 8px rgba(22,163,74,0.1)}
+      .score-box{background:#fff;border:2px solid #86efac;border-radius:14px;padding:18px 24px;text-align:center;min-width:150px}
       .score-num{font-size:48px;font-weight:900;line-height:1;color:${scoreColor}}
       .score-label{font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:1px;margin-top:2px}
-      .score-badge{display:inline-flex;align-items:center;gap:5px;background:${statusBg};border:1px solid ${statusBorder};color:${scoreColor};font-size:10px;font-weight:700;padding:4px 12px;border-radius:100px;margin-top:8px;text-transform:uppercase;letter-spacing:0.5px}
+      .score-badge{display:inline-flex;align-items:center;gap:5px;background:${statusBg};border:1px solid ${statusBorder};color:${scoreColor};font-size:10px;font-weight:700;padding:4px 12px;border-radius:100px;margin-top:8px;text-transform:uppercase}
       .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
-      .stat{background:#fff;border:1px solid #e2f0e2;border-radius:12px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+      .stat{background:#fff;border:1px solid #e2f0e2;border-radius:12px;padding:16px 18px}
       .stat-val{font-size:32px;font-weight:900;line-height:1;margin-bottom:4px}
       .stat-key{font-size:11px;color:#6b7280}
       .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#16a34a;margin:24px 0 12px;display:flex;align-items:center;gap:10px}
       .section-line{flex:1;height:1px;background:#d1fae5}
       .panels{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px}
-      .panel{background:#fff;border:1px solid #e2f0e2;border-radius:12px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+      .panel{background:#fff;border:1px solid #e2f0e2;border-radius:12px;padding:18px}
       .panel-title{font-size:13px;font-weight:700;color:#14532d;margin-bottom:14px}
       .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:11px}
-      .bar-label{font-size:11px;color:#6b7280;width:65px;font-weight:500}
+      .bar-label{font-size:11px;color:#6b7280;width:65px}
       .bar-track{flex:1;background:#f0f7f0;border-radius:4px;height:7px;overflow:hidden}
       .bar-fill{height:100%;border-radius:4px}
       .bar-count{font-size:11px;font-weight:600;width:60px;text-align:right}
@@ -703,35 +692,31 @@ function ScannerPage({ user }) {
       th{background:#f0fdf4;padding:9px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;font-weight:700;border-bottom:2px solid #d1fae5}
       td{padding:9px 14px;border-bottom:1px solid #f0f4f0;vertical-align:top;color:#374151}
       .file-header{background:#f0fdf4;padding:10px 14px;font-family:monospace;font-weight:700;font-size:12px;color:#15803d;border-bottom:1px solid #d1fae5;display:flex;justify-content:space-between;align-items:center}
-      .file-wrap{border:1px solid #e2f0e2;border-radius:12px;overflow:hidden;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,0.03)}
+      .file-wrap{border:1px solid #e2f0e2;border-radius:12px;overflow:hidden;margin-bottom:14px}
       .sev{font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;display:inline-block}
       code{font-family:monospace;font-size:11px;background:#f0f7f0;padding:2px 6px;border-radius:4px;color:#15803d;word-break:break-all;display:inline-block;max-width:340px}
       .fix{color:#2563eb;font-size:11px;font-weight:600}
       .threat-count{background:#fee2e2;color:#dc2626;font-size:10px;font-weight:700;padding:2px 9px;border-radius:100px}
-      .footer{margin-top:32px;padding-top:16px;border-top:1px solid #e2f0e2;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#9ca3af;flex-wrap:wrap;gap:8px}
+      .footer{margin-top:32px;padding-top:16px;border-top:1px solid #e2f0e2;display:flex;justify-content:space-between;font-size:11px;color:#9ca3af;flex-wrap:wrap;gap:8px}
       .print-btn{background:#16a34a;color:#fff;border:none;padding:9px 22px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-right:8px}
       .csv-btn{background:#fff;color:#16a34a;border:1px solid #86efac;padding:9px 22px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer}
-    </style>
-    </head><body><div class="wrap">
-
+    </style></head><body><div class="wrap">
     <div class="no-print" style="margin-bottom:20px">
       <button class="print-btn" onclick="window.print()">🖨 Print / Save PDF</button>
-      <button class="csv-btn" onclick="document.getElementById('dl-csv').click()">📊 Export CSV</button>
-      <a id="dl-csv" href="${csvUrl}" download="nist-report.csv" style="display:none"></a>
+      <a href="${csvHref}" download="nist-report.csv"><button class="csv-btn">📊 Export CSV</button></a>
     </div>
-
     <div class="header">
       <div>
         <div class="logo-row">
           <div class="logo-icon">⚛</div>
           <span class="logo-name"><span>Quantum</span>Guard</span>
         </div>
-        <div class="report-title">NIST SP 800-53 Security Report</div>
-        <div class="meta-row">
-          <span class="meta-item">Generated <strong>${new Date().toLocaleString()}</strong></span>
-          <span class="meta-item">Standard <strong>NIST SP 800-53 Rev 5</strong></span>
-          <span class="meta-item">Target <strong>${file?.name || input || "scan"}</strong></span>
-          <span class="meta-item">Report ID <strong>#QG-${Date.now()}</strong></span>
+        <div style="font-size:15px;font-weight:700;color:#374151;margin-bottom:6px">NIST SP 800-53 Security Report</div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap">
+          <span style="font-size:11px;color:#9ca3af">Generated <strong style="color:#374151">${new Date().toLocaleString()}</strong></span>
+          <span style="font-size:11px;color:#9ca3af">Standard <strong style="color:#374151">NIST SP 800-53 Rev 5</strong></span>
+          <span style="font-size:11px;color:#9ca3af">Target <strong style="color:#374151">${target}</strong></span>
+          <span style="font-size:11px;color:#9ca3af">Report ID <strong style="color:#374151">#QG-${Date.now()}</strong></span>
         </div>
       </div>
       <div class="score-box">
@@ -740,59 +725,38 @@ function ScannerPage({ user }) {
         <div class="score-badge">${status}</div>
       </div>
     </div>
-
     <div class="stats">
       <div class="stat"><div class="stat-val" style="color:#16a34a">${total}</div><div class="stat-key">Total Findings</div></div>
       <div class="stat"><div class="stat-val" style="color:#dc2626">${critical}</div><div class="stat-key">Critical</div></div>
       <div class="stat"><div class="stat-val" style="color:#d97706">${high}</div><div class="stat-key">High</div></div>
       <div class="stat"><div class="stat-val" style="color:#ca8a04">${medium}</div><div class="stat-key">Medium</div></div>
     </div>
-
     <div class="section-title">Breakdown <div class="section-line"></div></div>
     <div class="panels">
       <div class="panel">
         <div class="panel-title">Severity Distribution</div>
-        ${[["Critical",critical,"#dc2626"],["High",high,"#d97706"],["Medium",medium,"#ca8a04"]].map(([l,c,col])=>`
-        <div class="bar-row">
-          <div class="bar-label">${l}</div>
-          <div class="bar-track"><div class="bar-fill" style="width:${pct(c)}%;background:${col}"></div></div>
-          <div class="bar-count" style="color:${col}">${c} (${pct(c)}%)</div>
-        </div>`).join("")}
+        ${[["Critical",critical,"#dc2626"],["High",high,"#d97706"],["Medium",medium,"#ca8a04"]].map(([l,c,col])=>
+          '<div class="bar-row"><div class="bar-label">'+l+'</div><div class="bar-track"><div class="bar-fill" style="width:'+pct(c)+'%;background:'+col+'"></div></div><div class="bar-count" style="color:'+col+'">'+c+' ('+pct(c)+'%)</div></div>'
+        ).join("")}
       </div>
       <div class="panel">
         <div class="panel-title">NIST SP 800-53 Control Status</div>
-        ${nistControls.map(ctrl=>`
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <span style="font-size:12px;color:#374151"><span style="font-family:monospace;color:#16a34a;font-weight:700">${ctrl.id}</span> — ${ctrl.name}</span>
-          <span style="background:${ctrlBg(ctrl.status)};color:${ctrlColor(ctrl.status)};font-size:10px;font-weight:700;padding:2px 9px;border-radius:100px;margin-left:8px;white-space:nowrap">${ctrl.status}</span>
-        </div>`).join("")}
+        ${nistControls.map(ctrl=>
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:12px;color:#374151"><span style="font-family:monospace;color:#16a34a;font-weight:700">'+ctrl.id+'</span> — '+ctrl.name+'</span><span style="background:'+ctrlBg(ctrl.status)+';color:'+ctrlColor(ctrl.status)+';font-size:10px;font-weight:700;padding:2px 9px;border-radius:100px;margin-left:8px;white-space:nowrap">'+ctrl.status+'</span></div>'
+        ).join("")}
       </div>
     </div>
-
     <div class="section-title">Threat Intelligence — ${total} Findings <div class="section-line"></div></div>
-    ${Object.entries(grouped).map(([fname, findings])=>`
-      <div class="file-wrap">
-        <div class="file-header">
-          <span>📄 ${fname}</span>
-          <span class="threat-count">${findings.length} threats</span>
-        </div>
-        <table>
-          <thead><tr><th>Severity</th><th>Line</th><th>Vulnerability</th><th>Code</th><th>NIST Replacement</th></tr></thead>
-          <tbody>
-            ${findings.map(f=>`<tr>
-              <td><span class="sev" style="background:${sevBg(f.severity)};color:${sevColor(f.severity)}">${f.severity}</span></td>
-              <td style="color:#9ca3af;font-weight:600;font-family:monospace">${f.line}</td>
-              <td style="font-weight:700;color:#374151">${f.vulnerability}</td>
-              <td><code>${f.code.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</code></td>
-              <td class="fix">✦ ${f.replacement}</td>
-            </tr>`).join("")}
-          </tbody>
-        </table>
-      </div>`).join("")}
-
+    ${Object.entries(grouped).map(([fname, findings])=>
+      '<div class="file-wrap"><div class="file-header"><span>📄 '+fname+'</span><span class="threat-count">'+findings.length+' threats</span></div><table><thead><tr><th>Severity</th><th>Line</th><th>Vulnerability</th><th>Code</th><th>NIST Replacement</th></tr></thead><tbody>'+
+      findings.map(f=>
+        '<tr><td><span class="sev" style="background:'+sevBg(f.severity)+';color:'+sevColor(f.severity)+'">'+f.severity+'</span></td><td style="color:#9ca3af;font-family:monospace;font-weight:600">'+f.line+'</td><td style="font-weight:700">'+f.vulnerability+'</td><td><code>'+((f.code||"").replace(/</g,"&lt;").replace(/>/g,"&gt;"))+'</code></td><td class="fix">✦ '+f.replacement+'</td></tr>'
+      ).join("")+
+      '</tbody></table></div>'
+    ).join("")}
     <div class="footer">
-      <span>QuantumGuard · NIST SP 800-53 Rev 5 · Mangsri QuantumGuard LLC · Montgomery, AL · EIN 42-2185776</span>
-      <span>Report generated ${new Date().toLocaleDateString()}</span>
+      <span>QuantumGuard · NIST SP 800-53 Rev 5 · Mangsri QuantumGuard LLC · Montgomery, AL</span>
+      <span>Generated ${new Date().toLocaleDateString()}</span>
     </div>
     </div></body></html>`);
     win.document.close();
