@@ -330,7 +330,15 @@ function NISTReportPage() {
 
   const handleExportPDF = () => {
     const win = window.open("", "_blank");
-    win.document.write(`<!DOCTYPE html><html><head><title>QuantumGuard NIST Report</title>
+    const csvRows = ["Severity,File,Line,Vulnerability,Code,Replacement",
+      ...result.findings.map(f => [
+        f.severity, f.file, f.line, f.vulnerability,
+        '"' + (f.code || "").replace(/"/g, "'").replace(/\n/g, " ") + '"',
+        f.replacement
+      ].join(","))
+    ].join("\n");
+    const csvUrl = "data:text/csv;charset=utf-8," + encodeURIComponent(csvRows);
+            win.document.write(`<!DOCTYPE html><html><head><title>QuantumGuard NIST Report</title>
     <style>body{font-family:sans-serif;padding:40px;color:#1a1a1a}h1{color:#16a34a}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #e2f0e2;padding:8px 12px;text-align:left;font-size:12px}th{background:#f0fdf4;font-weight:700}tr:nth-child(even){background:#f8faf8}.CRITICAL{color:#dc2626;font-weight:700}.HIGH{color:#d97706;font-weight:700}.MEDIUM{color:#ca8a04;font-weight:700}</style>
     </head><body>
     <h1>⚛ QuantumGuard — NIST SP 800-53 Report</h1>
@@ -652,7 +660,15 @@ function ScannerPage({ user }) {
     const ctrlColor = s => s === "FAIL" ? "#dc2626" : s === "WARN" ? "#d97706" : "#16a34a";
     const ctrlBg    = s => s === "FAIL" ? "#fee2e2" : s === "WARN" ? "#fef3c7" : "#dcfce7";
 
-    win.document.write(`<!DOCTYPE html><html><head><title>QuantumGuard NIST Report</title>
+    const csvRows = ["Severity,File,Line,Vulnerability,Code,Replacement",
+      ...result.findings.map(f => [
+        f.severity, f.file, f.line, f.vulnerability,
+        '"' + (f.code || "").replace(/"/g, "'").replace(/\n/g, " ") + '"',
+        f.replacement
+      ].join(","))
+    ].join("\n");
+    const csvUrl = "data:text/csv;charset=utf-8," + encodeURIComponent(csvRows);
+            win.document.write(`<!DOCTYPE html><html><head><title>QuantumGuard NIST Report</title>
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
       body{font-family:"Segoe UI",sans-serif;background:#f8faf8;color:#1a1a1a;font-size:13px}
@@ -700,10 +716,8 @@ function ScannerPage({ user }) {
 
     <div class="no-print" style="margin-bottom:20px">
       <button class="print-btn" onclick="window.print()">🖨 Print / Save PDF</button>
-      <button class="csv-btn" onclick="
-        const rows=['Severity,File,Line,Vulnerability,Code,Replacement',...${JSON.stringify(result.findings)}.map(f=>[f.severity,f.file,f.line,f.vulnerability,f.code.replace(/,/g,';'),f.replacement].join(','))];
-        const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(rows.join('\n'));a.download='nist-report.csv';a.click()
-      ">📊 Export CSV</button>
+      <button class="csv-btn" onclick="document.getElementById('dl-csv').click()">📊 Export CSV</button>
+      <a id="dl-csv" href="${csvUrl}" download="nist-report.csv" style="display:none"></a>
     </div>
 
     <div class="header">
@@ -804,7 +818,15 @@ function ScannerPage({ user }) {
     const sevBg    = s => s === "CRITICAL" ? "#fee2e2" : s === "HIGH" ? "#fef3c7" : "#fef9c3";
     const bar      = (count, tot, color) => `<div style="background:#f0f0f0;border-radius:4px;height:8px;margin-top:4px"><div style="background:${color};height:8px;border-radius:4px;width:${tot>0?Math.round(count/tot*100):0}%"></div></div>`;
 
-    win.document.write(`<!DOCTYPE html><html><head><title>QuantumGuard Report</title>
+    const csvRows = ["Severity,File,Line,Vulnerability,Code,Replacement",
+      ...result.findings.map(f => [
+        f.severity, f.file, f.line, f.vulnerability,
+        '"' + (f.code || "").replace(/"/g, "'").replace(/\n/g, " ") + '"',
+        f.replacement
+      ].join(","))
+    ].join("\n");
+    const csvUrl = "data:text/csv;charset=utf-8," + encodeURIComponent(csvRows);
+            win.document.write(`<!DOCTYPE html><html><head><title>QuantumGuard Report</title>
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
       body{font-family:"Segoe UI",sans-serif;background:#fff;color:#1a1a1a;padding:40px;font-size:13px}
