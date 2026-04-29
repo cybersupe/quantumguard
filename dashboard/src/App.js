@@ -49,7 +49,6 @@ function Sidebar({ active, setActive, user, onLogin, onLogout, open, onClose }) 
     { id: "history",   icon: "🗂",  label: "Scan History" },
     { id: "migration", icon: "🔄",  label: "Migration" },
     { id: "dashboard", icon: "📊",  label: "Analytics" },
-    { id: "nist",      icon: "🏛",  label: "NIST Report" },
     { id: "docs",      icon: "📖",  label: "Docs" },
     { id: "team",      icon: "👥",  label: "Our Team" },
   ];
