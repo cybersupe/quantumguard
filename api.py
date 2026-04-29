@@ -13,6 +13,7 @@ from slowapi.errors import RateLimitExceeded
 from pydantic import BaseModel
 from typing import Optional
 from scanner.scan import scan_directory, calculate_score
+from scanner.cbom import generate_cbom  # ← NEW
 import os, shutil, uuid, zipfile, io, requests, ssl, socket
 import datetime
 
@@ -90,7 +91,6 @@ def _download_github_zip(github_url: str, github_token: Optional[str] = None) ->
     meta_resp = requests.get(meta_url, headers=headers, timeout=10)
     if meta_resp.status_code == 200:
         repo_size_kb = meta_resp.json().get("size", 0)
-        # Render free tier: 512MB RAM limit. Reject repos > 50MB uncompressed (~15MB zip)
         if repo_size_kb > 50000:
             raise HTTPException(
                 status_code=400,
@@ -102,8 +102,7 @@ def _download_github_zip(github_url: str, github_token: Optional[str] = None) ->
         zip_url = f"https://api.github.com/repos/{owner}/{repo}/zipball/{branch}"
         response = requests.get(zip_url, headers=headers, timeout=30, allow_redirects=True)
         if response.status_code == 200:
-            # Double-check actual download size
-            if len(response.content) > 15 * 1024 * 1024:  # 15MB zip
+            if len(response.content) > 15 * 1024 * 1024:
                 raise HTTPException(
                     status_code=400,
                     detail="Repo ZIP is too large for the free tier. Please upload a ZIP of just your src/ folder."
@@ -134,7 +133,6 @@ def _analyze_tls_score(tls_version: str, cipher_name: str, cipher_bits: int) -> 
 
     cipher_upper = cipher_name.upper()
 
-    # TLS Version (max 30 points)
     if tls_version == "TLSv1.3":
         score += 30
         strengths.append("TLS 1.3 — latest standard")
@@ -148,7 +146,6 @@ def _analyze_tls_score(tls_version: str, cipher_name: str, cipher_bits: int) -> 
         score += 0
         issues.append(f"Unknown TLS version: {tls_version}")
 
-    # Cipher Strength (max 40 points)
     if any(strong in cipher_upper for strong in STRONG_CIPHERS):
         score += 40
         strengths.append("AES-256/ChaCha20 — quantum-resilient symmetric encryption")
@@ -166,7 +163,6 @@ def _analyze_tls_score(tls_version: str, cipher_name: str, cipher_bits: int) -> 
     else:
         issues.append("Weak or unknown cipher strength")
 
-    # Key Exchange (max 20 points)
     has_pqc_kx = any(pqc in cipher_upper for pqc in PQC_INDICATORS)
     has_forward_secrecy = any(kx in cipher_upper for kx in FORWARD_SECRECY_KX)
 
@@ -212,16 +208,6 @@ def _analyze_tls_score(tls_version: str, cipher_name: str, cipher_bits: int) -> 
 
 
 def _calculate_tls_grade(score: int, quantum_safe: bool, tls_version: str, issues: list) -> dict:
-    """
-    Calculate SSL Labs style grade: A+, A, B, C, D, F
-    - A+ : score >= 95 AND quantum safe AND TLS 1.3 AND no issues
-    - A  : score >= 80 AND TLS 1.3
-    - B  : score >= 65 AND TLS 1.2+
-    - C  : score >= 50
-    - D  : score >= 35
-    - F  : score < 35 OR critical issues
-    """
-    # Automatic F conditions
     critical_keywords = ["expired", "SSLv", "TLSv1.0", "TLSv1.1", "deprecated and insecure"]
     has_critical = any(any(kw.lower() in issue.lower() for kw in critical_keywords) for issue in issues)
 
@@ -254,7 +240,6 @@ def _calculate_tls_grade(score: int, quantum_safe: bool, tls_version: str, issue
         color = "#f59e0b"
         description = "Good — upgrade to TLS 1.3 recommended"
 
-    # PQC penalty note
     pqc_note = None
     if grade in ("A+", "A") and not quantum_safe:
         pqc_note = "Grade capped at A until PQC key exchange is deployed (CRYSTALS-Kyber FIPS 203)"
@@ -498,7 +483,6 @@ async def analyze_tls(request: Request, body: dict):
                 "Step 3: Deploy CRYSTALS-Kyber hybrid KEM per NIST FIPS 203."
             )
 
-        # Calculate SSL Labs style grade
         grade_info = _calculate_tls_grade(
             analysis["tls_score"],
             analysis["quantum_safe"],
@@ -513,7 +497,6 @@ async def analyze_tls(request: Request, body: dict):
             "cipher_bits": cipher_bits,
             "quantum_safe": analysis["quantum_safe"],
             "tls_score": analysis["tls_score"],
-            # SSL Labs style grade
             "grade": grade_info["grade"],
             "grade_color": grade_info["grade_color"],
             "grade_description": grade_info["grade_description"],
@@ -643,7 +626,6 @@ shared_secret_dec = kem.decap_secret(ciphertext)
 # ML-KEM provides quantum-safe key exchange per NIST FIPS 203.""",
     }
 
-    # Get fix for this vulnerability type
     fix_text = None
     for key in fix_map:
         if vuln.startswith(key):
@@ -730,3 +712,68 @@ async def get_badge(owner: str, repo: str):
     )
     return Response(content=svg, media_type="image/svg+xml",
         headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
+
+# ── CBOM EXPORT ROUTES ────────────────────────────────────────
+
+@app.post("/export-cbom")
+@limiter.limit("10/minute")
+async def export_cbom(request: Request, body: GitScanRequest):
+    """Export a CycloneDX 1.4 CBOM for a GitHub repository."""
+    if "github.com" not in body.github_url:
+        raise HTTPException(status_code=400, detail="Only GitHub URLs allowed")
+
+    temp_dir = None
+    try:
+        zip_content, owner, repo = _download_github_zip(body.github_url, body.github_token)
+
+        temp_dir = f"/tmp/qg-cbom-{uuid.uuid4().hex[:8]}"
+        os.makedirs(temp_dir, exist_ok=True)
+        with zipfile.ZipFile(io.BytesIO(zip_content)) as z:
+            z.extractall(temp_dir)
+
+        findings = scan_directory(temp_dir)
+        score = calculate_score(findings)
+        cbom = generate_cbom(findings, repo=f"{owner}/{repo}", score=score)
+
+        return cbom
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"CBOM export error: {str(e)}")
+    finally:
+        if temp_dir and os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+
+
+@app.post("/export-cbom-zip")
+@limiter.limit("5/minute")
+async def export_cbom_zip(request: Request, file: UploadFile = File(...)):
+    """Export a CycloneDX 1.4 CBOM from an uploaded ZIP file."""
+    if not file.filename.endswith(".zip"):
+        raise HTTPException(status_code=400, detail="Only ZIP files allowed")
+
+    contents = await file.read()
+    if len(contents) > MAX_ZIP_SIZE:
+        raise HTTPException(status_code=400, detail="ZIP file too large. Maximum 10MB allowed")
+
+    temp_dir = f"/tmp/qg-cbom-{uuid.uuid4().hex[:8]}"
+    try:
+        os.makedirs(temp_dir, exist_ok=True)
+        with zipfile.ZipFile(io.BytesIO(contents)) as z:
+            z.extractall(temp_dir)
+
+        findings = scan_directory(temp_dir)
+        score = calculate_score(findings)
+        cbom = generate_cbom(findings, repo=file.filename, score=score)
+
+        return cbom
+
+    except zipfile.BadZipFile:
+        raise HTTPException(status_code=400, detail="Invalid ZIP file")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"CBOM export error: {str(e)}")
+    finally:
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
