@@ -5,13 +5,18 @@
 # ============================================================
 #
 # SETUP INSTRUCTIONS:
-# 1. Go to your repo → Settings → Secrets and variables → Actions
-# 2. Add secret: QUANTUMGUARD_API_URL = https://quantumguard-api.onrender.com
-# 3. Optionally add: QUANTUMGUARD_SCORE_THRESHOLD = 60  (default: 50)
-# 4. Optionally add: QUANTUMGUARD_API_KEY (if using private API)
+# 1. Repo → Settings → Secrets and variables → Actions, add:
+#    QUANTUMGUARD_API_URL      = https://quantumguard-api.onrender.com
+#    RENDER_DEPLOY_HOOK_URL    = (Render dashboard → Deploy Hook)
+#    VERCEL_TOKEN              = (vercel.com → Account Settings → Tokens)
+#    VERCEL_ORG_ID             = (from .vercel/project.json)
+#    VERCEL_PROJECT_ID         = (from .vercel/project.json)
+# 2. Optional secrets:
+#    QUANTUMGUARD_SCORE_THRESHOLD = 60  (default: 50)
+#    QUANTUMGUARD_API_KEY          (if using private API)
 # ============================================================
 
-name: QuantumGuard Security Scan
+name: QuantumGuard CI/CD
 
 on:
   push:
@@ -21,18 +26,57 @@ on:
   workflow_dispatch:
     inputs:
       score_threshold:
-        description: 'Fail if score below this (0-100)'
+        description: 'Fail if quantum score below this (0-100)'
         required: false
         default: '50'
+
+# Cancel redundant runs on the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   QUANTUMGUARD_API_URL: ${{ secrets.QUANTUMGUARD_API_URL || 'https://quantumguard-api.onrender.com' }}
   SCORE_THRESHOLD: ${{ github.event.inputs.score_threshold || secrets.QUANTUMGUARD_SCORE_THRESHOLD || '50' }}
 
+# ──────────────────────────────────────────────────────────
+# JOB 1 — Build & lint (catches broken code before scanning)
+# ──────────────────────────────────────────────────────────
 jobs:
-  quantum-security-scan:
-    name: Quantum Cryptography Vulnerability Scan
+  build:
+    name: 🔨 Build & Lint
     runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Build
+        run: npm run build --if-present
+
+      - name: npm security audit
+        run: npm audit --audit-level=high
+        continue-on-error: true   # flip to false for hard failures
+
+# ──────────────────────────────────────────────────────────
+# JOB 2 — QuantumGuard scan (your core value-add)
+# ──────────────────────────────────────────────────────────
+  quantum-security-scan:
+    name: 🔐 Quantum Cryptography Vulnerability Scan
+    runs-on: ubuntu-latest
+    needs: build
     timeout-minutes: 10
 
     steps:
@@ -45,8 +89,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          pip install requests
+        run: pip install requests
 
       - name: Run QuantumGuard Scan
         id: quantumguard_scan
@@ -60,10 +103,10 @@ jobs:
           import os
           import sys
 
-          api_url = os.environ.get("QUANTUMGUARD_API_URL", "https://quantumguard-api.onrender.com")
-          github_url = os.environ.get("GITHUB_REPO_URL", "")
+          api_url      = os.environ.get("QUANTUMGUARD_API_URL", "https://quantumguard-api.onrender.com")
+          github_url   = os.environ.get("GITHUB_REPO_URL", "")
           github_token = os.environ.get("GITHUB_TOKEN", "")
-          threshold = int(os.environ.get("SCORE_THRESHOLD", "50"))
+          threshold    = int(os.environ.get("SCORE_THRESHOLD", "50"))
 
           print("=" * 60)
           print("  QuantumGuard — Post-Quantum Security Scanner")
@@ -75,7 +118,6 @@ jobs:
           print(f"[*] Fail threshold: score < {threshold}")
           print()
 
-          # Call QuantumGuard scan-github API
           payload = {"github_url": github_url}
           if github_token:
               payload["github_token"] = github_token
@@ -90,61 +132,57 @@ jobs:
               data = response.json()
           except requests.exceptions.ConnectionError:
               print(f"[ERROR] Cannot connect to QuantumGuard API at {api_url}")
-              print("[INFO]  Set QUANTUMGUARD_API_URL secret in repo settings")
-              sys.exit(0)  # Don't fail CI on API connection errors
+              print("[INFO]  Verify QUANTUMGUARD_API_URL secret in repo settings")
+              sys.exit(0)   # Don't block CI on API connection errors
           except requests.exceptions.Timeout:
-              print("[ERROR] QuantumGuard API timed out")
+              print("[WARN] QuantumGuard API timed out — Render free tier may be cold-starting")
               sys.exit(0)
           except Exception as e:
               print(f"[ERROR] Scan failed: {e}")
               sys.exit(0)
 
-          # ── Print Results ──────────────────────────────────
-          score = data.get("quantum_readiness_score", 0)
-          total = data.get("total_findings", 0)
-          findings = data.get("findings", [])
-          severity_summary = data.get("severity_summary", {})
+          # ── Parse response ─────────────────────────────────
+          score              = data.get("quantum_readiness_score", 0)
+          total              = data.get("total_findings", 0)
+          findings           = data.get("findings", [])
+          severity_summary   = data.get("severity_summary", {})
           confidence_summary = data.get("confidence_summary", {})
 
           print("=" * 60)
           print(f"  QUANTUM READINESS SCORE: {score}/100")
           print("=" * 60)
 
-          # Score interpretation
-          if score >= 90:
-              print("  Status: EXCELLENT — Well prepared for quantum era")
-          elif score >= 70:
-              print("  Status: GOOD — Some improvements needed")
-          elif score >= 50:
-              print("  Status: AT RISK — Significant vulnerabilities found")
-          elif score >= 30:
-              print("  Status: HIGH RISK — Urgent action required")
-          else:
-              print("  Status: CRITICAL — Immediate remediation required")
+          if   score >= 90: print("  Status: EXCELLENT — Well prepared for quantum era")
+          elif score >= 70: print("  Status: GOOD — Some improvements needed")
+          elif score >= 50: print("  Status: AT RISK — Significant vulnerabilities found")
+          elif score >= 30: print("  Status: HIGH RISK — Urgent action required")
+          else:             print("  Status: CRITICAL — Immediate remediation required")
 
           print()
-          print(f"  Total Findings: {total}")
-          print(f"  CRITICAL: {severity_summary.get('CRITICAL', 0)}")
-          print(f"  HIGH:     {severity_summary.get('HIGH', 0)}")
-          print(f"  MEDIUM:   {severity_summary.get('MEDIUM', 0)}")
+          print(f"  Total Findings : {total}")
+          print(f"  CRITICAL       : {severity_summary.get('CRITICAL', 0)}")
+          print(f"  HIGH           : {severity_summary.get('HIGH', 0)}")
+          print(f"  MEDIUM         : {severity_summary.get('MEDIUM', 0)}")
           print()
-          print(f"  Confidence — HIGH: {confidence_summary.get('HIGH', 0)} | MEDIUM: {confidence_summary.get('MEDIUM', 0)} | LOW: {confidence_summary.get('LOW', 0)}")
+          print(f"  Confidence — HIGH: {confidence_summary.get('HIGH', 0)} | "
+                f"MEDIUM: {confidence_summary.get('MEDIUM', 0)} | "
+                f"LOW: {confidence_summary.get('LOW', 0)}")
           print("=" * 60)
 
-          # ── Print HIGH confidence findings only ───────────
+          # ── HIGH confidence findings ───────────────────────
           high_conf = [f for f in findings if f.get("confidence") == "HIGH"]
           if high_conf:
               print(f"\n  HIGH CONFIDENCE FINDINGS ({len(high_conf)}):")
               print("-" * 60)
-              for f in high_conf[:20]:  # Max 20 in logs
+              for f in high_conf[:20]:
                   print(f"  [{f.get('severity','?')}] {f.get('vulnerability','?')}")
-                  print(f"  File: {f.get('file','?')}:{f.get('line','?')}")
-                  print(f"  Code: {f.get('code','?')[:80]}")
-                  print(f"  Fix:  {f.get('recommended_fix', f.get('replacement','?'))[:100]}")
-                  print(f"  Risk: {f.get('risk_explanation','?')[:100]}")
+                  print(f"  File : {f.get('file','?')}:{f.get('line','?')}")
+                  print(f"  Code : {f.get('code','?')[:80]}")
+                  print(f"  Fix  : {f.get('recommended_fix', f.get('replacement','?'))[:100]}")
+                  print(f"  Risk : {f.get('risk_explanation','?')[:100]}")
                   print()
 
-          # ── Print CRITICAL findings regardless of confidence ──
+          # ── CRITICAL findings (regardless of confidence) ───
           critical = [f for f in findings
                       if f.get("severity") == "CRITICAL" and f.get("confidence") != "LOW"]
           if critical:
@@ -152,16 +190,16 @@ jobs:
               print("-" * 60)
               for f in critical[:10]:
                   print(f"  {f.get('file','?')}:{f.get('line','?')} — {f.get('vulnerability','?')}")
-                  print(f"  Replace with: {f.get('replacement','?')}")
-                  print(f"  Priority: {f.get('migration_priority','?')}")
+                  print(f"  Replace with : {f.get('replacement','?')}")
+                  print(f"  Priority     : {f.get('migration_priority','?')}")
                   print()
 
           print("=" * 60)
-          print(f"\n  Full report: {api_url}/docs")
-          print(f"  Scan online: https://quantumguard.site")
+          print(f"\n  Full report : {api_url}/docs")
+          print(f"  Scan online : https://quantumguard.site")
           print("=" * 60)
 
-          # ── Write score to GitHub output ───────────────────
+          # ── Write outputs ──────────────────────────────────
           github_output = os.environ.get("GITHUB_OUTPUT", "")
           if github_output:
               with open(github_output, "a") as out:
@@ -169,26 +207,24 @@ jobs:
                   out.write(f"total_findings={total}\n")
                   out.write(f"critical_count={severity_summary.get('CRITICAL', 0)}\n")
 
-          # ── Fail check ─────────────────────────────────────
+          # ── Threshold gate ─────────────────────────────────
           if score < threshold:
               critical_count = severity_summary.get("CRITICAL", 0)
-              print(f"\n[FAIL] Quantum Readiness Score {score} is below threshold {threshold}")
+              print(f"\n[FAIL] Score {score} is below threshold {threshold}")
               if critical_count > 0:
                   print(f"[FAIL] {critical_count} CRITICAL vulnerabilities must be fixed")
-              print("[INFO] Visit https://quantumguard.site to fix issues")
+              print("[INFO] Visit https://quantumguard.site to remediate")
               sys.exit(1)
           else:
-              print(f"\n[PASS] Score {score} meets threshold {threshold}")
-
+              print(f"\n[PASS] Score {score} meets threshold {threshold} ✓")
           PYEOF
 
-      - name: Upload scan results as artifact
+      - name: Upload scan results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: quantumguard-scan-results
-          path: |
-            reports/
+          path: reports/
           if-no-files-found: ignore
           retention-days: 30
 
@@ -198,22 +234,24 @@ jobs:
         continue-on-error: true
         with:
           script: |
-            const score = '${{ steps.quantumguard_scan.outputs.quantum_score }}';
+            const score    = '${{ steps.quantumguard_scan.outputs.quantum_score }}';
             const findings = '${{ steps.quantumguard_scan.outputs.total_findings }}';
             const critical = '${{ steps.quantumguard_scan.outputs.critical_count }}';
-
             if (!score) return;
 
-            const emoji = parseInt(score) >= 70 ? '✅' : parseInt(score) >= 50 ? '⚠️' : '🚨';
-            const body = `## ${emoji} QuantumGuard Security Scan Results
+            const s = parseInt(score);
+            const emoji  = s >= 70 ? '✅' : s >= 50 ? '⚠️' : '🚨';
+            const status = s >= 90 ? 'Excellent' : s >= 70 ? 'Good' : s >= 50 ? 'At Risk' : s >= 30 ? 'High Risk' : 'Critical';
+
+            const body = `## ${emoji} QuantumGuard Security Scan
 
             | Metric | Value |
             |--------|-------|
-            | Quantum Readiness Score | **${score}/100** |
+            | Quantum Readiness Score | **${score}/100** — ${status} |
             | Total Findings | ${findings} |
             | Critical Vulnerabilities | ${critical} |
 
-            > Powered by [QuantumGuard](https://quantumguard.site) — Mangsri QuantumGuard LLC
+            > 🛡️ Powered by [QuantumGuard](https://quantumguard.site) — Mangsri QuantumGuard LLC
             > Standards: NIST FIPS 203, FIPS 204, FIPS 205`;
 
             github.rest.issues.createComment({
@@ -222,3 +260,55 @@ jobs:
               repo: context.repo.repo,
               body: body
             });
+
+# ──────────────────────────────────────────────────────────
+# JOB 3 — Deploy backend to Render (main branch only)
+# ──────────────────────────────────────────────────────────
+  deploy-backend:
+    name: 🚀 Deploy · Render
+    runs-on: ubuntu-latest
+    needs: quantum-security-scan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Trigger Render deploy hook
+        run: |
+          curl -s --fail -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
+            -o /dev/null -w "Render HTTP status: %{http_code}\n"
+
+# ──────────────────────────────────────────────────────────
+# JOB 4 — Deploy frontend to Vercel
+#          preview on PRs / branches, production on main
+# ──────────────────────────────────────────────────────────
+  deploy-frontend:
+    name: 🚀 Deploy · Vercel
+    runs-on: ubuntu-latest
+    needs: quantum-security-scan
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel environment
+        run: |
+          vercel pull --yes \
+            --environment=${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }} \
+            --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build via Vercel
+        run: |
+          vercel build ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} \
+            --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy
+        id: vercel-deploy
+        run: |
+          URL=$(vercel deploy --prebuilt \
+            ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} \
+            --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "Deployed to: $URL"
