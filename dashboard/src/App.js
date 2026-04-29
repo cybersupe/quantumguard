@@ -628,8 +628,7 @@ function ScannerPage({ user }) {
     const csvRows = ["Severity,File,Line,Vulnerability,Code,Replacement",
       ...result.findings.map(f => [
         f.severity, f.file, f.line, f.vulnerability,
-        '"' + (f.code || "").replace(/"/g, "'").replace(/
-/g, " ") + '"',
+        '"' + (f.code || "").replace(/"/g, "'").replace(/[\r\n]+/g, " ") + '"',
         f.replacement
       ].join(","))
     ].join("\n");
