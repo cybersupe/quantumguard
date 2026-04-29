@@ -13,7 +13,12 @@ from slowapi.errors import RateLimitExceeded
 from pydantic import BaseModel
 from typing import Optional
 from scanner.scan import scan_directory, calculate_score
-from scanner.cbom import generate_cbom  # ← NEW
+try:
+    from scanner.cbom import generate_cbom
+except ImportError:
+    import sys
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from scanner.cbom import generate_cbom
 import os, shutil, uuid, zipfile, io, requests, ssl, socket
 import datetime
 
