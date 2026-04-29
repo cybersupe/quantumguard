@@ -211,6 +211,67 @@ def _analyze_tls_score(tls_version: str, cipher_name: str, cipher_bits: int) -> 
     }
 
 
+def _calculate_tls_grade(score: int, quantum_safe: bool, tls_version: str, issues: list) -> dict:
+    """
+    Calculate SSL Labs style grade: A+, A, B, C, D, F
+    - A+ : score >= 95 AND quantum safe AND TLS 1.3 AND no issues
+    - A  : score >= 80 AND TLS 1.3
+    - B  : score >= 65 AND TLS 1.2+
+    - C  : score >= 50
+    - D  : score >= 35
+    - F  : score < 35 OR critical issues
+    """
+    # Automatic F conditions
+    critical_keywords = ["expired", "SSLv", "TLSv1.0", "TLSv1.1", "deprecated and insecure"]
+    has_critical = any(any(kw.lower() in issue.lower() for kw in critical_keywords) for issue in issues)
+
+    if has_critical or score < 35:
+        grade = "F"
+        color = "#dc2626"
+        description = "Failing — immediate action required"
+    elif score < 50:
+        grade = "D"
+        color = "#dc2626"
+        description = "Poor — significant vulnerabilities present"
+    elif score < 65:
+        grade = "C"
+        color = "#d97706"
+        description = "Average — several issues need attention"
+    elif score < 80:
+        grade = "B"
+        color = "#f59e0b"
+        description = "Good — some improvements recommended"
+    elif score >= 95 and quantum_safe and tls_version == "TLSv1.3" and len(issues) == 0:
+        grade = "A+"
+        color = "#16a34a"
+        description = "Exceptional — post-quantum safe with perfect configuration"
+    elif score >= 80 and tls_version == "TLSv1.3":
+        grade = "A"
+        color = "#16a34a"
+        description = "Strong — modern TLS configuration"
+    else:
+        grade = "B"
+        color = "#f59e0b"
+        description = "Good — upgrade to TLS 1.3 recommended"
+
+    # PQC penalty note
+    pqc_note = None
+    if grade in ("A+", "A") and not quantum_safe:
+        pqc_note = "Grade capped at A until PQC key exchange is deployed (CRYSTALS-Kyber FIPS 203)"
+
+    return {
+        "grade": grade,
+        "grade_color": color,
+        "grade_description": description,
+        "pqc_note": pqc_note,
+        "grade_breakdown": {
+            "tls_version_score": 30 if tls_version == "TLSv1.3" else 15 if tls_version == "TLSv1.2" else 0,
+            "cipher_score": score - (30 if tls_version == "TLSv1.3" else 15 if tls_version == "TLSv1.2" else 0),
+            "quantum_ready": quantum_safe,
+        }
+    }
+
+
 def _analyze_certificate(cert: dict) -> dict:
     cert_info = {}
     cert_issues = []
@@ -437,6 +498,14 @@ async def analyze_tls(request: Request, body: dict):
                 "Step 3: Deploy CRYSTALS-Kyber hybrid KEM per NIST FIPS 203."
             )
 
+        # Calculate SSL Labs style grade
+        grade_info = _calculate_tls_grade(
+            analysis["tls_score"],
+            analysis["quantum_safe"],
+            tls_version,
+            analysis["issues"] + cert_issues
+        )
+
         return {
             "domain": domain,
             "tls_version": tls_version,
@@ -444,6 +513,12 @@ async def analyze_tls(request: Request, body: dict):
             "cipher_bits": cipher_bits,
             "quantum_safe": analysis["quantum_safe"],
             "tls_score": analysis["tls_score"],
+            # SSL Labs style grade
+            "grade": grade_info["grade"],
+            "grade_color": grade_info["grade_color"],
+            "grade_description": grade_info["grade_description"],
+            "pqc_note": grade_info["pqc_note"],
+            "grade_breakdown": grade_info["grade_breakdown"],
             "labels": analysis["labels"],
             "strengths": analysis["strengths"],
             "issues": analysis["issues"] + cert_issues,
