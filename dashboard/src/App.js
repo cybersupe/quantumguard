@@ -211,7 +211,7 @@ function TopBar({ title, user, onLogin, onLogout, onHamburger }) {
             }}
           >
             <span style={{ fontSize: 11, color: C.red, fontWeight: 700 }}>
-              ⚠ {daysTo2030()}d to Y2Q
+             {window.innerWidth > 768 && `⚠ ${daysTo2030()}d`}
             </span>
           </div>
         )}
