@@ -50,6 +50,7 @@ function Sidebar({ active, setActive, user, onLogin, onLogout, open, onClose }) 
     { id: "migration", icon: "🔄", label: "Migration" },
     { id: "dashboard", icon: "📊", label: "Analytics" },
     { id: "docs", icon: "📖", label: "Docs" },
+    { id: "team", icon: "👥", label: "Our Team" },
   ];
   return (
     <>
@@ -199,6 +200,163 @@ function Badge({ text, color, bg }) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// TEAM PAGE
+// ══════════════════════════════════════════════════════════════
+function TeamPage() {
+  const members = [
+    {
+      initials: "PP",
+      name: "Pavansudheer Payyavula",
+      role: "Founder & CEO",
+      degree: "MS Cybersecurity & Computer Information Systems",
+      subRole: null,
+      avatarBg: "#EEEDFE",
+      avatarText: "#3C3489",
+      badgeBg: "#EEEDFE",
+      badgeText: "#3C3489",
+      featured: true,
+    },
+    {
+      initials: "MS",
+      name: "Manasa Sannidhi",
+      role: "Co-Founder",
+      degree: "MS Computer Science",
+      subRole: null,
+      avatarBg: "#E1F5EE",
+      avatarText: "#085041",
+      badgeBg: "#E1F5EE",
+      badgeText: "#085041",
+      featured: false,
+    },
+    {
+      initials: "BG",
+      name: "Bharathwaj Goud Siga",
+      role: "Business",
+      degree: "MS Business Analytics",
+      subRole: "Marketing Manager",
+      avatarBg: "#FAEEDA",
+      avatarText: "#633806",
+      badgeBg: "#FAEEDA",
+      badgeText: "#633806",
+      featured: false,
+    },
+    {
+      initials: "VR",
+      name: "Vijendhar Reddy Muppidi",
+      role: "Advisor",
+      degree: "MS Management Information Systems",
+      subRole: null,
+      avatarBg: "#FAECE7",
+      avatarText: "#712B13",
+      badgeBg: "#FAECE7",
+      badgeText: "#712B13",
+      featured: false,
+    },
+  ];
+
+  return (
+    <div style={{ padding: 20 }}>
+      {/* Header */}
+      <div style={{ textAlign: "center", marginBottom: 36 }}>
+        <div style={{ display: "inline-block", background: C.greenLighter, color: C.green, fontSize: 12, fontWeight: 700, padding: "5px 16px", borderRadius: 20, marginBottom: 14, border: `1px solid ${C.greenMid}` }}>
+          ⚛ THE TEAM
+        </div>
+        <h2 style={{ fontSize: 32, fontWeight: 900, color: C.text, marginBottom: 10, letterSpacing: -0.5 }}>
+          Built by 4 friends
+        </h2>
+        <p style={{ fontSize: 14, color: C.muted, maxWidth: 480, margin: "0 auto", lineHeight: 1.7 }}>
+          A cross-disciplinary team building the world's first free quantum vulnerability scanner — free for every developer, forever.
+        </p>
+      </div>
+
+      {/* Cards grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 20, maxWidth: 900, margin: "0 auto" }}>
+        {members.map((m) => (
+          <div
+            key={m.name}
+            style={{
+              background: C.white,
+              border: m.featured ? `2px solid ${C.green}` : `1px solid ${C.panelBorder}`,
+              borderRadius: 16,
+              padding: "28px 20px",
+              textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              boxShadow: m.featured ? "0 4px 20px rgba(22,163,74,0.12)" : "0 1px 4px rgba(0,0,0,0.04)",
+              transition: "transform 0.2s, box-shadow 0.2s",
+            }}
+          >
+            {/* Avatar */}
+            <div style={{
+              width: 60,
+              height: 60,
+              borderRadius: "50%",
+              background: m.avatarBg,
+              color: m.avatarText,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: 700,
+              fontSize: 16,
+              marginBottom: 14,
+              fontFamily: "monospace",
+            }}>
+              {m.initials}
+            </div>
+
+            {/* Role badge */}
+            <span style={{
+              display: "inline-block",
+              background: m.badgeBg,
+              color: m.badgeText,
+              fontSize: 10,
+              fontWeight: 700,
+              padding: "3px 12px",
+              borderRadius: 20,
+              marginBottom: 10,
+              fontFamily: "monospace",
+              letterSpacing: "0.05em",
+              textTransform: "uppercase",
+            }}>
+              {m.role}
+            </span>
+
+            {/* Name */}
+            <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6, lineHeight: 1.3 }}>
+              {m.name}
+            </div>
+
+            {/* Divider */}
+            <div style={{ width: 28, height: 1, background: C.panelBorder, margin: "8px auto" }} />
+
+            {/* Degree */}
+            <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>
+              {m.degree}
+            </div>
+
+            {/* Sub role */}
+            {m.subRole && (
+              <div style={{ fontSize: 11, color: C.green, marginTop: 6, fontStyle: "italic", fontWeight: 500 }}>
+                {m.subRole}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Footer note */}
+      <div style={{ textAlign: "center", marginTop: 40 }}>
+        <div style={{ display: "inline-block", background: C.greenLighter, border: `1px solid ${C.greenMid}`, borderRadius: 12, padding: "14px 28px" }}>
+          <div style={{ fontSize: 13, color: C.green, fontWeight: 700, marginBottom: 4 }}>⚛ Mangsri QuantumGuard LLC</div>
+          <div style={{ fontSize: 12, color: C.muted }}>Montgomery, AL · Founded April 27, 2026 · EIN 42-2185776</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
 // SCANNER PAGE
 // ══════════════════════════════════════════════════════════════
 function ScannerPage({ user }) {
@@ -287,30 +445,8 @@ function ScannerPage({ user }) {
 
   const handleNIST = () => {
     if (!result) return;
-    const NIST_MAP = {
-      RSA: { id: "NIST SP 800-131A", fix: "CRYSTALS-Kyber (ML-KEM) — FIPS 203", level: "CRITICAL" },
-      ECC: { id: "NIST SP 800-186", fix: "CRYSTALS-Dilithium (ML-DSA) — FIPS 204", level: "CRITICAL" },
-      DH: { id: "NIST SP 800-56A", fix: "CRYSTALS-Kyber (ML-KEM) — FIPS 203", level: "HIGH" },
-      DSA: { id: "NIST SP 800-186", fix: "CRYSTALS-Dilithium (ML-DSA) — FIPS 204", level: "HIGH" },
-      MD5: { id: "NIST SP 800-107", fix: "SHA-3-256 — FIPS 202", level: "MEDIUM" },
-      SHA1: { id: "NIST SP 800-107", fix: "SHA-3-256 — FIPS 202", level: "MEDIUM" },
-      RC4: { id: "NIST SP 800-175B", fix: "AES-256-GCM — FIPS 197", level: "CRITICAL" },
-      DES: { id: "NIST SP 800-131A", fix: "AES-256-GCM — FIPS 197", level: "CRITICAL" },
-      ECB: { id: "NIST SP 800-38A", fix: "AES-256-GCM — FIPS 197", level: "HIGH" },
-      TLS: { id: "NIST SP 800-52 Rev 2", fix: "TLS 1.3 — RFC 8446", level: "HIGH" },
-      JWT: { id: "NIST SP 800-131A", fix: "RS256 with post-quantum keys", level: "CRITICAL" },
-      WEAK_RANDOM: { id: "NIST SP 800-90A", fix: "DRBG / secrets module", level: "MEDIUM" },
-    };
-    const getNIST = (vuln) => {
-      const key = Object.keys(NIST_MAP).find(k => vuln.toUpperCase().includes(k));
-      return key ? NIST_MAP[key] : { id: "NIST SP 800-175B", fix: "See NIST PQC standards", level: vuln };
-    };
     const win = window.open("", "_blank");
-    const critCount = result.findings.filter(f => f.severity === "CRITICAL").length;
-    const highCount = result.findings.filter(f => f.severity === "HIGH").length;
-    const medCount = result.findings.filter(f => f.severity === "MEDIUM").length;
     const complianceStatus = result.quantum_readiness_score >= 70 ? "COMPLIANT" : result.quantum_readiness_score >= 40 ? "PARTIALLY COMPLIANT" : "NON-COMPLIANT";
-    const statusColor = result.quantum_readiness_score >= 70 ? "#16a34a" : result.quantum_readiness_score >= 40 ? "#d97706" : "#dc2626";
     win.document.write(`<!DOCTYPE html><html><head><title>QuantumGuard NIST Report</title></head><body><h1>NIST Report</h1><p>Score: ${result.quantum_readiness_score}</p><p>Status: ${complianceStatus}</p></body></html>`);
     win.document.close();
   };
@@ -799,36 +935,26 @@ function Homepage({ onGetStarted }) {
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'Segoe UI', sans-serif", overflowX: "hidden" }}>
-
-      {/* ── NAVBAR ── */}
       <nav style={{ background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", borderBottom: `1px solid ${C.panelBorder}`, padding: "0 24px", height: 66, display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 1px 6px rgba(0,0,0,0.06)", position: "sticky", top: 0, zIndex: 100 }}>
-        {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 38, height: 38, borderRadius: 10, background: C.green, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>⚛</div>
           <span style={{ fontSize: 19, fontWeight: 800, letterSpacing: -0.5 }}><span style={{ color: C.green }}>Quantum</span>Guard</span>
           <span style={{ background: C.greenLighter, color: C.green, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20, border: `1px solid ${C.greenMid}`, marginLeft: 4 }}>BETA</span>
         </div>
-
-        {/* Desktop nav links */}
         <div className="nav-links" style={{ display: "flex", alignItems: "center", gap: 32 }}>
           {navItems.map(item => (
             <span key={item.id} onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" })} style={{ fontSize: 14, color: C.muted, cursor: "pointer", fontWeight: 500 }}>{item.label}</span>
           ))}
         </div>
-
-        {/* Desktop right buttons */}
         <div className="nav-right" style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer" style={{ fontSize: 13, color: C.muted, textDecoration: "none", fontWeight: 500 }}>★ GitHub</a>
           <button onClick={onGetStarted} style={{ background: C.green, color: C.white, padding: "9px 22px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700 }}>Get Started Free →</button>
         </div>
-
-        {/* Mobile hamburger */}
         <button className="nav-hamburger" onClick={() => setMobileMenuOpen(m => !m)} style={{ display: "none", background: "transparent", border: "none", fontSize: 26, cursor: "pointer", color: C.text, padding: "4px 8px" }}>
           {mobileMenuOpen ? "✕" : "☰"}
         </button>
       </nav>
 
-      {/* Mobile dropdown menu */}
       {mobileMenuOpen && (
         <div style={{ position: "fixed", top: 66, left: 0, right: 0, background: C.white, borderBottom: `1px solid ${C.panelBorder}`, zIndex: 99, padding: "8px 0", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
           {navItems.map(item => (
@@ -844,7 +970,6 @@ function Homepage({ onGetStarted }) {
         </div>
       )}
 
-      {/* ── HERO ── */}
       <div style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #f8faf8 50%, #f0f9ff 100%)", borderBottom: `1px solid ${C.panelBorder}`, padding: "0 40px" }}>
         <div className="hero-grid" style={{ maxWidth: 1200, margin: "0 auto", padding: "70px 0 60px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 70, alignItems: "center" }}>
           <div>
@@ -893,7 +1018,6 @@ function Homepage({ onGetStarted }) {
         </div>
       </div>
 
-      {/* ── TRUST BAR ── */}
       <div style={{ background: C.white, borderBottom: `1px solid ${C.panelBorder}`, padding: "28px 40px" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", textAlign: "center" }}>
           <p style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 16, textTransform: "uppercase", letterSpacing: 1 }}>Trusted by developers scanning real repositories</p>
@@ -908,7 +1032,6 @@ function Homepage({ onGetStarted }) {
         </div>
       </div>
 
-      {/* ── FEATURES ── */}
       <div id="features" style={{ maxWidth: 1200, margin: "0 auto", padding: "80px 40px" }}>
         <div style={{ textAlign: "center", marginBottom: 56 }}>
           <div style={{ display: "inline-block", background: C.greenLighter, color: C.green, fontSize: 12, fontWeight: 700, padding: "5px 16px", borderRadius: 20, marginBottom: 16, border: `1px solid ${C.greenMid}` }}>FEATURES</div>
@@ -936,7 +1059,6 @@ function Homepage({ onGetStarted }) {
         </div>
       </div>
 
-      {/* ── HOW IT WORKS ── */}
       <div id="howitworks" style={{ background: C.white, borderTop: `1px solid ${C.panelBorder}`, borderBottom: `1px solid ${C.panelBorder}`, padding: "80px 40px" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 56 }}>
@@ -960,7 +1082,6 @@ function Homepage({ onGetStarted }) {
         </div>
       </div>
 
-      {/* ── PRICING ── */}
       <div id="pricing" style={{ maxWidth: 1200, margin: "0 auto", padding: "80px 40px" }}>
         <div style={{ textAlign: "center", marginBottom: 56 }}>
           <div style={{ display: "inline-block", background: C.greenLighter, color: C.green, fontSize: 12, fontWeight: 700, padding: "5px 16px", borderRadius: 20, marginBottom: 16, border: `1px solid ${C.greenMid}` }}>PRICING</div>
@@ -992,7 +1113,6 @@ function Homepage({ onGetStarted }) {
         </div>
       </div>
 
-      {/* ── DOCS ── */}
       <div id="docs" style={{ background: C.white, borderTop: `1px solid ${C.panelBorder}`, padding: "80px 40px" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 56 }}>
@@ -1022,7 +1142,6 @@ function Homepage({ onGetStarted }) {
         </div>
       </div>
 
-      {/* ── CTA ── */}
       <div style={{ background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)", padding: "80px 40px", textAlign: "center" }}>
         <h2 style={{ fontSize: 42, fontWeight: 900, color: C.white, marginBottom: 16, letterSpacing: -0.5 }}>Ready to secure your code?</h2>
         <p style={{ color: "rgba(255,255,255,0.8)", marginBottom: 36, fontSize: 16, maxWidth: 480, margin: "0 auto 36px", lineHeight: 1.7 }}>Join developers scanning their codebases for quantum vulnerabilities before the 2030 deadline.</p>
@@ -1036,7 +1155,6 @@ function Homepage({ onGetStarted }) {
         </div>
       </div>
 
-      {/* ── FOOTER ── */}
       <div style={{ background: C.white, borderTop: `1px solid ${C.panelBorder}`, padding: "28px 40px" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1052,7 +1170,6 @@ function Homepage({ onGetStarted }) {
           </div>
         </div>
       </div>
-
     </div>
   );
 }
@@ -1072,7 +1189,16 @@ export default function App() {
 
   if (active === "home") return <Homepage onGetStarted={() => setActive("scan")} />;
 
-  const pageTitle = { scan: "Threat Scanner", agility: "Agility Checker", tls: "TLS Analyzer", history: "Scan History", migration: "Migration Tracker", dashboard: "Analytics", docs: "Documentation" };
+  const pageTitle = {
+    scan: "Threat Scanner",
+    agility: "Agility Checker",
+    tls: "TLS Analyzer",
+    history: "Scan History",
+    migration: "Migration Tracker",
+    dashboard: "Analytics",
+    docs: "Documentation",
+    team: "Our Team",
+  };
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: C.bg }}>
@@ -1089,6 +1215,7 @@ export default function App() {
           {active === "migration" && <MigrationPage user={user} />}
           {active === "dashboard" && <AnalyticsPage />}
           {active === "docs" && <DocsPage />}
+          {active === "team" && <TeamPage />}
         </div>
       </div>
     </div>
