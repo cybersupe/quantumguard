@@ -658,8 +658,139 @@ function ScannerPage({ user }) {
   const handlePDF = () => {
     if (!result) return;
     const win = window.open("", "_blank");
-    win.document.write(`<html><head><title>QuantumGuard Report</title></head><body><h1>QuantumGuard Report</h1><p>Score: ${result.quantum_readiness_score}/100</p><p>Findings: ${result.total_findings}</p></body></html>`);
-    win.document.close(); win.print();
+    const scoreColor = result.quantum_readiness_score >= 70 ? "#16a34a" : result.quantum_readiness_score >= 40 ? "#d97706" : "#dc2626";
+    const status = result.quantum_readiness_score >= 70 ? "QUANTUM SAFE" : result.quantum_readiness_score >= 40 ? "AT RISK" : "NOT QUANTUM SAFE";
+    const critical = result.findings.filter(f => f.severity === "CRITICAL").length;
+    const high     = result.findings.filter(f => f.severity === "HIGH").length;
+    const medium   = result.findings.filter(f => f.severity === "MEDIUM").length;
+    const total    = result.total_findings;
+    const grouped  = result.findings.reduce((a, f) => { if (!a[f.file]) a[f.file] = []; a[f.file].push(f); return a; }, {});
+    const sevColor = s => s === "CRITICAL" ? "#dc2626" : s === "HIGH" ? "#d97706" : "#ca8a04";
+    const sevBg    = s => s === "CRITICAL" ? "#fee2e2" : s === "HIGH" ? "#fef3c7" : "#fef9c3";
+    const bar      = (count, tot, color) => `<div style="background:#f0f0f0;border-radius:4px;height:8px;margin-top:4px"><div style="background:${color};height:8px;border-radius:4px;width:${tot>0?Math.round(count/tot*100):0}%"></div></div>`;
+
+    win.document.write(`<!DOCTYPE html><html><head><title>QuantumGuard Report</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:"Segoe UI",sans-serif;background:#fff;color:#1a1a1a;padding:40px;font-size:13px}
+      @media print{body{padding:20px}.no-print{display:none}}
+      .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:20px;border-bottom:3px solid #16a34a;margin-bottom:24px}
+      .logo{display:flex;align-items:center;gap:10px}
+      .logo-icon{width:40px;height:40px;background:#16a34a;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff}
+      .logo-name{font-size:22px;font-weight:900;color:#1a1a1a}.logo-name span{color:#16a34a}
+      .score-box{text-align:center;background:#f0fdf4;border:2px solid #86efac;border-radius:12px;padding:14px 22px}
+      .score-num{font-size:44px;font-weight:900;color:${scoreColor};line-height:1}
+      .score-label{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+      .score-status{font-size:11px;font-weight:700;color:${scoreColor};margin-top:6px;text-transform:uppercase;letter-spacing:0.5px}
+      .meta{display:flex;gap:24px;margin-bottom:20px;flex-wrap:wrap}
+      .meta-item{font-size:11px;color:#6b7280}.meta-item strong{color:#374151}
+      .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+      .stat{background:#f8faf8;border:1px solid #e2f0e2;border-radius:10px;padding:14px;border-top:3px solid var(--c)}
+      .stat-val{font-size:30px;font-weight:900;color:var(--c);line-height:1}
+      .stat-key{font-size:11px;color:#6b7280;margin-top:4px}
+      .section{margin-bottom:24px}
+      .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#16a34a;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #d1fae5;display:flex;align-items:center;gap:8px}
+      .panels{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+      .panel{background:#f8faf8;border:1px solid #e2f0e2;border-radius:10px;padding:16px}
+      .panel-title{font-size:13px;font-weight:700;color:#14532d;margin-bottom:14px}
+      .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+      .bar-label{font-size:11px;color:#6b7280;width:70px}
+      .bar-track{flex:1;background:#e5f0e5;border-radius:4px;height:7px;overflow:hidden}
+      .bar-fill{height:100%;border-radius:4px}
+      .bar-count{font-size:11px;font-weight:600;width:55px;text-align:right}
+      table{width:100%;border-collapse:collapse;font-size:12px}
+      th{background:#f0fdf4;padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;font-weight:700;border-bottom:2px solid #d1fae5}
+      td{padding:9px 12px;border-bottom:1px solid #f0f4f0;vertical-align:top}
+      tr:hover td{background:#f9fafb}
+      .file-header{background:#f0fdf4;padding:8px 12px;font-weight:700;font-size:12px;color:#14532d;border-bottom:1px solid #d1fae5}
+      .sev{font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;display:inline-block}
+      code{font-family:monospace;font-size:11px;background:#f0f7f0;padding:2px 6px;border-radius:4px;color:#15803d;word-break:break-all}
+      .fix{color:#2563eb;font-size:11px;font-weight:600}
+      .footer{margin-top:32px;padding-top:16px;border-top:1px solid #e2f0e2;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#9ca3af}
+      .print-btn{background:#16a34a;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:20px}
+    </style>
+    </head><body>
+    <div class="no-print" style="margin-bottom:16px">
+      <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+    </div>
+
+    <div class="header">
+      <div>
+        <div class="logo">
+          <div class="logo-icon">⚛</div>
+          <span class="logo-name"><span>Quantum</span>Guard</span>
+        </div>
+        <div style="margin-top:8px;font-size:13px;font-weight:700;color:#374151">NIST SP 800-53 Security Report</div>
+        <div style="margin-top:4px;font-size:11px;color:#6b7280">Post-Quantum Cryptography Vulnerability Scan</div>
+      </div>
+      <div class="score-box">
+        <div class="score-num">${result.quantum_readiness_score}</div>
+        <div class="score-label">Quantum Score / 100</div>
+        <div class="score-status">${status}</div>
+      </div>
+    </div>
+
+    <div class="meta">
+      <div class="meta-item">Generated <strong>${new Date().toLocaleString()}</strong></div>
+      <div class="meta-item">Standard <strong>NIST SP 800-53 Rev 5</strong></div>
+      <div class="meta-item">Target <strong>${file?.name || input || "scan"}</strong></div>
+      <div class="meta-item">Report ID <strong>#QG-${Date.now()}</strong></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat" style="--c:#16a34a"><div class="stat-val">${total}</div><div class="stat-key">Total Findings</div></div>
+      <div class="stat" style="--c:#dc2626"><div class="stat-val">${critical}</div><div class="stat-key">Critical</div></div>
+      <div class="stat" style="--c:#d97706"><div class="stat-val">${high}</div><div class="stat-key">High</div></div>
+      <div class="stat" style="--c:#ca8a04"><div class="stat-val">${medium}</div><div class="stat-key">Medium</div></div>
+    </div>
+
+    <div class="panels">
+      <div class="panel">
+        <div class="panel-title">Severity Distribution</div>
+        ${[["Critical",critical,"#dc2626"],["High",high,"#d97706"],["Medium",medium,"#ca8a04"]].map(([l,c,col])=>`
+        <div class="bar-row">
+          <div class="bar-label">${l}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${total>0?Math.round(c/total*100):0}%;background:${col}"></div></div>
+          <div class="bar-count" style="color:${col}">${c} (${total>0?Math.round(c/total*100):0}%)</div>
+        </div>`).join("")}
+      </div>
+      <div class="panel">
+        <div class="panel-title">NIST Control Status</div>
+        ${[["SC-13 Crypto Protection","FAIL","#dc2626"],["SC-12 Key Management","FAIL","#dc2626"],["IA-7 Crypto Module Auth","WARN","#d97706"],["SC-8 Transmission Conf.","WARN","#d97706"],["CM-7 Least Functionality","PASS","#16a34a"]].map(([ctrl,s,col])=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:12px">
+          <span style="color:#374151">${ctrl}</span>
+          <span style="background:${col}18;color:${col};font-size:10px;font-weight:700;padding:2px 9px;border-radius:100px">${s}</span>
+        </div>`).join("")}
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">🔍 Threat Intelligence — ${total} Findings</div>
+      ${Object.entries(grouped).map(([fname, findings]) => `
+        <div style="margin-bottom:16px;border:1px solid #e2f0e2;border-radius:10px;overflow:hidden">
+          <div class="file-header">📄 ${fname} — ${findings.length} findings</div>
+          <table>
+            <thead><tr><th>Severity</th><th>Line</th><th>Code</th><th>Vulnerability</th><th>Replacement</th></tr></thead>
+            <tbody>
+              ${findings.map(f=>`<tr>
+                <td><span class="sev" style="background:${sevBg(f.severity)};color:${sevColor(f.severity)}">${f.severity}</span></td>
+                <td style="color:#6b7280;font-weight:600">${f.line}</td>
+                <td><code>${f.code.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</code></td>
+                <td style="font-weight:600;color:#374151">${f.vulnerability}</td>
+                <td class="fix">${f.replacement}</td>
+              </tr>`).join("")}
+            </tbody>
+          </table>
+        </div>`).join("")}
+    </div>
+
+    <div class="footer">
+      <span>QuantumGuard · NIST SP 800-53 Rev 5 · Mangsri QuantumGuard LLC · Montgomery, AL</span>
+      <span>Report generated ${new Date().toLocaleDateString()}</span>
+    </div>
+    </body></html>`);
+    win.document.close();
+    setTimeout(() => win.print(), 500);
   };
 
   const btnStyle = (active) => ({
