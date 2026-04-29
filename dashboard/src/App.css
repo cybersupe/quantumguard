@@ -1,9 +1,4 @@
-/* RESET */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body, #root {
   width: 100%;
@@ -15,31 +10,21 @@ body {
   background: #f8faf8;
   color: #1a1a1a;
   font-family: "Segoe UI", sans-serif;
-  scroll-behavior: smooth;
 }
 
-/* SCROLLBAR */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #f0f7f0; }
-::-webkit-scrollbar-thumb { background: #86efac; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #16a34a; }
-
-/* SIDEBAR OVERLAY */
 .sidebar-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0,0,0,0.45);
   z-index: 900;
 }
 
-/* MAIN CONTENT (desktop) */
 .main-content {
   margin-left: 240px;
   width: calc(100% - 240px);
   overflow-x: hidden;
 }
 
-/* HAMBURGER (hidden on desktop) */
 .hamburger {
   display: none;
   position: fixed;
@@ -58,165 +43,69 @@ body {
   justify-content: center;
 }
 
-/* ===================================
-   MOBILE — single consolidated block
-   =================================== */
 @media (max-width: 768px) {
 
-  /* --- Layout --- */
-  html, body, #root {
-    overflow-x: hidden;
-  }
+  /* Hamburger menu */
+  .hamburger { display: flex; }
 
-  .main-content {
-    margin-left: 0;
-    width: 100%;
-  }
-
-  /* --- Hamburger --- */
-  .hamburger {
-    display: flex;
-  }
-
-  /* --- Sidebar slide-in --- */
+  /* Sidebar */
+  .main-content { margin-left: 0 !important; width: 100% !important; }
   .sidebar {
     position: fixed !important;
-    top: 0;
-    left: 0;
-    width: 82% !important;
-    max-width: 300px !important;
-    height: 100vh;
-    background: white;
-    z-index: 1000;
+    top: 0 !important; left: 0 !important;
+    width: 260px !important;
+    height: 100vh !important;
+    z-index: 1000 !important;
     transform: translateX(-100%);
-    transition: transform 0.3s ease;
+    transition: transform 0.25s ease;
   }
+  .sidebar.open { transform: translateX(0) !important; }
 
-  .sidebar.open {
-    transform: translateX(0);
-  }
+  /* Dashboard grids */
+  .stats-grid,
+  .charts-grid,
+  .analytics-grid,
+  .docs-grid,
+  .tls-grid { grid-template-columns: 1fr !important; }
 
-  .sidebar-overlay {
-    z-index: 900;
-  }
+  /* Homepage navbar — hide middle links */
+  .nav-links { display: none !important; }
 
-  /* --- Topbar --- */
-  .app-topbar {
-    position: sticky;
-    top: 0;
-    z-index: 800;
-  }
-
-  /* --- Navbar --- */
-  nav,
-  .navbar,
-  .topbar,
-  .header {
-    height: 58px;
-    padding: 0 14px;
-    max-width: 100vw;
-    overflow: hidden;
-  }
-
-  /* Hide desktop nav links & right-side buttons */
-  .nav-links,
-  .nav-actions,
-  .navbar-buttons,
-  .header-actions,
-  nav .nav-links,
-  nav [class*="navLinks"],
-  nav > div:nth-child(3),
-  nav a:not(:first-child),
-  nav button {
-    display: none !important;
-  }
-
-  /* Hide urgency bar below navbar */
-  nav + div {
-    display: none !important;
-  }
-
-  /* --- Logo --- */
-  .logo {
-    font-size: 20px;
-    white-space: nowrap;
-  }
-
-  /* --- Hide decorative/non-essential elements --- */
-  .hero-preview,
-  .countdown-badge,
-  .deadline-badge,
-  .y2q-badge,
-  [class*="preview"],
-  [class*="dashboard-preview"],
-  [class*="badge"],
-  [class*="countdown"],
-  [class*="mockup"] {
-    display: none !important;
-  }
-
-  /* --- Hero --- */
-  .hero-grid,
-  .hero,
-  section {
-    max-width: 100vw;
-    overflow-x: hidden;
-    padding-left: 18px !important;
-    padding-right: 18px !important;
-  }
-
+  /* Homepage hero — stack vertically, hide dashboard preview */
   .hero-grid {
     grid-template-columns: 1fr !important;
     gap: 24px !important;
+    padding: 32px 16px !important;
   }
+  .hero-preview { display: none !important; }
 
-  .hero-grid button,
-  .hero-grid a {
-    width: 100%;
-    max-width: 100%;
-    justify-content: center;
-    text-align: center;
-  }
-
-  /* --- Typography --- */
-  h1 {
-    font-size: 36px !important;
-    line-height: 1.15 !important;
-    word-break: break-word;
-  }
-
-  h2 {
-    font-size: 24px !important;
-  }
-
-  p {
-    font-size: 16px !important;
-    line-height: 1.6 !important;
-  }
-
-  /* --- All grids → single column --- */
-  [class*="grid"] {
-    grid-template-columns: 1fr !important;
-    gap: 16px;
-  }
-
-  /* Stats bar keeps 2 columns */
+  /* Stats bar — 2 columns on mobile */
   .stats-bar-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 10px;
-    padding: 0 12px;
+    gap: 12px !important;
+    padding: 0 16px !important;
   }
 
-  /* --- Section padding --- */
-  div[id="features"],
+  /* How It Works — stack */
+  .how-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
+
+  /* Pricing — stack */
+  .pricing-grid { grid-template-columns: 1fr !important; }
+
+  /* General padding fixes */
+  h1 { font-size: 32px !important; line-height: 1.15 !important; }
+  h2 { font-size: 26px !important; }
+
+  /* Homepage sections padding */
   div[id="howitworks"],
   div[id="pricing"],
-  div[id="docs"] {
-    padding: 36px 18px !important;
+  div[id="docs"],
+  div[id="features"] {
+    padding: 40px 16px !important;
   }
 }
-@media (max-width: 768px) {
-  .hamburger-top {
-    display: flex !important;
-  }
-}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f0f7f0; }
+::-webkit-scrollbar-thumb { background: #86efac; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #16a34a; }
