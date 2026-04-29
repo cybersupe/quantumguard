@@ -69,10 +69,29 @@ def _download_github_zip(github_url: str, github_token: Optional[str] = None) ->
     if github_token:
         headers["Authorization"] = f"token {github_token}"
 
+    # ── Check repo size before downloading ───────────────
+    meta_url = f"https://api.github.com/repos/{owner}/{repo}"
+    meta_resp = requests.get(meta_url, headers=headers, timeout=10)
+    if meta_resp.status_code == 200:
+        repo_size_kb = meta_resp.json().get("size", 0)
+        # Render free tier: 512MB RAM limit. Reject repos > 50MB uncompressed (~15MB zip)
+        if repo_size_kb > 50000:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Repo is too large ({repo_size_kb // 1024}MB). Maximum supported size is 50MB. "
+                       f"Try scanning a specific subdirectory or upload a ZIP of just the src/ folder."
+            )
+
     for branch in ["main", "master"]:
         zip_url = f"https://api.github.com/repos/{owner}/{repo}/zipball/{branch}"
         response = requests.get(zip_url, headers=headers, timeout=30, allow_redirects=True)
         if response.status_code == 200:
+            # Double-check actual download size
+            if len(response.content) > 15 * 1024 * 1024:  # 15MB zip
+                raise HTTPException(
+                    status_code=400,
+                    detail="Repo ZIP is too large for the free tier. Please upload a ZIP of just your src/ folder."
+                )
             return response.content, owner, repo
 
     raise HTTPException(status_code=400, detail="Could not download repo. Make sure it is public.")
