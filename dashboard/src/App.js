@@ -1137,6 +1137,13 @@ function TLSPage() {
   };
 
   const scoreColor = result ? (result.tls_score >= 70 ? C.green : result.tls_score >= 40 ? C.amber : C.red) : C.muted;
+  const gradeColor = result ? (
+    result.grade === "A+" ? "#16a34a" :
+    result.grade === "A"  ? "#16a34a" :
+    result.grade === "B"  ? "#d97706" :
+    result.grade === "C"  ? "#d97706" :
+    result.grade === "D"  ? "#dc2626" : "#dc2626"
+  ) : C.muted;
 
   return (
     <div style={{ padding: 20 }}>
@@ -1153,6 +1160,31 @@ function TLSPage() {
       </Panel>
       {result && (
         <>
+          {/* ── SSL Grade Card ── */}
+          <div style={{ background: C.white, border: `1px solid ${C.panelBorder}`, borderRadius: 14, padding: "20px 24px", marginBottom: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.04)", display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
+            {/* Big Grade */}
+            <div style={{ textAlign: "center", minWidth: 100 }}>
+              <div style={{ fontSize: 72, fontWeight: 900, lineHeight: 1, color: gradeColor, fontFamily: "monospace" }}>{result.grade || "?"}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 4, textTransform: "uppercase", letterSpacing: 1 }}>SSL Grade</div>
+            </div>
+            {/* Grade info */}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 6 }}>{result.grade_description}</div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
+                <span style={{ background: result.tls_version === "TLSv1.3" ? C.greenLight : C.amberLight, color: result.tls_version === "TLSv1.3" ? C.green : C.amber, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 100 }}>{result.tls_version}</span>
+                <span style={{ background: result.quantum_safe ? C.greenLight : C.redLight, color: result.quantum_safe ? C.green : C.red, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 100 }}>{result.quantum_safe ? "✦ Post-Quantum Safe" : "⚠ Not Quantum Safe"}</span>
+                <span style={{ background: C.greenLighter, color: C.green, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 100 }}>Score: {result.tls_score}/100</span>
+              </div>
+              {result.pqc_note && <div style={{ fontSize: 12, color: C.amber, background: C.amberLight, padding: "6px 12px", borderRadius: 8, border: `1px solid #fcd34d` }}>⚠ {result.pqc_note}</div>}
+            </div>
+            {/* Grade scale */}
+            <div style={{ display: "flex", gap: 6 }}>
+              {[["A+","#16a34a"],["A","#16a34a"],["B","#d97706"],["C","#f59e0b"],["D","#dc2626"],["F","#dc2626"]].map(([g, col]) => (
+                <div key={g} style={{ width: 36, height: 36, borderRadius: 8, background: result.grade === g ? col : "#f3f4f6", color: result.grade === g ? "#fff" : "#9ca3af", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, border: result.grade === g ? `2px solid ${col}` : "2px solid transparent", fontFamily: "monospace" }}>{g}</div>
+              ))}
+            </div>
+          </div>
+
           <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 16 }}>
             <Metric label="TLS Score" value={result.tls_score} suffix="/100" color={scoreColor} icon="🎯" desc={result.tls_score >= 70 ? "Quantum Ready" : "Needs Improvement"} />
             <Metric label="TLS Version" value={result.tls_version} color={result.tls_version === "TLSv1.3" ? C.green : C.amber} icon="🔒" desc={result.tls_version === "TLSv1.3" ? "Latest" : "Upgrade Needed"} />
