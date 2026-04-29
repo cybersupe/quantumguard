@@ -47,6 +47,9 @@ body {
   /* Hamburger menu */
   .hamburger { display: flex; }
   .hamburger-top { display: flex !important; }
+  .nav-hamburger { display: flex !important; }
+  .nav-right { display: none !important; }
+  .nav-links { display: none !important; }
 
   /* Main content full width */
   .main-content { margin-left: 0 !important; width: 100% !important; }
@@ -70,10 +73,6 @@ body {
   .analytics-grid,
   .docs-grid,
   .tls-grid { grid-template-columns: 1fr !important; }
-
-  /* Homepage navbar - hide middle links and right side buttons */
-  .nav-links { display: none !important; }
-  nav > div:last-child { display: none !important; }
 
   /* Homepage hero - stack vertically, hide dashboard preview */
   .hero-grid {
