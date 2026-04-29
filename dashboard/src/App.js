@@ -131,6 +131,170 @@ function Sidebar({ active, setActive, user, onLogin, onLogout, open, onClose }) 
 
 // ── TopBar ────────────────────────────────────────────────────
 function TopBar({ title, user, onLogin, onLogout, onHamburger }) {
+  const isMobile = window.innerWidth <= 768;
+
+  return (
+    <div
+      className="app-topbar"
+      style={{
+        height: 56,
+        background: C.white,
+        borderBottom: `1px solid ${C.panelBorder}`,
+        display: "flex",
+        alignItems: "center",
+        padding: isMobile ? "0 12px" : "0 20px",
+        gap: 10,
+        boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+        overflow: "hidden",
+        width: "100%",
+      }}
+    >
+      <button
+        onClick={onHamburger}
+        style={{
+          background: C.green,
+          border: "none",
+          borderRadius: 8,
+          width: 38,
+          height: 38,
+          minWidth: 38,
+          color: C.white,
+          cursor: "pointer",
+          fontSize: 20,
+          display: isMobile ? "flex" : "none",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        ☰
+      </button>
+
+      {!isMobile && (
+        <>
+          <span style={{ color: C.muted, fontSize: 13 }}>QuantumGuard</span>
+          <span style={{ color: C.greenMid, fontSize: 13 }}>›</span>
+        </>
+      )}
+
+      <span
+        style={{
+          color: C.text,
+          fontSize: isMobile ? 18 : 14,
+          fontWeight: 700,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {title}
+      </span>
+
+      <div
+        style={{
+          marginLeft: "auto",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          minWidth: 0,
+        }}
+      >
+        {!isMobile && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: "#fff5f5",
+              padding: "4px 10px",
+              borderRadius: 20,
+              border: "1px solid #fca5a5",
+            }}
+          >
+            <span style={{ fontSize: 11, color: C.red, fontWeight: 700 }}>
+              ⚠ {daysTo2030()}d to Y2Q
+            </span>
+          </div>
+        )}
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            background: C.greenLighter,
+            padding: isMobile ? "4px 8px" : "4px 10px",
+            borderRadius: 20,
+            border: `1px solid ${C.greenMid}`,
+            whiteSpace: "nowrap",
+          }}
+        >
+          <div
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: C.green,
+            }}
+          ></div>
+          <span
+            style={{
+              fontSize: isMobile ? 10 : 11,
+              color: C.green,
+              fontWeight: 600,
+            }}
+          >
+            API Online
+          </span>
+        </div>
+
+        {!isMobile && (
+          <>
+            <span style={{ fontSize: 11, color: C.muted }}>
+              {new Date().toLocaleDateString("en-US", {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+              })}
+            </span>
+
+            {user ? (
+              <button
+                onClick={onLogout}
+                style={{
+                  background: "transparent",
+                  border: `1px solid ${C.panelBorder}`,
+                  borderRadius: 8,
+                  padding: "4px 12px",
+                  cursor: "pointer",
+                  color: C.muted,
+                  fontSize: 11,
+                }}
+              >
+                {user.displayName?.split(" ")[0]} · Sign Out
+              </button>
+            ) : (
+              <button
+                onClick={onLogin}
+                style={{
+                  background: C.green,
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "6px 16px",
+                  cursor: "pointer",
+                  color: C.white,
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                Sign In
+              </button>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
   return (
     <div style={{
       height: 56, background: C.white, borderBottom: `1px solid ${C.panelBorder}`,
