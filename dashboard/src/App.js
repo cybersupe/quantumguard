@@ -295,39 +295,7 @@ function TopBar({ title, user, onLogin, onLogout, onHamburger }) {
     </div>
   );
 }
-  return (
-    <div style={{
-      height: 56, background: C.white, borderBottom: `1px solid ${C.panelBorder}`,
-      display: "flex", alignItems: "center", padding: "0 20px", gap: 12,
-      boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-    }}>
-      <button onClick={onHamburger} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 20, padding: "0 4px", display: "none" }} className="hamburger-top">☰</button>
-      <span style={{ color: C.muted, fontSize: 13 }}>QuantumGuard</span>
-      <span style={{ color: C.greenMid, fontSize: 13 }}>›</span>
-      <span style={{ color: C.text, fontSize: 14, fontWeight: 600 }}>{title}</span>
-      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
-        {/* Y2Q badge in topbar */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#fff5f5", padding: "4px 10px", borderRadius: 20, border: "1px solid #fca5a5" }}>
-          <span style={{ fontSize: 11, color: C.red, fontWeight: 700 }}>⚠ {daysTo2030()}d to Y2Q</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, background: C.greenLighter, padding: "4px 10px", borderRadius: 20, border: `1px solid ${C.greenMid}` }}>
-          <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.green }}></div>
-          <span style={{ fontSize: 11, color: C.green, fontWeight: 600 }}>API Online</span>
-        </div>
-        <span style={{ fontSize: 11, color: C.muted }}>{new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</span>
-        {user ? (
-          <button onClick={onLogout} style={{ background: "transparent", border: `1px solid ${C.panelBorder}`, borderRadius: 8, padding: "4px 12px", cursor: "pointer", color: C.muted, fontSize: 11 }}>
-            {user.displayName?.split(" ")[0]} · Sign Out
-          </button>
-        ) : (
-          <button onClick={onLogin} style={{ background: C.green, border: "none", borderRadius: 8, padding: "6px 16px", cursor: "pointer", color: C.white, fontSize: 12, fontWeight: 600 }}>
-            Sign In
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
+  
 
 // ── Panel ─────────────────────────────────────────────────────
 function Panel({ title, children, style = {}, accent = false }) {
