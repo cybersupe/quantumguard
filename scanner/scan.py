@@ -1,5 +1,5 @@
 # ============================================================
-# QuantumGuard — Core Scanner
+# QuantumGuard — Core Scanner v2.1
 # Copyright (c) 2026 Pavansudheer Payyavula / MANGSRI
 # Licensed under AGPL v3 — github.com/cybersupe/quantumguard
 # Standards: NIST FIPS 203, FIPS 204, FIPS 205
@@ -12,18 +12,39 @@ from datetime import datetime
 from scanner.patterns import VULNERABLE_PATTERNS, SEVERITY_SCORE
 from scanner.ast_scanner import scan_python_ast
 
-# Files/dirs to always skip
-SKIP_DIRS = {"venv", "node_modules", ".git", "__pycache__", ".tox",
-             "dist", "build", ".eggs", "htmlcov", ".mypy_cache"}
+# ── Directories to always skip ────────────────────────────
+SKIP_DIRS = {
+    "venv", "node_modules", ".git", "__pycache__", ".tox",
+    "dist", "build", ".eggs", "htmlcov", ".mypy_cache",
+    "vendor", "third_party", "thirdparty", "extern", "external",
+    "deps", "dependencies", ".cache", "coverage", ".nyc_output",
+    "bower_components", "jspm_packages", "target", "out",
+}
 
-# These paths get confidence downgraded
-TEST_PATH_INDICATORS = ["test", "tests", "spec", "docs", "documentation",
-                        "example", "examples", "fixture", "fixtures", "mock", "mocks"]
+# These paths get confidence downgraded to LOW
+TEST_PATH_INDICATORS = [
+    "test", "tests", "spec", "docs", "documentation",
+    "example", "examples", "fixture", "fixtures", "mock", "mocks",
+    "sample", "samples", "demo", "demos", "tutorial", "tutorials",
+]
 
-SUPPORTED_EXTENSIONS = (".py", ".js", ".java", ".ts", ".go", ".rs", ".c", ".cpp", ".cc", ".h", ".hpp")
+SUPPORTED_EXTENSIONS = (
+    ".py", ".js", ".java", ".ts", ".go",
+    ".rs", ".c", ".cpp", ".cc", ".h", ".hpp"
+)
 
 MAX_FILES = 200
 MAX_LINE_LENGTH = 500  # skip minified lines
+
+# ── Patterns that are too noisy in non-crypto contexts ────
+# These vulns are skipped in files that look like UI/frontend
+FRONTEND_FILE_INDICATORS = ["component", "view", "page", "ui", "layout", "style", "animation"]
+
+# HARDCODED_SECRET: only flag if line is NOT in a test/example AND value looks real
+HARDCODED_SECRET_ALLOWLIST = [
+    r"(?i)(example|sample|test|fake|dummy|placeholder|your[-_]?|<|>|\.\.\.|xxx)",
+    r"(?i)(password\s*=\s*['\"](?:password|pass|test|admin|secret|changeme|letmein|123|abc)['\"])",
+]
 
 
 def _is_test_or_docs_path(filepath):
@@ -31,8 +52,17 @@ def _is_test_or_docs_path(filepath):
     parts = path_lower.split("/")
     for part in parts:
         for indicator in TEST_PATH_INDICATORS:
-            if indicator in part:
+            if indicator == part or part.startswith(indicator + "_") or part.endswith("_" + indicator):
                 return True
+    return False
+
+
+def _is_frontend_file(filepath):
+    """Returns True if file looks like UI/frontend code where Math.random() is fine."""
+    name = os.path.basename(filepath).lower()
+    for indicator in FRONTEND_FILE_INDICATORS:
+        if indicator in name:
+            return True
     return False
 
 
@@ -41,13 +71,38 @@ def _is_comment_line(line, ext):
     stripped = line.strip()
     if not stripped:
         return True
-    if ext in (".py", ".go", ".rs", ".c", ".cpp", ".cc", ".h", ".hpp"):
-        if stripped.startswith("#") or stripped.startswith("//") or stripped.startswith("*") or stripped.startswith("/*"):
+    if ext in (".py",):
+        if stripped.startswith("#"):
             return True
-    if ext in (".js", ".ts", ".java", ".go", ".rs", ".c", ".cpp"):
+    if ext in (".js", ".ts", ".java", ".go", ".rs", ".c", ".cpp", ".cc", ".h", ".hpp"):
         if stripped.startswith("//") or stripped.startswith("*") or stripped.startswith("/*"):
             return True
+    # Multi-line comment continuation
+    if stripped.startswith("*") or stripped.startswith("*/"):
+        return True
     return False
+
+
+def _is_allowlisted_secret(line):
+    """Returns True if a HARDCODED_SECRET match is likely a false positive."""
+    for pattern in HARDCODED_SECRET_ALLOWLIST:
+        if re.search(pattern, line):
+            return True
+    return False
+
+
+def _is_weak_random_in_crypto_context(line):
+    """
+    Only flag WEAK_RANDOM if it's in a security-sensitive context.
+    Math.random() in UI animation code is not a vulnerability.
+    """
+    line_lower = line.lower()
+    # Must be near crypto keywords to be flagged
+    crypto_context = [
+        "key", "token", "secret", "password", "salt", "nonce",
+        "iv", "seed", "session", "auth", "csrf", "otp",
+    ]
+    return any(kw in line_lower for kw in crypto_context)
 
 
 def _get_confidence(vuln_name, line, is_test, ext):
@@ -55,21 +110,18 @@ def _get_confidence(vuln_name, line, is_test, ext):
     Determine confidence level for a regex finding.
     HIGH   = actual API/function call syntax
     MEDIUM = clear pattern match in real code
-    LOW    = likely documentation or text reference
+    LOW    = likely documentation, comments, or string reference only
     """
-    # Downgrade for test/docs files
     if is_test:
         return "LOW"
 
-    # Downgrade for lines that look like comments or strings only
     stripped = line.strip()
 
-    # If the match is only in a comment
     if _is_comment_line(line, ext):
         return "LOW"
 
-    # If the line has actual function call syntax → HIGH
-    if any(ch in stripped for ch in ["(", ".", "import", "require", "new "]):
+    # If the line has actual function call / import syntax → HIGH
+    if any(tok in stripped for tok in ["(", "import ", "require(", "new ", "getInstance"]):
         return "HIGH"
 
     return "MEDIUM"
@@ -84,18 +136,17 @@ def _get_risk_explanation(vuln_name):
         "MD5": "MD5 is cryptographically broken. Grover's algorithm further weakens hash security.",
         "SHA1": "SHA-1 is deprecated. Grover's algorithm halves effective security to ~80 bits.",
         "SHA256_SIGNED": "SHA-256 with RSA/ECDSA signatures inherits the quantum vulnerability of the asymmetric component.",
-        "RC4": "RC4 is completely broken with multiple practical attacks. No quantum upgrade needed — just replace now.",
+        "RC4": "RC4 is completely broken with multiple practical attacks.",
         "DES": "DES/3DES are deprecated. Key sizes are insufficient even without quantum threats.",
         "ECB_MODE": "ECB mode reveals patterns in encrypted data regardless of key strength.",
         "WEAK_TLS": "Older TLS versions have known vulnerabilities. TLS 1.3 minimum is required.",
         "WEAK_KEY_SIZE": "Small RSA/DH key sizes are breakable classically. Quantum computers accelerate this.",
         "HARDCODED_SECRET": "Hardcoded secrets are exposed in source code and version history.",
-        "WEAK_RANDOM": "Non-cryptographic random number generators are predictable and unsuitable for security.",
+        "WEAK_RANDOM": "Non-cryptographic random number generators are predictable — never use for keys, tokens, or salts.",
         "JWT_NONE_ALG": "JWT with 'none' algorithm or disabled verification allows token forgery.",
         "BLOWFISH": "Blowfish has a 64-bit block size making it vulnerable to birthday attacks.",
         "MD4": "MD4 is completely broken and should never be used.",
     }
-    # Handle compound names like RSA_GO, ECC_RUST, etc.
     for key in RISK_MAP:
         if vuln_name.startswith(key):
             return RISK_MAP[key]
@@ -110,10 +161,33 @@ def _get_migration_priority(severity):
     }.get(severity, "MEDIUM — Fix within 6 months")
 
 
+def _deduplicate_findings(findings):
+    """
+    Remove exact duplicates: same file + line + vulnerability.
+    Keeps the highest confidence finding when duplicates exist.
+    """
+    seen = {}
+    confidence_rank = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
+
+    for f in findings:
+        key = (f["file"], f["line"], f["vulnerability"])
+        if key not in seen:
+            seen[key] = f
+        else:
+            # Keep higher confidence
+            existing_rank = confidence_rank.get(seen[key].get("confidence", "MEDIUM"), 2)
+            new_rank = confidence_rank.get(f.get("confidence", "MEDIUM"), 2)
+            if new_rank > existing_rank:
+                seen[key] = f
+
+    return list(seen.values())
+
+
 def scan_file(filepath):
     findings = []
     ext = os.path.splitext(filepath)[1].lower()
     is_test = _is_test_or_docs_path(filepath)
+    is_frontend = _is_frontend_file(filepath)
 
     try:
         with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
@@ -121,21 +195,18 @@ def scan_file(filepath):
 
         code = "".join(lines)
 
-        # ── AST scan for Python (most accurate — no false positives from comments) ──
+        # ── AST scan for Python (zero false positives from comments) ──
+        ast_lines_map = {}  # line -> vulnerability set
         if ext == ".py":
             ast_findings = scan_python_ast(code, filepath)
             findings.extend(ast_findings)
-            # Track which lines were already caught by AST to avoid regex duplication
-            ast_lines = {f["line"] for f in ast_findings}
-        else:
-            ast_lines = set()
+            # Track line+vuln pairs already caught by AST
+            for af in ast_findings:
+                key = af["line"]
+                ast_lines_map.setdefault(key, set()).add(af["vulnerability"])
 
-        # ── Regex scan for all supported languages ──────────
+        # ── Regex scan for all languages ───────────────────
         for line_num, line in enumerate(lines, start=1):
-            # Skip AST-already-found lines for Python
-            if ext == ".py" and line_num in ast_lines:
-                continue
-
             # Skip very long lines (minified JS/CSS)
             if len(line) > MAX_LINE_LENGTH:
                 continue
@@ -145,10 +216,29 @@ def scan_file(filepath):
                 continue
 
             for vuln_name, vuln_data in VULNERABLE_PATTERNS.items():
+                # Skip WEAK_RANDOM in frontend files — not a crypto context
+                if vuln_name == "WEAK_RANDOM" and is_frontend:
+                    continue
+
+                # Skip WEAK_RANDOM unless it's in a crypto-relevant context
+                if vuln_name == "WEAK_RANDOM" and not _is_weak_random_in_crypto_context(line):
+                    continue
+
                 patterns = vuln_data.get("patterns", [])
                 for pattern in patterns:
                     try:
                         if re.search(pattern, line):
+                            # For Python: skip if AST already caught this line+vuln
+                            if ext == ".py":
+                                ast_vulns = ast_lines_map.get(line_num, set())
+                                base_vuln = vuln_name.split("_")[0]
+                                if any(av.startswith(base_vuln) or base_vuln in av for av in ast_vulns):
+                                    break
+
+                            # Skip allowlisted false positives for HARDCODED_SECRET
+                            if vuln_name == "HARDCODED_SECRET" and _is_allowlisted_secret(line):
+                                break
+
                             confidence = _get_confidence(vuln_name, line, is_test, ext)
                             severity = vuln_data["severity"]
 
@@ -178,19 +268,20 @@ def scan_file(filepath):
     except Exception as e:
         print(f"[QuantumGuard] Error reading {filepath}: {e}")
 
-    return findings
+    # Deduplicate before returning
+    return _deduplicate_findings(findings)
 
 
 def scan_directory(directory):
     """
     Scan all supported files in a directory.
-    Returns list of findings with full metadata.
+    Returns deduplicated list of findings with full metadata.
     """
     all_findings = []
     file_count = 0
 
     for root, dirs, files in os.walk(directory):
-        # Skip irrelevant directories
+        # Skip irrelevant directories in-place
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
 
         for file in files:
@@ -208,7 +299,8 @@ def scan_directory(directory):
         if file_count >= MAX_FILES:
             break
 
-    return all_findings
+    # Global deduplication across all files
+    return _deduplicate_findings(all_findings)
 
 
 def calculate_score(findings):
@@ -216,8 +308,8 @@ def calculate_score(findings):
     Calculate quantum readiness score 0–100.
     - Only HIGH confidence findings get full penalty
     - MEDIUM confidence findings get 50% penalty
-    - LOW confidence findings get 0% penalty (no score impact)
-    - Test file findings get 25% penalty
+    - LOW confidence findings get 0 penalty (no score impact)
+    - Test file findings get 25% of normal penalty
     """
     if not findings:
         return 100
@@ -246,9 +338,8 @@ def calculate_score(findings):
 
 def check_crypto_agility(directory):
     """
-    Improved crypto agility checker.
-    Score = max(0, 100 - hardcoded_count * 5 + configurable_count * 3)
-    Returns: agility_score, hardcoded_count, configurable_count, findings with fix field
+    Crypto agility checker.
+    Score = max(0, min(100, 100 - hardcoded * 5 + configurable * 3))
     """
     agility_findings = []
 
@@ -292,7 +383,6 @@ def check_crypto_agility(directory):
                     lines = f.readlines()
 
                 for line_num, line in enumerate(lines, start=1):
-                    # Skip comment lines
                     ext = os.path.splitext(filepath)[1].lower()
                     if _is_comment_line(line, ext):
                         continue
@@ -328,11 +418,8 @@ def check_crypto_agility(directory):
 
     hardcoded = len([f for f in agility_findings if f["type"] == "hardcoded"])
     configurable = len([f for f in agility_findings if f["type"] == "configurable"])
-
-    # Improved formula — does not collapse to 0 on first hardcoded finding
     agility_score = max(0, min(100, 100 - (hardcoded * 5) + (configurable * 3)))
 
-    # Determine status label
     if agility_score >= 90:
         status = "HIGH AGILITY"
         migration_ease = "Very Easy"
@@ -364,12 +451,11 @@ def check_crypto_agility(directory):
 
 
 def generate_report(directory):
-    """Generate a full JSON report and print summary."""
+    """Generate a full JSON report."""
     print(f"\n[QuantumGuard] Scanning: {directory}\n")
     findings = scan_directory(directory)
     score = calculate_score(findings)
 
-    # Summary by severity
     severity_counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0}
     for f in findings:
         sev = f.get("severity", "MEDIUM")
@@ -378,7 +464,7 @@ def generate_report(directory):
     report = {
         "meta": {
             "tool": "QuantumGuard",
-            "version": "2.0",
+            "version": "2.1",
             "company": "Mangsri QuantumGuard LLC",
             "website": "https://quantumguard.site",
             "standards": ["NIST FIPS 203 (ML-KEM)", "NIST FIPS 204 (ML-DSA)", "NIST FIPS 205 (SLH-DSA)"],
@@ -397,16 +483,14 @@ def generate_report(directory):
     with open(output_path, "w") as f:
         json.dump(report, f, indent=2)
 
-    print(f"[QuantumGuard] Quantum Readiness Score: {score}/100")
-    print(f"[QuantumGuard] Total findings: {len(findings)}")
-    print(f"[QuantumGuard] CRITICAL: {severity_counts['CRITICAL']} | HIGH: {severity_counts['HIGH']} | MEDIUM: {severity_counts['MEDIUM']}")
+    print(f"[QuantumGuard] Score: {score}/100")
+    print(f"[QuantumGuard] Findings: {len(findings)} (CRITICAL:{severity_counts['CRITICAL']} HIGH:{severity_counts['HIGH']} MEDIUM:{severity_counts['MEDIUM']})")
     print(f"[QuantumGuard] Report saved to: {output_path}\n")
 
     for f in findings:
         if f.get("confidence", "MEDIUM") != "LOW":
             print(f"[{f['severity']}][{f.get('confidence','?')}] {f['file']}:{f['line']}")
-            print(f"  Vuln: {f['vulnerability']}")
-            print(f"  Code: {f['code']}")
-            print(f"  Fix:  {f.get('recommended_fix', f['replacement'])}\n")
+            print(f"  {f['vulnerability']} — {f['code']}")
+            print(f"  Fix: {f['replacement']}\n")
 
     return report
