@@ -1710,16 +1710,12 @@ function UnifiedRiskPage() {
 
   const runUnifiedRisk = async () => {
     setLoading(true);
+    setData(null);
 
-    const res = await fetch("https://quantumguard-api.onrender.com/unified-risk", {
+    const res = await fetch(`${API}/unified-risk`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        github_url: github,
-        domain: domain
-      })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ github_url: github, domain })
     });
 
     const json = await res.json();
@@ -1734,6 +1730,7 @@ function UnifiedRiskPage() {
       <button onClick={runUnifiedRisk}>
         {loading ? "Scanning..." : "Run Unified Scan"}
       </button>
+
       {data && (
         <div style={{ marginTop: 20 }}>
           <h3>Overall Risk</h3>
@@ -1747,9 +1744,10 @@ function UnifiedRiskPage() {
 
           <h3>Business Summary</h3>
           <p>{data.unified_risk?.business_summary}</p>
-              </div>
-  )}
-);
+        </div>
+      )}
+    </div>
+  );
 }
   export default function App() {
   const [user, setUser] = useState(null);
