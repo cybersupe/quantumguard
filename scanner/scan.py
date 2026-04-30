@@ -309,35 +309,84 @@ def scan_directory(directory):
 
 def calculate_score(findings):
     """
-    Calculate quantum readiness score 0–100.
-    - Only HIGH confidence findings get full penalty
-    - MEDIUM confidence findings get 50% penalty
-    - LOW confidence findings get 0 penalty (no score impact)
-    - Test file findings get 25% of normal penalty
+    Calculate quantum readiness score 0-100.
+
+    Improvements over v1:
+    - Diminishing returns curve: large repos with many findings
+      don't automatically score 0. Each additional finding of the
+      same type contributes less penalty after the first few.
+    - Confidence weighting: HIGH=full, MEDIUM=50%, LOW=0%
+    - Test files: 25% of normal penalty
+    - Production crypto/auth files: 125% penalty multiplier
+    - Score is clamped 0-100 with a soft floor at 5 for repos
+      that have at least some findings (avoids misleading 0s)
     """
     if not findings:
         return 100
 
-    total_penalty = 0
+    # Group findings by vulnerability type to apply diminishing returns
+    vuln_groups = {}
     for f in findings:
-        base_penalty = SEVERITY_SCORE.get(f.get("severity", "MEDIUM"), 3)
-        confidence = f.get("confidence", "MEDIUM")
-        is_test = f.get("is_test_file", False)
+        vuln = f.get("vulnerability", "UNKNOWN")
+        vuln_groups.setdefault(vuln, []).append(f)
 
-        if confidence == "HIGH":
-            multiplier = 1.0
-        elif confidence == "MEDIUM":
-            multiplier = 0.5
-        else:  # LOW
-            multiplier = 0.0
+    total_penalty = 0.0
 
-        if is_test:
-            multiplier *= 0.25
+    for vuln, group in vuln_groups.items():
+        for i, f in enumerate(group):
+            base_penalty = SEVERITY_SCORE.get(f.get("severity", "MEDIUM"), 3)
+            confidence = f.get("confidence", "MEDIUM")
+            is_test = f.get("is_test_file", False)
 
-        total_penalty += base_penalty * multiplier
+            # Confidence multiplier
+            if confidence == "HIGH":
+                conf_mult = 1.0
+            elif confidence == "MEDIUM":
+                conf_mult = 0.5
+            else:
+                conf_mult = 0.0  # LOW confidence = no penalty
 
-    score = max(0, round(100 - total_penalty))
-    return score
+            # Test file reduction
+            if is_test:
+                conf_mult *= 0.25
+
+            # Production security file boost
+            file_path = str(f.get("file", "")).lower()
+            if any(x in file_path for x in ["auth", "crypto", "security", "jwt", "token", "config", "key"]):
+                conf_mult *= 1.25
+
+            # Diminishing returns: each repeat of same vuln type
+            # contributes progressively less penalty.
+            # 1st: 100%, 2nd: 80%, 3rd: 60%, 4th+: 40%
+            if i == 0:
+                repeat_mult = 1.0
+            elif i == 1:
+                repeat_mult = 0.8
+            elif i == 2:
+                repeat_mult = 0.6
+            else:
+                repeat_mult = 0.4
+
+            total_penalty += base_penalty * conf_mult * repeat_mult
+
+    # Soft scoring: use square-root dampening so scores
+    # don't collapse to 0 for large repos
+    import math
+    dampened_penalty = 10 * math.sqrt(total_penalty)
+
+    score = max(5, round(100 - dampened_penalty))
+
+    # If repo has any CRITICAL HIGH-confidence findings,
+    # cap score at 60 maximum (can't call yourself safe)
+    has_critical_high = any(
+        f.get("severity") == "CRITICAL" and f.get("confidence") == "HIGH"
+        and not f.get("is_test_file", False)
+        for f in findings
+    )
+    if has_critical_high:
+        score = min(score, 60)
+
+    return max(0, min(100, score))
 
 
 def check_crypto_agility(directory):
