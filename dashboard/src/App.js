@@ -1686,7 +1686,7 @@ function Homepage({ onGetStarted }) {
             <div style={{ padding: 20 }}>
               {/* Scan meta bar */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(34,197,94,0.06)", borderRadius: 8, padding: "6px 10px", marginBottom: 12, border: "1px solid rgba(34,197,94,0.12)" }}>
-                <span style={{ fontSize: 10, color: "#22c55e", fontWeight: 600 }}>● Last Scan: <span style={{ color: "#64748b" }}>just now</span></span>
+                <span style={{ fontSize: 10, color: "#22c55e", fontWeight: 600 }}>● Live scan detected • <span style={{ color: "#64748b" }}>just now</span></span>
                 <span style={{ fontSize: 10, color: "#374151", fontFamily: "monospace" }}>example/repo</span>
               </div>
 
