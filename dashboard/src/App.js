@@ -1734,38 +1734,24 @@ function UnifiedRiskPage() {
       <button onClick={runUnifiedRisk}>
         {loading ? "Scanning..." : "Run Unified Scan"}
       </button>
+      {data && (
+        <div style={{ marginTop: 20 }}>
+          <h3>Overall Risk</h3>
+          <p><b>Score:</b> {data.unified_risk?.quantum_risk_score}</p>
+          <p><b>Level:</b> {data.unified_risk?.risk_level}</p>
 
-     {data && (
-  <div style={{ marginTop: 20 }}>
-    <h3>Overall Risk</h3>
-    <p><b>Score:</b> {data.unified_risk?.quantum_risk_score}</p>
-    <p><b>Level:</b> {data.unified_risk?.risk_level}</p>
+          <h3>Component Scores</h3>
+          <p>Code Scanner: {data.unified_risk?.component_scores?.code_crypto_score}</p>
+          <p>Crypto Agility: {data.unified_risk?.component_scores?.crypto_agility_score}</p>
+          <p>TLS Score: {data.unified_risk?.component_scores?.tls_score}</p>
 
-    <h3>Component Scores</h3>
-    <p>Code Scanner: {data.unified_risk?.component_scores?.code_crypto_score}</p>
-    <p>Crypto Agility: {data.unified_risk?.component_scores?.crypto_agility_score}</p>
-    <p>TLS Score: {data.unified_risk?.component_scores?.tls_score}</p>
-
-    <h3>Top Findings</h3>
-    <p>Critical: {data.unified_risk?.finding_summary?.severity_summary?.CRITICAL}</p>
-    <p>High: {data.unified_risk?.finding_summary?.severity_summary?.HIGH}</p>
-    <p>Medium: {data.unified_risk?.finding_summary?.severity_summary?.MEDIUM}</p>
-
-    <h3>Priority Actions</h3>
-    {data.unified_risk?.priority_actions?.map((a, i) => (
-      <div key={i} style={{ marginBottom: 10 }}>
-        <b>{a.priority}: {a.title}</b>
-        <p>{a.description}</p>
-      </div>
-    ))}
-
-    <h3>Business Summary</h3>
-    <p>{data.unified_risk?.business_summary}</p>
-  </div>
-)}
-  );
+          <h3>Business Summary</h3>
+          <p>{data.unified_risk?.business_summary}</p>
+              </div>
+  )}
+);
 }
-export default function App() {
+  export default function App() {
   const [user, setUser] = useState(null);
   const [active, setActive] = useState("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
