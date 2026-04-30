@@ -1719,18 +1719,18 @@ function UnifiedRiskPage() {
   ];
 
   const NIST_CONTROLS = [
-    { id: "SC-12", name: "Cryptographic Key Management",      status: "FAIL" },
-    { id: "SC-13", name: "Cryptographic Protection",          status: "FAIL" },
-    { id: "IA-7",  name: "Crypto Module Authentication",      status: "WARN" },
-    { id: "SC-8",  name: "Transmission Integrity",            status: "WARN" },
-    { id: "CM-7",  name: "Least Functionality",               status: "PASS" },
+    { id: "SC-12", name: "Cryptographic Key Management",   status: "FAIL" },
+    { id: "SC-13", name: "Cryptographic Protection",       status: "FAIL" },
+    { id: "IA-7",  name: "Crypto Module Authentication",   status: "WARN" },
+    { id: "SC-8",  name: "Transmission Integrity",         status: "WARN" },
+    { id: "CM-7",  name: "Least Functionality",            status: "PASS" },
   ];
 
   const ROADMAP = [
-    { year: "Now",     text: "Inventory all cryptographic assets — RSA, ECC, DH usages found in codebase." },
-    { year: "Q3 2026", text: "Begin migration: replace RSA with CRYSTALS-Kyber (FIPS 203), ECC with CRYSTALS-Dilithium (FIPS 204)." },
-    { year: "Q1 2027", text: "Enable TLS 1.3 with hybrid PQC cipher suites on all public endpoints." },
-    { year: "2030",    text: "Y2Q deadline — cryptographically relevant quantum computers expected to arrive." },
+    { year: "Now",     text: "Inventory all cryptographic assets — RSA, ECC, DH usages found in codebase.", danger: false },
+    { year: "Q3 2026", text: "Begin migration: replace RSA with CRYSTALS-Kyber (FIPS 203), ECC with CRYSTALS-Dilithium (FIPS 204).", danger: false },
+    { year: "Q1 2027", text: "Enable TLS 1.3 with hybrid PQC cipher suites on all public endpoints.", danger: false },
+    { year: "2030",    text: "Y2Q deadline — cryptographically relevant quantum computers expected to arrive.", danger: true },
   ];
 
   const startProgress = () => {
@@ -1747,15 +1747,18 @@ function UnifiedRiskPage() {
     setTimeout(() => setProgress(0), 900);
   };
 
-  const scoreColor = (s) => s >= 70 ? C.green : s >= 40 ? C.amber : C.red;
-  const scoreBg    = (s) => s >= 70 ? C.greenLighter : s >= 40 ? C.amberLight : C.redLight;
-  const scoreBorder= (s) => s >= 70 ? C.greenMid : s >= 40 ? "#fcd34d" : "#fca5a5";
-  const riskLevel  = (s) => s >= 70 ? "LOW RISK" : s >= 40 ? "MODERATE RISK" : "HIGH RISK";
+  const scoreColor  = (s) => s >= 70 ? C.green    : s >= 40 ? C.amber    : C.red;
+  const scoreBg     = (s) => s >= 70 ? C.greenLighter : s >= 40 ? C.amberLight : C.redLight;
+  const scoreBorder = (s) => s >= 70 ? C.greenMid : s >= 40 ? "#fcd34d"  : "#fca5a5";
+  const riskLevel   = (s) => s >= 70 ? "LOW RISK" : s >= 40 ? "MODERATE RISK" : "CRITICAL RISK";
+
+  const sevColor = (sev) => sev === "CRITICAL" ? C.critical : sev === "HIGH" ? C.amber : C.medium;
+  const sevBg    = (sev) => sev === "CRITICAL" ? C.redLight : sev === "HIGH" ? C.amberLight : "#fef9c3";
 
   const ctrlStyle = (status) => ({
-    PASS: { bg: C.greenLighter, color: C.greenDark, dot: C.green, border: C.greenMid },
-    WARN: { bg: C.amberLight,   color: C.amber,     dot: C.amber, border: "#fcd34d" },
-    FAIL: { bg: C.redLight,     color: C.red,        dot: C.red,   border: "#fca5a5" },
+    PASS: { bg: C.greenLighter, color: C.greenDark, dot: C.green,    border: C.greenMid },
+    WARN: { bg: C.amberLight,   color: C.amber,     dot: C.amber,    border: "#fcd34d"  },
+    FAIL: { bg: C.redLight,     color: C.red,       dot: C.critical, border: "#fca5a5"  },
   }[status]);
 
   const handleScan = async () => {
@@ -1777,12 +1780,38 @@ function UnifiedRiskPage() {
     setLoading(false);
   };
 
-  const ur  = data?.unified_risk || {};
-  const cs  = ur.component_scores || {};
+  const handleCSV = () => {
+    if (!data) return;
+    const ur = data.unified_risk || {};
+    const cs = ur.component_scores || {};
+    const ss = data.finding_summary?.severity_summary || {};
+    const rows = [
+      "Metric,Value",
+      `Unified Risk Score,${Math.round(ur.quantum_risk_score || 0)}`,
+      `Risk Level,${ur.risk_level || ""}`,
+      `Code Crypto Score,${Math.round(cs.code_crypto_score || 0)}`,
+      `Crypto Agility Score,${Math.round(cs.crypto_agility_score || 0)}`,
+      `TLS Score,${Math.round(cs.tls_score || 0)}`,
+      `Critical Findings,${ss.CRITICAL || 0}`,
+      `High Findings,${ss.HIGH || 0}`,
+      `Medium Findings,${ss.MEDIUM || 0}`,
+    ].join("\n");
+    const blob = new Blob([rows], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "unified-risk.csv"; a.click();
+  };
+
+  const ur           = data?.unified_risk || {};
+  const cs           = ur.component_scores || {};
+  const fs           = data?.finding_summary || {};
+  const ss           = fs.severity_summary || {};
+  const topFindings  = data?.top_findings || [];
   const score        = Math.round(ur.quantum_risk_score || 0);
   const codeScore    = Math.round(cs.code_crypto_score || 0);
   const agilityScore = Math.round(cs.crypto_agility_score || 0);
   const tlsScore     = Math.round(cs.tls_score || 0);
+  const totalFindings = (ss.CRITICAL || 0) + (ss.HIGH || 0) + (ss.MEDIUM || 0) + (ss.LOW || 0);
 
   return (
     <div style={{ padding: 20 }}>
@@ -1841,23 +1870,32 @@ function UnifiedRiskPage() {
         </div>
       )}
 
-      {/* ── Results ── */}
       {data && (
         <>
-          {/* Component score cards */}
+          {/* ── Component score metrics ── */}
           <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 16 }}>
-            <Metric label="Code crypto score"   value={codeScore}    suffix="/100" color={scoreColor(codeScore)}    icon="🔍" desc={codeScore    >= 70 ? "Good crypto hygiene" : "Vulnerable algorithms found"} />
-            <Metric label="Crypto agility"      value={agilityScore} suffix="/100" color={scoreColor(agilityScore)} icon="🔬" desc={agilityScore >= 70 ? "Highly configurable"   : "Hardcoded crypto detected"} />
-            <Metric label="TLS security"        value={tlsScore}     suffix="/100" color={scoreColor(tlsScore)}     icon="🔐" desc={tlsScore     >= 70 ? "TLS 1.3 ready"         : "TLS upgrade needed"} />
+            <Metric label="Code crypto score"   value={codeScore}    suffix="/100" color={scoreColor(codeScore)}    icon="🔍" desc={codeScore    >= 70 ? "Good crypto hygiene"   : "Vulnerable algorithms found"} />
+            <Metric label="Crypto agility"      value={agilityScore} suffix="/100" color={scoreColor(agilityScore)} icon="🔬" desc={agilityScore >= 70 ? "Highly configurable"    : "Hardcoded crypto detected"} />
+            <Metric label="TLS security"        value={tlsScore}     suffix="/100" color={scoreColor(tlsScore)}     icon="🔐" desc={tlsScore     >= 70 ? "TLS 1.3 ready"          : "TLS upgrade needed"} />
           </div>
+
+          {/* ── Finding summary counts ── */}
+          {totalFindings > 0 && (
+            <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 16 }}>
+              <Metric label="Total findings" value={totalFindings}     color={C.text}     icon="🔍" desc="across all modules" />
+              <Metric label="Critical"       value={ss.CRITICAL || 0} color={C.critical} icon="🔴" desc="immediate action required" />
+              <Metric label="High"           value={ss.HIGH     || 0} color={C.amber}    icon="🟡" desc="requires attention" />
+              <Metric label="Medium"         value={ss.MEDIUM   || 0} color={C.medium}   icon="🟠" desc="review needed" />
+            </div>
+          )}
 
           <div className="charts-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
             {/* Component bars */}
             <Panel title="Component breakdown" accent>
               {[
-                ["Code crypto",   codeScore,    scoreColor(codeScore)],
-                ["Crypto agility",agilityScore, scoreColor(agilityScore)],
-                ["TLS security",  tlsScore,      scoreColor(tlsScore)],
+                ["Code crypto",    codeScore,    scoreColor(codeScore)],
+                ["Crypto agility", agilityScore, scoreColor(agilityScore)],
+                ["TLS security",   tlsScore,     scoreColor(tlsScore)],
               ].map(([label, val, col]) => (
                 <div key={label} style={{ marginBottom: 14 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
@@ -1869,6 +1907,23 @@ function UnifiedRiskPage() {
                   </div>
                 </div>
               ))}
+              {/* Severity breakdown bars */}
+              {totalFindings > 0 && (
+                <>
+                  <div style={{ height: 1, background: C.panelBorder, margin: "4px 0 14px" }} />
+                  {[["Critical", ss.CRITICAL || 0, C.critical], ["High", ss.HIGH || 0, C.amber], ["Medium", ss.MEDIUM || 0, C.medium]].map(([label, val, col]) => (
+                    <div key={label} style={{ marginBottom: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                        <span style={{ color: col, fontWeight: 600 }}>{label}</span>
+                        <span style={{ color: C.muted }}>{val} ({totalFindings > 0 ? Math.round(val / totalFindings * 100) : 0}%)</span>
+                      </div>
+                      <div style={{ background: C.input, borderRadius: 4, height: 6 }}>
+                        <div style={{ background: col, height: 6, borderRadius: 4, width: `${totalFindings > 0 ? Math.round(val / totalFindings * 100) : 0}%`, transition: "width 0.6s" }} />
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
             </Panel>
 
             {/* NIST Controls */}
@@ -1890,7 +1945,31 @@ function UnifiedRiskPage() {
             </Panel>
           </div>
 
-          {/* Business summary */}
+          {/* ── Top Findings ── */}
+          {topFindings.length > 0 && (
+            <Panel title={`Top findings — ${topFindings.length} shown`} accent>
+              {topFindings.map((f, i) => (
+                <div key={i} style={{ borderLeft: `3px solid ${sevColor(f.severity)}`, paddingLeft: 14, marginBottom: i < topFindings.length - 1 ? 14 : 0, paddingBottom: i < topFindings.length - 1 ? 14 : 0, borderBottom: i < topFindings.length - 1 ? `1px solid ${C.panelBorder}` : "none" }}>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 5, alignItems: "center", flexWrap: "wrap" }}>
+                    <span style={{ background: sevBg(f.severity), color: sevColor(f.severity), fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 6 }}>{f.severity}</span>
+                    <span style={{ background: C.input, color: C.muted, fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 4 }}>{f.vulnerability}</span>
+                    {f.confidence && <span style={{ fontSize: 10, color: C.muted }}>Confidence: {f.confidence}</span>}
+                    <span style={{ marginLeft: "auto", fontSize: 11, color: C.muted }}>Line {f.line}</span>
+                  </div>
+                  <div style={{ fontFamily: "monospace", fontSize: 11, color: C.green, fontWeight: 600, marginBottom: 4, wordBreak: "break-all" }}>
+                    {f.file?.split("/").pop()}
+                  </div>
+                  {f.recommended_fix && (
+                    <div style={{ fontSize: 11, color: C.muted }}>
+                      Fix: <span style={{ color: C.blue, fontWeight: 500 }}>✦ {f.recommended_fix}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </Panel>
+          )}
+
+          {/* ── Business Summary ── */}
           {ur.business_summary && (
             <Panel title="Business risk summary" accent>
               <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.75, background: C.greenLighter, padding: "12px 16px", borderRadius: 8, border: `1px solid ${C.greenMid}` }}>
@@ -1899,50 +1978,45 @@ function UnifiedRiskPage() {
             </Panel>
           )}
 
-          {/* Remediation roadmap */}
+          {/* ── Remediation Roadmap ── */}
           <Panel title="NIST remediation roadmap" accent>
             {ROADMAP.map((item, i) => (
               <div key={i} style={{ display: "flex", gap: 14, padding: "10px 0", borderBottom: i < ROADMAP.length - 1 ? `1px solid ${C.panelBorder}` : "none" }}>
-                <div style={{ background: item.year === "2030" ? C.red : C.green, color: C.white, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 6, flexShrink: 0, height: "fit-content", marginTop: 2 }}>{item.year}</div>
+                <div style={{ background: item.danger ? C.red : C.green, color: C.white, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 6, flexShrink: 0, height: "fit-content", marginTop: 2 }}>{item.year}</div>
                 <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, paddingTop: 2 }}>{item.text}</div>
               </div>
             ))}
           </Panel>
 
-          {/* Export */}
-          {/* Export */}
-<Panel title="Export & share" accent>
-  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-    <button
-      onClick={() => {
-        const win = window.open("", "_blank");
-        win.document.write(`<pre>${JSON.stringify(data, null, 2)}</pre>`);
-        win.document.close(); win.print();
-      }}
-      style={{ padding: "8px 16px", borderRadius: 8, background: C.green, color: C.white, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}
-    >📄 PDF Report</button>
-
-    <button
-      onClick={() => {
-        const ur = data?.unified_risk || {};
-        const cs = ur.component_scores || {};
-        const rows = [
-          "Metric,Score",
-          `Unified Risk Score,${Math.round(ur.quantum_risk_score || 0)}`,
-          `Code Crypto Score,${Math.round(cs.code_crypto_score || 0)}`,
-          `Crypto Agility Score,${Math.round(cs.crypto_agility_score || 0)}`,
-          `TLS Score,${Math.round(cs.tls_score || 0)}`,
-          `Risk Level,${ur.risk_level || ""}`,
-        ].join("\n");
-        const blob = new Blob([rows], { type: "text/csv" });
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = "unified-risk.csv"; a.click();
-      }}
-      style={{ padding: "8px 16px", borderRadius: 8, background: C.greenLight, color: C.green, border: `1px solid ${C.greenMid}`, cursor: "pointer", fontSize: 12, fontWeight: 600 }}
-    >📊 CSV Export</button>
-  </div>
-</Panel>
+          {/* ── Export ── */}
+          <Panel title="Export & share" accent>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                onClick={() => {
+                  const win = window.open("", "_blank");
+                  const sc = scoreColor(score);
+                  win.document.write(`<!DOCTYPE html><html><head><title>QuantumGuard Unified Risk Report</title>
+                  <style>body{font-family:sans-serif;padding:40px;color:#1a1a1a}h1{color:#16a34a}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #e2f0e2;padding:8px 12px;text-align:left;font-size:12px}th{background:#f0fdf4;font-weight:700}.CRITICAL{color:#dc2626;font-weight:700}.HIGH{color:#d97706;font-weight:700}.MEDIUM{color:#ca8a04;font-weight:700}</style>
+                  </head><body>
+                  <h1>⚛ QuantumGuard — Unified Risk Report</h1>
+                  <p>Scanned: ${new Date().toLocaleString()} · GitHub: <strong>${github}</strong> · Domain: <strong>${domain}</strong></p>
+                  <p>Unified Score: <strong style="color:${sc}">${score}/100</strong> · Risk Level: <strong style="color:${sc}">${ur.risk_level || riskLevel(score)}</strong></p>
+                  <h2>Component Scores</h2>
+                  <table><thead><tr><th>Component</th><th>Score</th></tr></thead><tbody>
+                  <tr><td>Code Crypto</td><td>${codeScore}/100</td></tr>
+                  <tr><td>Crypto Agility</td><td>${agilityScore}/100</td></tr>
+                  <tr><td>TLS Security</td><td>${tlsScore}/100</td></tr>
+                  </tbody></table>
+                  ${topFindings.length > 0 ? `<h2>Top Findings</h2><table><thead><tr><th>Severity</th><th>File</th><th>Line</th><th>Vulnerability</th><th>Recommended Fix</th></tr></thead><tbody>${topFindings.map(f=>`<tr><td class="${f.severity}">${f.severity}</td><td>${f.file?.split("/").pop()}</td><td>${f.line}</td><td>${f.vulnerability}</td><td>${f.recommended_fix||"—"}</td></tr>`).join("")}</tbody></table>` : ""}
+                  <p style="margin-top:32px;font-size:11px;color:#9ca3af">QuantumGuard · NIST SP 800-53 Rev 5 · Mangsri QuantumGuard LLC · Montgomery, AL</p>
+                  </body></html>`);
+                  win.document.close(); win.print();
+                }}
+                style={{ padding: "8px 16px", borderRadius: 8, background: C.green, color: C.white, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}
+              >📄 PDF Report</button>
+              <button onClick={handleCSV} style={{ padding: "8px 16px", borderRadius: 8, background: C.greenLight, color: C.green, border: `1px solid ${C.greenMid}`, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>📊 CSV Export</button>
+            </div>
+          </Panel>
         </>
       )}
     </div>
