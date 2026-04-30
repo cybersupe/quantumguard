@@ -1225,8 +1225,35 @@ function TLSPage() {
           </div>
           <Panel title="Cipher Suite Details" accent>
             <div className="tls-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              {[["Domain", result.domain, C.green], ["Cipher Suite", result.cipher_suite, C.text], ["Certificate Expires", result.certificate?.cert_expires || result.cert_expires || "—", C.amber], ["Recommendation", result.nist_recommendation || result.recommendation || "Monitor hybrid PQC TLS adoption", C.green]].map(([label, value, color], i) => (
-                <div key={i} style={{ background: C.input, borderRadius: 8, padding: "12px 14px" }}>
+              [
+  ["Domain", result.domain, C.green],
+  ["Cipher Suite", result.cipher_suite, C.text],
+
+  ["Key Exchange",
+    result.key_exchange ||
+    (result.has_forward_secrecy
+      ? "ECDHE / Forward Secrecy"
+      : "Static RSA or Unknown"),
+    C.green
+  ],
+
+  ["Certificate Expires",
+    result.certificate?.cert_expires || result.cert_expires || "—",
+    C.amber
+  ],
+
+  ["Recommendation",
+    result.nist_recommendation ||
+    "Monitor hybrid PQC TLS adoption",
+    C.green
+  ],
+
+  ["Future Upgrade",
+    result.pqc_roadmap ||
+    "Hybrid TLS: X25519 + ML-KEM → NIST FIPS 203 readiness",
+    C.blue
+  ]
+]
                   <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, fontWeight: 500 }}>{label}</div>
                   <div style={{ fontSize: 12, color, fontWeight: 500, wordBreak: "break-all" }}>{value}</div>
                 </div>
