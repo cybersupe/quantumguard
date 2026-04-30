@@ -1703,10 +1703,10 @@ function Homepage({ onGetStarted }) {
 // APP ROOT
 // ══════════════════════════════════════════════════════════════
 function UnifiedRiskPage() {
-  const [github, setGithub] = React.useState("https://github.com/dlitz/pycrypto");
-  const [domain, setDomain] = React.useState("google.com");
-  const [data, setData] = React.useState(null);
-  const [loading, setLoading] = React.useState(false);
+  const [github, setGithub] = useState("https://github.com/dlitz/pycrypto");
+  const [domain, setDomain] = useState("google.com");
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const runUnifiedRisk = async () => {
     setLoading(true);
