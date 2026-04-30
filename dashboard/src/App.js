@@ -1707,44 +1707,217 @@ function UnifiedRiskPage() {
   const [domain, setDomain] = useState("google.com");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [stepIndex, setStepIndex] = useState(0);
+  const [error, setError] = useState(null);
+  const intervalRef = useRef(null);
 
-  const runUnifiedRisk = async () => {
-    setLoading(true);
-    setData(null);
+  const STEPS = [
+    "Initializing scan engine...", "Connecting to target...",
+    "Analyzing cryptography...", "Checking TLS posture...",
+    "Calculating unified risk score...", "Generating recommendations...",
+  ];
 
-    const res = await fetch(`${API}/unified-risk`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ github_url: github, domain })
-    });
+  const NIST_CONTROLS = [
+    { id: "SC-12", name: "Cryptographic Key Management",      status: "FAIL" },
+    { id: "SC-13", name: "Cryptographic Protection",          status: "FAIL" },
+    { id: "IA-7",  name: "Crypto Module Authentication",      status: "WARN" },
+    { id: "SC-8",  name: "Transmission Integrity",            status: "WARN" },
+    { id: "CM-7",  name: "Least Functionality",               status: "PASS" },
+  ];
 
-    const json = await res.json();
-    setData(json);
+  const ROADMAP = [
+    { year: "Now",     text: "Inventory all cryptographic assets — RSA, ECC, DH usages found in codebase." },
+    { year: "Q3 2026", text: "Begin migration: replace RSA with CRYSTALS-Kyber (FIPS 203), ECC with CRYSTALS-Dilithium (FIPS 204)." },
+    { year: "Q1 2027", text: "Enable TLS 1.3 with hybrid PQC cipher suites on all public endpoints." },
+    { year: "2030",    text: "Y2Q deadline — cryptographically relevant quantum computers expected to arrive." },
+  ];
+
+  const startProgress = () => {
+    setProgress(0); setStepIndex(0); let p = 0;
+    intervalRef.current = setInterval(() => {
+      p += Math.random() * 8 + 2; if (p > 92) p = 92;
+      setProgress(Math.round(p));
+      setStepIndex(Math.min(STEPS.length - 1, Math.floor(p / (100 / STEPS.length))));
+    }, 380);
+  };
+  const stopProgress = () => {
+    clearInterval(intervalRef.current);
+    setProgress(100); setStepIndex(STEPS.length - 1);
+    setTimeout(() => setProgress(0), 900);
+  };
+
+  const scoreColor = (s) => s >= 70 ? C.green : s >= 40 ? C.amber : C.red;
+  const scoreBg    = (s) => s >= 70 ? C.greenLighter : s >= 40 ? C.amberLight : C.redLight;
+  const scoreBorder= (s) => s >= 70 ? C.greenMid : s >= 40 ? "#fcd34d" : "#fca5a5";
+  const riskLevel  = (s) => s >= 70 ? "LOW RISK" : s >= 40 ? "MODERATE RISK" : "HIGH RISK";
+
+  const ctrlStyle = (status) => ({
+    PASS: { bg: C.greenLighter, color: C.greenDark, dot: C.green, border: C.greenMid },
+    WARN: { bg: C.amberLight,   color: C.amber,     dot: C.amber, border: "#fcd34d" },
+    FAIL: { bg: C.redLight,     color: C.red,        dot: C.red,   border: "#fca5a5" },
+  }[status]);
+
+  const handleScan = async () => {
+    if (!github || !domain) return;
+    setLoading(true); setError(null); setData(null);
+    startProgress();
+    try {
+      const res = await fetch(`${API}/unified-risk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ github_url: github, domain }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.detail || "Scan failed");
+      stopProgress(); setData(json);
+    } catch (e) {
+      stopProgress(); setError(typeof e.message === "string" ? e.message : "Scan failed.");
+    }
     setLoading(false);
   };
 
+  const ur  = data?.unified_risk || {};
+  const cs  = ur.component_scores || {};
+  const score        = Math.round(ur.quantum_risk_score || 0);
+  const codeScore    = Math.round(cs.code_crypto_score || 0);
+  const agilityScore = Math.round(cs.crypto_agility_score || 0);
+  const tlsScore     = Math.round(cs.tls_score || 0);
+
   return (
     <div style={{ padding: 20 }}>
-      <h2>Unified Risk Dashboard</h2>
 
-      <button onClick={runUnifiedRisk}>
-        {loading ? "Scanning..." : "Run Unified Scan"}
-      </button>
-
-      {data && (
-        <div style={{ marginTop: 20 }}>
-          <h3>Overall Risk</h3>
-          <p><b>Score:</b> {data.unified_risk?.quantum_risk_score}</p>
-          <p><b>Level:</b> {data.unified_risk?.risk_level}</p>
-
-          <h3>Component Scores</h3>
-          <p>Code Scanner: {data.unified_risk?.component_scores?.code_crypto_score}</p>
-          <p>Crypto Agility: {data.unified_risk?.component_scores?.crypto_agility_score}</p>
-          <p>TLS Score: {data.unified_risk?.component_scores?.tls_score}</p>
-
-          <h3>Business Summary</h3>
-          <p>{data.unified_risk?.business_summary}</p>
+      {/* ── Header / Input Card ── */}
+      <div style={{ background: C.white, border: `1px solid ${C.panelBorder}`, borderTop: `3px solid ${C.green}`, borderRadius: 14, padding: "20px 22px", marginBottom: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, marginBottom: 18 }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: C.green, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🧠</div>
+              <h2 style={{ fontSize: 20, fontWeight: 800, color: C.text }}>Unified Risk Dashboard</h2>
+            </div>
+            <p style={{ fontSize: 13, color: C.muted, maxWidth: 460, lineHeight: 1.6 }}>
+              Combines code scanning, TLS analysis and crypto agility into a single quantum risk score with NIST-aligned remediation guidance.
+            </p>
+          </div>
+          {data && (
+            <div style={{ background: scoreBg(score), border: `1px solid ${scoreBorder(score)}`, borderRadius: 12, padding: "14px 20px", textAlign: "center", minWidth: 130 }}>
+              <div style={{ fontSize: 44, fontWeight: 900, color: scoreColor(score), lineHeight: 1 }}>{score}</div>
+              <div style={{ fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: 1, marginTop: 2 }}>Unified Score</div>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.white, color: scoreColor(score), fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 100, marginTop: 8, border: `1px solid ${scoreBorder(score)}` }}>
+                <div style={{ width: 5, height: 5, borderRadius: "50%", background: scoreColor(score) }} />
+                {ur.risk_level || riskLevel(score)}
+              </div>
+            </div>
+          )}
         </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+          <input value={github} onChange={e => setGithub(e.target.value)} placeholder="https://github.com/user/repo" style={{ padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${C.panelBorder}`, background: C.input, color: C.text, fontSize: 13 }} />
+          <input value={domain} onChange={e => setDomain(e.target.value)} placeholder="domain.com" style={{ padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${C.panelBorder}`, background: C.input, color: C.text, fontSize: 13 }} />
+        </div>
+        <button onClick={handleScan} disabled={loading} style={{ padding: "9px 24px", borderRadius: 8, background: loading ? "#86efac" : C.green, color: C.white, border: "none", cursor: loading ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600 }}>
+          {loading ? "Scanning..." : "▶ Run Unified Scan"}
+        </button>
+
+        {loading && (
+          <div style={{ marginTop: 12, background: C.greenLighter, borderRadius: 8, padding: "12px 16px", border: `1px solid ${C.greenMid}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: C.green, marginBottom: 6, fontWeight: 500 }}>
+              <span>✦ {STEPS[stepIndex]}</span><span>{progress}%</span>
+            </div>
+            <div style={{ background: C.greenMid, borderRadius: 4, height: 6 }}>
+              <div style={{ background: C.green, height: 6, borderRadius: 4, width: `${progress}%`, transition: "width 0.4s ease" }} />
+            </div>
+          </div>
+        )}
+        {error && <div style={{ marginTop: 10, background: C.redLight, border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", color: C.red, fontSize: 13 }}>⚠ {error}</div>}
+      </div>
+
+      {/* ── Empty State ── */}
+      {!data && !loading && (
+        <div style={{ background: C.white, border: `1px solid ${C.panelBorder}`, borderRadius: 14, padding: "56px 24px", textAlign: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🧠</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 8 }}>No scan results yet</div>
+          <div style={{ fontSize: 13, color: C.muted }}>Enter a GitHub URL and domain above, then click Run Unified Scan.</div>
+        </div>
+      )}
+
+      {/* ── Results ── */}
+      {data && (
+        <>
+          {/* Component score cards */}
+          <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 16 }}>
+            <Metric label="Code crypto score"   value={codeScore}    suffix="/100" color={scoreColor(codeScore)}    icon="🔍" desc={codeScore    >= 70 ? "Good crypto hygiene" : "Vulnerable algorithms found"} />
+            <Metric label="Crypto agility"      value={agilityScore} suffix="/100" color={scoreColor(agilityScore)} icon="🔬" desc={agilityScore >= 70 ? "Highly configurable"   : "Hardcoded crypto detected"} />
+            <Metric label="TLS security"        value={tlsScore}     suffix="/100" color={scoreColor(tlsScore)}     icon="🔐" desc={tlsScore     >= 70 ? "TLS 1.3 ready"         : "TLS upgrade needed"} />
+          </div>
+
+          <div className="charts-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+            {/* Component bars */}
+            <Panel title="Component breakdown" accent>
+              {[
+                ["Code crypto",   codeScore,    scoreColor(codeScore)],
+                ["Crypto agility",agilityScore, scoreColor(agilityScore)],
+                ["TLS security",  tlsScore,      scoreColor(tlsScore)],
+              ].map(([label, val, col]) => (
+                <div key={label} style={{ marginBottom: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                    <span style={{ color: C.muted, fontWeight: 500 }}>{label}</span>
+                    <span style={{ color: col, fontWeight: 700 }}>{val}/100</span>
+                  </div>
+                  <div style={{ background: C.input, borderRadius: 4, height: 8 }}>
+                    <div style={{ background: col, height: 8, borderRadius: 4, width: `${val}%`, transition: "width 0.6s" }} />
+                  </div>
+                </div>
+              ))}
+            </Panel>
+
+            {/* NIST Controls */}
+            <Panel title="NIST SP 800-53 control status" accent>
+              {NIST_CONTROLS.map((ctrl) => {
+                const sc = ctrlStyle(ctrl.status);
+                return (
+                  <div key={ctrl.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 9, fontSize: 12 }}>
+                    <span style={{ color: C.muted }}>
+                      <span style={{ fontFamily: "monospace", color: C.green, fontWeight: 700 }}>{ctrl.id}</span> — {ctrl.name}
+                    </span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: sc.bg, color: sc.color, fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 100, border: `1px solid ${sc.border}`, whiteSpace: "nowrap", marginLeft: 8 }}>
+                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: sc.dot, display: "inline-block" }} />
+                      {ctrl.status}
+                    </span>
+                  </div>
+                );
+              })}
+            </Panel>
+          </div>
+
+          {/* Business summary */}
+          {ur.business_summary && (
+            <Panel title="Business risk summary" accent>
+              <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.75, background: C.greenLighter, padding: "12px 16px", borderRadius: 8, border: `1px solid ${C.greenMid}` }}>
+                {ur.business_summary}
+              </div>
+            </Panel>
+          )}
+
+          {/* Remediation roadmap */}
+          <Panel title="NIST remediation roadmap" accent>
+            {ROADMAP.map((item, i) => (
+              <div key={i} style={{ display: "flex", gap: 14, padding: "10px 0", borderBottom: i < ROADMAP.length - 1 ? `1px solid ${C.panelBorder}` : "none" }}>
+                <div style={{ background: item.year === "2030" ? C.red : C.green, color: C.white, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 6, flexShrink: 0, height: "fit-content", marginTop: 2 }}>{item.year}</div>
+                <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, paddingTop: 2 }}>{item.text}</div>
+              </div>
+            ))}
+          </Panel>
+
+          {/* Export */}
+          <Panel title="Export & share" accent>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button onClick={handlePDF} style={{ padding: "8px 16px", borderRadius: 8, background: C.green, color: C.white, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>📄 PDF Report</button>
+              <button onClick={handleNIST} style={{ padding: "8px 16px", borderRadius: 8, background: C.blue, color: C.white, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>🏛 NIST Report</button>
+              <button onClick={handleCSV} style={{ padding: "8px 16px", borderRadius: 8, background: C.greenLight, color: C.green, border: `1px solid ${C.greenMid}`, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>📊 CSV Export</button>
+            </div>
+          </Panel>
+        </>
       )}
     </div>
   );
