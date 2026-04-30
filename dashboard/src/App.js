@@ -1910,13 +1910,39 @@ function UnifiedRiskPage() {
           </Panel>
 
           {/* Export */}
-          <Panel title="Export & share" accent>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button onClick={handlePDF} style={{ padding: "8px 16px", borderRadius: 8, background: C.green, color: C.white, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>📄 PDF Report</button>
-              <button onClick={handleNIST} style={{ padding: "8px 16px", borderRadius: 8, background: C.blue, color: C.white, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>🏛 NIST Report</button>
-              <button onClick={handleCSV} style={{ padding: "8px 16px", borderRadius: 8, background: C.greenLight, color: C.green, border: `1px solid ${C.greenMid}`, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>📊 CSV Export</button>
-            </div>
-          </Panel>
+          {/* Export */}
+<Panel title="Export & share" accent>
+  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+    <button
+      onClick={() => {
+        const win = window.open("", "_blank");
+        win.document.write(`<pre>${JSON.stringify(data, null, 2)}</pre>`);
+        win.document.close(); win.print();
+      }}
+      style={{ padding: "8px 16px", borderRadius: 8, background: C.green, color: C.white, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}
+    >📄 PDF Report</button>
+
+    <button
+      onClick={() => {
+        const ur = data?.unified_risk || {};
+        const cs = ur.component_scores || {};
+        const rows = [
+          "Metric,Score",
+          `Unified Risk Score,${Math.round(ur.quantum_risk_score || 0)}`,
+          `Code Crypto Score,${Math.round(cs.code_crypto_score || 0)}`,
+          `Crypto Agility Score,${Math.round(cs.crypto_agility_score || 0)}`,
+          `TLS Score,${Math.round(cs.tls_score || 0)}`,
+          `Risk Level,${ur.risk_level || ""}`,
+        ].join("\n");
+        const blob = new Blob([rows], { type: "text/csv" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "unified-risk.csv"; a.click();
+      }}
+      style={{ padding: "8px 16px", borderRadius: 8, background: C.greenLight, color: C.green, border: `1px solid ${C.greenMid}`, cursor: "pointer", fontSize: 12, fontWeight: 600 }}
+    >📊 CSV Export</button>
+  </div>
+</Panel>
         </>
       )}
     </div>
