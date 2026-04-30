@@ -7,19 +7,18 @@ import { collection, addDoc, getDocs, query, where, orderBy } from "firebase/fir
 
 const API = "https://quantumguard-api.onrender.com";
 
-// ── CHANGE 1: Dark enterprise color theme (CrowdStrike/Cloudflare style) ──
 const C = {
-  bg:           "#0a0e1a",        // deep navy background
-  sidebar:      "#0d1120",        // slightly lighter sidebar
+  bg:           "#0a0e1a",
+  sidebar:      "#0d1120",
   sidebarBorder:"#1e2a3a",
   topbar:       "#0d1120",
-  panel:        "#111827",        // dark card background
+  panel:        "#111827",
   panelBorder:  "#1e2d40",
   input:        "#0f1a2b",
-  green:        "#22c55e",        // bright green accent (as requested)
+  green:        "#22c55e",
   greenDark:    "#16a34a",
-  greenLight:   "#052e16",        // dark green tint for active states
-  greenLighter: "#071f0e",        // very dark green for subtle backgrounds
+  greenLight:   "#052e16",
+  greenLighter: "#071f0e",
   greenMid:     "#166534",
   red:          "#ef4444",
   redLight:     "#2a0a0a",
@@ -27,9 +26,9 @@ const C = {
   amberLight:   "#1c1200",
   blue:         "#3b82f6",
   blueLight:    "#0c1a3a",
-  text:         "#f1f5f9",        // near-white primary text
-  textMid:      "#94a3b8",        // slate-400 secondary text
-  muted:        "#4b5563",        // darker muted
+  text:         "#f1f5f9",
+  textMid:      "#94a3b8",
+  muted:        "#4b5563",
   white:        "#ffffff",
   critical:     "#ef4444",
   high:         "#f59e0b",
@@ -63,7 +62,6 @@ function Sidebar({ active, setActive, user, onLogin, onLogout, open, onClose }) 
         flexDirection: "column", position: "fixed", left: 0, top: 0, zIndex: 100,
         boxShadow: "4px 0 24px rgba(0,0,0,0.4)",
       }}>
-        {/* Logo */}
         <div style={{ padding: "20px", borderBottom: `1px solid ${C.sidebarBorder}` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{
@@ -80,8 +78,6 @@ function Sidebar({ active, setActive, user, onLogin, onLogout, open, onClose }) 
             </div>
           </div>
         </div>
-
-        {/* Nav */}
         <nav style={{ flex: 1, padding: "12px" }}>
           {navItems.map(item => (
             <div key={item.id} onClick={() => { setActive(item.id); onClose(); }} style={{
@@ -92,7 +88,7 @@ function Sidebar({ active, setActive, user, onLogin, onLogout, open, onClose }) 
                 : "transparent",
               color: active === item.id ? C.green : C.muted,
               fontWeight: active === item.id ? 600 : 400,
-              transition: "all 0.15s",
+              transition: "all 0.2s ease",
               borderLeft: active === item.id ? `2px solid ${C.green}` : "2px solid transparent",
             }}>
               <span style={{ fontSize: 15 }}>{item.icon}</span>
@@ -103,8 +99,6 @@ function Sidebar({ active, setActive, user, onLogin, onLogout, open, onClose }) 
             </div>
           ))}
         </nav>
-
-        {/* API Status */}
         <div style={{ padding: "10px 16px", margin: "0 12px 12px", borderRadius: 8, background: "rgba(34,197,94,0.06)", border: `1px solid rgba(34,197,94,0.2)` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.green, boxShadow: `0 0 6px ${C.green}` }} />
@@ -112,8 +106,6 @@ function Sidebar({ active, setActive, user, onLogin, onLogout, open, onClose }) 
           </div>
           <div style={{ fontSize: 9, color: C.muted, marginTop: 2 }}>quantumguard-api.onrender.com</div>
         </div>
-
-        {/* Auth */}
         <div style={{ padding: "14px 16px", borderTop: `1px solid ${C.sidebarBorder}` }}>
           {user ? (
             <div>
@@ -124,10 +116,10 @@ function Sidebar({ active, setActive, user, onLogin, onLogout, open, onClose }) 
                   <div style={{ fontSize: 10, color: C.muted }}>Free Plan</div>
                 </div>
               </div>
-              <button onClick={onLogout} style={{ width: "100%", padding: "6px", borderRadius: 8, background: "transparent", border: `1px solid ${C.sidebarBorder}`, color: C.muted, cursor: "pointer", fontSize: 11 }}>Sign Out</button>
+              <button onClick={onLogout} style={{ width: "100%", padding: "6px", borderRadius: 8, background: "transparent", border: `1px solid ${C.sidebarBorder}`, color: C.muted, cursor: "pointer", fontSize: 11, transition: "all 0.2s ease" }}>Sign Out</button>
             </div>
           ) : (
-            <button onClick={onLogin} style={{ width: "100%", padding: "9px", borderRadius: 8, background: "linear-gradient(135deg, #22c55e, #16a34a)", border: "none", color: C.white, cursor: "pointer", fontSize: 12, fontWeight: 700, boxShadow: "0 4px 12px rgba(34,197,94,0.3)" }}>
+            <button onClick={onLogin} style={{ width: "100%", padding: "9px", borderRadius: 8, background: "linear-gradient(135deg, #22c55e, #16a34a)", border: "none", color: C.white, cursor: "pointer", fontSize: 12, fontWeight: 700, boxShadow: "0 4px 12px rgba(34,197,94,0.3)", transition: "all 0.2s ease" }}>
               Sign in with Google
             </button>
           )}
@@ -151,11 +143,11 @@ function TopBar({ title, user, onLogin, onLogout, onHamburger }) {
       <span style={{ color: C.text, fontSize: 14, fontWeight: 600 }}>{title}</span>
       <div className="topbar-right" style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
         {user ? (
-          <button onClick={onLogout} style={{ background: "transparent", border: `1px solid ${C.sidebarBorder}`, borderRadius: 8, padding: "4px 12px", cursor: "pointer", color: C.muted, fontSize: 11 }}>
+          <button onClick={onLogout} style={{ background: "transparent", border: `1px solid ${C.sidebarBorder}`, borderRadius: 8, padding: "4px 12px", cursor: "pointer", color: C.muted, fontSize: 11, transition: "all 0.2s ease" }}>
             {user.displayName?.split(" ")[0]} · Sign Out
           </button>
         ) : (
-          <button onClick={onLogin} style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)", border: "none", borderRadius: 8, padding: "6px 16px", cursor: "pointer", color: C.white, fontSize: 12, fontWeight: 700, boxShadow: "0 2px 8px rgba(34,197,94,0.3)" }}>
+          <button onClick={onLogin} style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)", border: "none", borderRadius: 8, padding: "6px 16px", cursor: "pointer", color: C.white, fontSize: 12, fontWeight: 700, boxShadow: "0 2px 8px rgba(34,197,94,0.3)", transition: "all 0.2s ease" }}>
             Sign In
           </button>
         )}
@@ -179,8 +171,6 @@ function Panel({ title, children, style = {}, accent = false }) {
   );
 }
 
-// ── CHANGE 2: Dashboard Score Cards ──────────────────────────
-// ── Added as new reusable component (does not break anything) ─
 function ScoreCard({ label, value, icon, color, desc, suffix = "/100" }) {
   const pct = typeof value === "number" ? value : 0;
   const ringColor = color || C.green;
@@ -189,8 +179,11 @@ function ScoreCard({ label, value, icon, color, desc, suffix = "/100" }) {
       background: C.panel, border: `1px solid ${C.panelBorder}`, borderRadius: 14,
       padding: "20px", boxShadow: "0 4px 20px rgba(0,0,0,0.35)",
       position: "relative", overflow: "hidden",
-    }}>
-      {/* Subtle glow top-left */}
+      transition: "transform 0.25s ease, box-shadow 0.25s ease",
+    }}
+      onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = `0 0 20px ${ringColor}22, 0 8px 28px rgba(0,0,0,0.4)`; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.35)"; }}
+    >
       <div style={{ position: "absolute", top: -20, left: -20, width: 80, height: 80, borderRadius: "50%", background: ringColor, opacity: 0.07, filter: "blur(20px)" }} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
         <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</div>
@@ -200,7 +193,6 @@ function ScoreCard({ label, value, icon, color, desc, suffix = "/100" }) {
         <span style={{ fontSize: 42, fontWeight: 900, color: ringColor, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{value}</span>
         <span style={{ fontSize: 13, color: C.muted, fontWeight: 400 }}>{suffix}</span>
       </div>
-      {/* Progress bar */}
       {typeof value === "number" && (
         <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 4, height: 4, marginBottom: 8 }}>
           <div style={{ background: ringColor, height: 4, borderRadius: 4, width: `${pct}%`, transition: "width 0.8s ease", boxShadow: `0 0 8px ${ringColor}` }} />
@@ -211,15 +203,17 @@ function ScoreCard({ label, value, icon, color, desc, suffix = "/100" }) {
   );
 }
 
-// ── Metric (unchanged signature, updated theme) ───────────────
 function Metric({ label, value, suffix = "", color, desc, icon }) {
   return (
-    <div style={{ background: C.panel, border: `1px solid ${C.panelBorder}`, borderRadius: 12, padding: "18px 20px", boxShadow: "0 4px 16px rgba(0,0,0,0.3)" }}>
+    <div style={{ background: C.panel, border: `1px solid ${C.panelBorder}`, borderRadius: 12, padding: "18px 20px", boxShadow: "0 4px 16px rgba(0,0,0,0.3)", transition: "transform 0.25s ease, box-shadow 0.25s ease" }}
+      onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 0 18px rgba(34,197,94,0.15), 0 8px 24px rgba(0,0,0,0.4)"; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.3)"; }}
+    >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
         <div style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>{label}</div>
         {icon && <div style={{ fontSize: 20 }}>{icon}</div>}
       </div>
-      <div style={{ fontSize: 38, fontWeight: 800, color: color || C.text, lineHeight: 1 }}>
+      <div style={{ fontSize: 38, fontWeight: 900, color: color || C.text, lineHeight: 1, textShadow: color ? `0 0 20px ${color}33` : "none" }}>
         {value}<span style={{ fontSize: 14, color: C.muted, fontWeight: 400 }}>{suffix}</span>
       </div>
       {desc && <div style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>{desc}</div>}
@@ -227,7 +221,6 @@ function Metric({ label, value, suffix = "", color, desc, icon }) {
   );
 }
 
-// ── SevBar ────────────────────────────────────────────────────
 function SevBar({ label, count, total, color }) {
   const pct = total > 0 ? Math.round(count / total * 100) : 0;
   return (
@@ -237,13 +230,12 @@ function SevBar({ label, count, total, color }) {
         <span style={{ color: C.muted }}>{count} ({pct}%)</span>
       </div>
       <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 4, height: 8 }}>
-        <div style={{ background: color, height: 8, borderRadius: 4, width: `${pct}%`, transition: "width 0.6s", boxShadow: `0 0 6px ${color}55` }} />
+        <div style={{ background: color, height: 8, borderRadius: 4, width: `${pct}%`, transition: "width 0.6s ease", boxShadow: `0 0 6px ${color}55` }} />
       </div>
     </div>
   );
 }
 
-// ── Badge ─────────────────────────────────────────────────────
 function Badge({ text, color, bg }) {
   return (
     <span style={{ background: bg, color, padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, border: `1px solid ${color}33` }}>{text}</span>
@@ -253,7 +245,6 @@ function Badge({ text, color, bg }) {
 // ══════════════════════════════════════════════════════════════
 // NIST REPORT PAGE
 // ══════════════════════════════════════════════════════════════
-
 const NIST_FINDINGS = [
   { file: "tests/TestVulnerable.java", line: 9,  code: 'KeyPairGenerator rsaGen = KeyPairGenerator.getInstance("RSA");', vulnerability: "RSA",  severity: "CRITICAL", replacement: "CRYSTALS-Kyber" },
   { file: "tests/TestVulnerable.java", line: 13, code: 'KeyPairGenerator ecGen = KeyPairGenerator.getInstance("EC");',   vulnerability: "ECC",  severity: "CRITICAL", replacement: "CRYSTALS-Dilithium" },
@@ -296,7 +287,6 @@ const VULN_INFO = {
   SHA1: { desc: "SHA-1 has known collisions and 160-bit output — completely insufficient for post-quantum requirements.", nist: "FIPS 205 — SHA-3 or SPHINCS+" },
 };
 
-// CHANGE 3: Severity colors updated for dark theme
 const SEV_COLOR = { CRITICAL: "#ef4444", HIGH: "#f59e0b", MEDIUM: "#eab308" };
 const SEV_BG    = { CRITICAL: "rgba(239,68,68,0.15)",  HIGH: "rgba(245,158,11,0.15)", MEDIUM: "rgba(234,179,8,0.15)" };
 const STAT_CTRL = {
@@ -321,7 +311,7 @@ function NISTFindingRow({ f }) {
   const sb = SEV_BG[f.severity];
 
   return (
-    <div style={{ border: `1px solid ${open ? "rgba(34,197,94,0.3)" : C.panelBorder}`, borderRadius: 10, marginBottom: 8, overflow: "hidden", background: C.panel, transition: "border-color 0.15s" }}>
+    <div style={{ border: `1px solid ${open ? "rgba(34,197,94,0.3)" : C.panelBorder}`, borderRadius: 10, marginBottom: 8, overflow: "hidden", background: C.panel, transition: "border-color 0.2s ease" }}>
       <div onClick={() => setOpen(o => !o)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", cursor: "pointer", flexWrap: "wrap" }}>
         <Badge text={f.severity} color={sc} bg={sb} />
         <span style={{ fontFamily: "monospace", fontSize: 12, color: C.green, fontWeight: 600, flex: 1, minWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.file.split("/").pop()}</span>
@@ -390,7 +380,6 @@ function NISTReportPage() {
 
   return (
     <div style={{ padding: 20 }}>
-      {/* BUG FIX: Demo data notice — this page shows static sample data, not the user's live scan */}
       <div style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.25)", borderRadius: 10, padding: "10px 16px", marginBottom: 14, display: "flex", alignItems: "flex-start", gap: 10 }}>
         <span style={{ fontSize: 15, marginTop: 1 }}>ℹ️</span>
         <div style={{ fontSize: 12, color: "#93c5fd", lineHeight: 1.6 }}>
@@ -398,7 +387,6 @@ function NISTReportPage() {
           To generate a live NIST report from <strong style={{ color: "#60a5fa" }}>your own repo</strong>, go to <strong style={{ color: "#60a5fa" }}>Scanner</strong> → run a scan → click <strong style={{ color: "#60a5fa" }}>🏛 NIST Report</strong>.
         </div>
       </div>
-      {/* Header card */}
       <div style={{ background: C.panel, border: `1px solid ${C.panelBorder}`, borderRadius: 14, padding: "20px 22px", marginBottom: 16, boxShadow: "0 4px 20px rgba(0,0,0,0.4)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, borderTop: `3px solid ${C.green}` }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
@@ -421,7 +409,6 @@ function NISTReportPage() {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 16 }}>
         <Metric label="Total Findings"   value={counts.total}    color={C.green}    icon="🔍" desc="All severities" />
         <Metric label="Critical"         value={counts.CRITICAL} color={C.critical} icon="🔴" desc="Immediate action required" />
@@ -429,7 +416,6 @@ function NISTReportPage() {
         <Metric label="Medium"           value={counts.MEDIUM}   color={C.medium}   icon="🟠" desc="Review needed" />
       </div>
 
-      {/* Breakdown panels */}
       <div className="charts-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
         <Panel title="Severity Distribution" accent>
           <SevBar label="Critical" count={counts.CRITICAL} total={counts.total} color={C.critical} />
@@ -444,7 +430,6 @@ function NISTReportPage() {
         </Panel>
       </div>
 
-      {/* Files scanned */}
       <Panel title="Files Scanned" accent>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px,1fr))", gap: 12 }}>
           {Object.entries(byFile).map(([file, findings]) => {
@@ -467,7 +452,6 @@ function NISTReportPage() {
         </div>
       </Panel>
 
-      {/* NIST Controls Mapping */}
       <Panel title="NIST SP 800-53 Control Mapping" accent>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -482,7 +466,7 @@ function NISTReportPage() {
               {NIST_CONTROLS.map((ctrl, i) => {
                 const sc = STAT_CTRL[ctrl.status];
                 return (
-                  <tr key={ctrl.id} style={{ background: i % 2 === 0 ? C.panel : "rgba(255,255,255,0.02)" }}
+                  <tr key={ctrl.id} style={{ background: i % 2 === 0 ? C.panel : "rgba(255,255,255,0.02)", transition: "background 0.2s ease" }}
                     onMouseEnter={e => e.currentTarget.style.background = "rgba(34,197,94,0.05)"}
                     onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? C.panel : "rgba(255,255,255,0.02)"}>
                     <td style={{ padding: "10px 14px", borderBottom: `1px solid ${C.panelBorder}`, fontFamily: "monospace", fontSize: 12, color: C.green, fontWeight: 700 }}>{ctrl.id}</td>
@@ -507,15 +491,17 @@ function NISTReportPage() {
         </div>
       </Panel>
 
-      {/* Export */}
       <Panel title="Export & Share" accent>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={handleExportPDF} style={{ padding: "8px 16px", borderRadius: 8, background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>📄 PDF Report</button>
-          <button onClick={handleExportCSV} style={{ padding: "8px 16px", borderRadius: 8, background: "rgba(34,197,94,0.1)", color: C.green, border: "1px solid rgba(34,197,94,0.3)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>📊 CSV Export</button>
+          <button onClick={handleExportPDF} style={{ padding: "8px 16px", borderRadius: 8, background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, transition: "all 0.2s ease" }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 16px rgba(34,197,94,0.4)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>📄 PDF Report</button>
+          <button onClick={handleExportCSV} style={{ padding: "8px 16px", borderRadius: 8, background: "rgba(34,197,94,0.1)", color: C.green, border: "1px solid rgba(34,197,94,0.3)", cursor: "pointer", fontSize: 12, fontWeight: 600, transition: "all 0.2s ease" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(34,197,94,0.18)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(34,197,94,0.1)"; }}>📊 CSV Export</button>
         </div>
       </Panel>
 
-      {/* Findings */}
       <Panel title={`Threat Intelligence — ${counts.total} Findings`} accent>
         <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
           {[
@@ -530,7 +516,7 @@ function NISTReportPage() {
               background: filter === btn.key ? btn.activeColor + "22" : "transparent",
               color: filter === btn.key ? btn.activeColor : C.muted,
               fontWeight: filter === btn.key ? 700 : 400,
-              transition: "all 0.15s",
+              transition: "all 0.2s ease",
             }}>{btn.label}</button>
           ))}
         </div>
@@ -540,7 +526,6 @@ function NISTReportPage() {
         {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: C.muted }}>No findings match filter.</div>}
       </Panel>
 
-      {/* Footer */}
       <div style={{ background: C.panel, border: `1px solid ${C.panelBorder}`, borderRadius: 12, padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
         <div style={{ fontSize: 11, color: C.muted }}>QuantumGuard · NIST SP 800-53 Rev 5 · Report ID #QG-{new Date().getFullYear()}-{String(new Date().getMonth()+1).padStart(2,"0")}{String(new Date().getDate()).padStart(2,"0")}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -571,7 +556,10 @@ function TeamPage() {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 20, maxWidth: 900, margin: "0 auto" }}>
         {members.map(m => (
-          <div key={m.name} style={{ background: C.panel, border: m.featured ? `2px solid ${C.green}` : `1px solid ${C.panelBorder}`, borderRadius: 16, padding: "28px 20px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", boxShadow: m.featured ? `0 4px 24px rgba(34,197,94,0.2)` : "0 4px 16px rgba(0,0,0,0.3)" }}>
+          <div key={m.name} style={{ background: C.panel, border: m.featured ? `2px solid ${C.green}` : `1px solid ${C.panelBorder}`, borderRadius: 16, padding: "28px 20px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", boxShadow: m.featured ? `0 4px 24px rgba(34,197,94,0.2)` : "0 4px 16px rgba(0,0,0,0.3)", transition: "transform 0.25s ease, box-shadow 0.25s ease" }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.4)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = m.featured ? "0 4px 24px rgba(34,197,94,0.2)" : "0 4px 16px rgba(0,0,0,0.3)"; }}
+          >
             <div style={{ width: 60, height: 60, borderRadius: "50%", background: m.avatarBg, color: m.avatarText, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 16, marginBottom: 14, fontFamily: "monospace", border: `2px solid ${m.avatarText}44` }}>{m.initials}</div>
             <span style={{ display: "inline-block", background: m.badgeBg, color: m.badgeText, fontSize: 10, fontWeight: 700, padding: "3px 12px", borderRadius: 20, marginBottom: 10, fontFamily: "monospace", letterSpacing: "0.05em", textTransform: "uppercase", border: `1px solid ${m.badgeText}44` }}>{m.role}</span>
             <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6, lineHeight: 1.3 }}>{m.name}</div>
@@ -835,14 +823,6 @@ function ScannerPage({ user }) {
     const grouped  = result.findings.reduce((a, f) => { if (!a[f.file]) a[f.file] = []; a[f.file].push(f); return a; }, {});
     const sevColor = s => s === "CRITICAL" ? "#ef4444" : s === "HIGH" ? "#f59e0b" : "#eab308";
     const sevBg    = s => s === "CRITICAL" ? "#fee2e2" : s === "HIGH" ? "#fef3c7" : "#fef9c3";
-    const csvRows = ["Severity,File,Line,Vulnerability,Code,Replacement",
-      ...result.findings.map(f => [
-        f.severity, f.file, f.line, f.vulnerability,
-        '"' + (f.code || "").replace(/"/g, "'").replace(/\n/g, " ") + '"',
-        f.replacement
-      ].join(","))
-    ].join("\n");
-    const csvUrl = "data:text/csv;charset=utf-8," + encodeURIComponent(csvRows);
     win.document.write(`<!DOCTYPE html><html><head><title>QuantumGuard Report</title>
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
@@ -958,28 +938,15 @@ function ScannerPage({ user }) {
     border: `1.5px solid ${active ? C.green : C.panelBorder}`,
     background: active ? "rgba(34,197,94,0.15)" : "transparent",
     color: active ? C.green : C.muted,
-    cursor: "pointer", fontSize: 12, fontWeight: active ? 600 : 400, transition: "all 0.15s",
+    cursor: "pointer", fontSize: 12, fontWeight: active ? 600 : 400, transition: "all 0.2s ease",
   });
 
   return (
     <div style={{ padding: 20 }}>
-      {/* CHANGE 4: Dashboard Score Cards shown at top of scanner (when no result yet, shows placeholders) */}
       {result && (
         <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 16 }}>
-          <ScoreCard
-            label="Quantum Risk Score"
-            value={result.quantum_readiness_score}
-            color={scoreColor}
-            icon={result.quantum_readiness_score >= 70 ? "🛡" : result.quantum_readiness_score >= 40 ? "⚠️" : "🚨"}
-            desc={result.quantum_readiness_score >= 70 ? "Quantum Safe" : result.quantum_readiness_score >= 40 ? "At Risk" : "Critical Risk"}
-          />
-          <ScoreCard
-            label="Code Scanner Score"
-            value={result.quantum_readiness_score}
-            color={scoreColor}
-            icon="🔍"
-            desc={`${result.total_findings} vulnerabilities found`}
-          />
+          <ScoreCard label="Quantum Risk Score" value={result.quantum_readiness_score} color={scoreColor} icon={result.quantum_readiness_score >= 70 ? "🛡" : result.quantum_readiness_score >= 40 ? "⚠️" : "🚨"} desc={result.quantum_readiness_score >= 70 ? "Quantum Safe" : result.quantum_readiness_score >= 40 ? "At Risk" : "Critical Risk"} />
+          <ScoreCard label="Code Scanner Score" value={result.quantum_readiness_score} color={scoreColor} icon="🔍" desc={`${result.total_findings} vulnerabilities found`} />
           <div style={{ background: C.panel, border: `1px solid ${C.panelBorder}`, borderRadius: 14, padding: "20px", boxShadow: "0 4px 20px rgba(0,0,0,0.35)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
               <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>Crypto Agility Score</div>
@@ -1008,42 +975,42 @@ function ScannerPage({ user }) {
         {mode === "zip" ? (
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <input type="file" accept=".zip" onChange={e => setFile(e.target.files[0])} style={{ flex: 1, minWidth: 200, padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${C.panelBorder}`, background: C.input, color: C.text, fontSize: 13 }} />
-            <button onClick={handleScan} disabled={loading} style={{ padding: "9px 24px", borderRadius: 8, background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, boxShadow: "0 4px 12px rgba(34,197,94,0.3)" }}>{loading ? "Scanning..." : "▶ Run Scan"}</button>
+            <button onClick={handleScan} disabled={loading} style={{ padding: "9px 24px", borderRadius: 8, background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, boxShadow: "0 4px 12px rgba(34,197,94,0.3)", transition: "all 0.2s ease" }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(34,197,94,0.45)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(34,197,94,0.3)"; }}>{loading ? "Scanning..." : "▶ Run Scan"}</button>
           </div>
         ) : mode === "github" ? (
           <div>
             <div style={{ display: "flex", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
               <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && handleScan()} placeholder="https://github.com/username/repo" style={{ flex: 1, minWidth: 200, padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${C.panelBorder}`, background: C.input, color: C.text, fontSize: 13 }} />
-              <button onClick={handleScan} disabled={loading} style={{ padding: "9px 24px", borderRadius: 8, background: loading ? C.greenDark : "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: loading ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600, boxShadow: loading ? "none" : "0 4px 12px rgba(34,197,94,0.3)" }}>{loading ? "Scanning..." : "▶ Run Scan"}</button>
+              <button onClick={handleScan} disabled={loading} style={{ padding: "9px 24px", borderRadius: 8, background: loading ? C.greenDark : "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: loading ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600, boxShadow: loading ? "none" : "0 4px 12px rgba(34,197,94,0.3)", transition: "all 0.2s ease" }}
+                onMouseEnter={e => { if (!loading) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(34,197,94,0.45)"; }}}
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = loading ? "none" : "0 4px 12px rgba(34,197,94,0.3)"; }}>{loading ? "Scanning..." : "▶ Run Scan"}</button>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <button onClick={() => setShowToken(!showToken)} style={{ background: "transparent", border: `1px solid ${C.panelBorder}`, borderRadius: 6, padding: "4px 12px", cursor: "pointer", color: C.muted, fontSize: 11 }}>🔒 {showToken ? "Hide Token" : "Private Repo"}</button>
+              <button onClick={() => setShowToken(!showToken)} style={{ background: "transparent", border: `1px solid ${C.panelBorder}`, borderRadius: 6, padding: "4px 12px", cursor: "pointer", color: C.muted, fontSize: 11, transition: "all 0.2s ease" }}>🔒 {showToken ? "Hide Token" : "Private Repo"}</button>
               {showToken && <input value={githubToken} onChange={e => setGithubToken(e.target.value)} placeholder="GitHub Personal Access Token" type="password" style={{ flex: 1, padding: "4px 12px", borderRadius: 6, border: `1px solid ${C.panelBorder}`, background: C.input, color: C.text, fontSize: 11 }} />}
             </div>
           </div>
         ) : (
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <input value={input} onChange={e => setInput(e.target.value)} placeholder="/app/src" style={{ flex: 1, minWidth: 200, padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${C.panelBorder}`, background: C.input, color: C.text, fontSize: 13 }} />
-            <button onClick={handleScan} disabled={loading} style={{ padding: "9px 24px", borderRadius: 8, background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>{loading ? "Scanning..." : "▶ Run Scan"}</button>
+            <button onClick={handleScan} disabled={loading} style={{ padding: "9px 24px", borderRadius: 8, background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, transition: "all 0.2s ease" }}>{loading ? "Scanning..." : "▶ Run Scan"}</button>
           </div>
         )}
 
-        {/* CHANGE 5: Enhanced loading animation with pulse glow */}
         {loading && (
           <div style={{ marginTop: 14, background: "rgba(34,197,94,0.06)", borderRadius: 10, padding: "14px 16px", border: "1px solid rgba(34,197,94,0.2)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: C.green, marginBottom: 8, fontWeight: 500, alignItems: "center" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                {/* Pulse dot */}
                 <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.green, boxShadow: "0 0 0 0 rgba(34,197,94,0.4)", animation: "pulse-ring 1.2s ease-in-out infinite" }} />
                 <span>✦ {SCAN_STEPS[stepIndex]}</span>
               </div>
               <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700 }}>{progress}%</span>
             </div>
-            {/* Progress track — BUGFIX: was using C.greenMid (light green) as track, now dark */}
             <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 6, height: 6, overflow: "hidden" }}>
               <div style={{ background: `linear-gradient(90deg, #22c55e, #4ade80)`, height: 6, borderRadius: 6, width: `${progress}%`, transition: "width 0.4s ease", boxShadow: "0 0 10px rgba(34,197,94,0.6)" }} />
             </div>
-            {/* Step dots */}
             <div style={{ display: "flex", gap: 4, marginTop: 10, justifyContent: "center" }}>
               {SCAN_STEPS.map((_, i) => (
                 <div key={i} style={{ width: i <= stepIndex ? 20 : 6, height: 6, borderRadius: 3, background: i <= stepIndex ? C.green : "rgba(255,255,255,0.1)", transition: "all 0.3s ease", boxShadow: i === stepIndex ? `0 0 6px ${C.green}` : "none" }} />
@@ -1071,17 +1038,18 @@ function ScannerPage({ user }) {
           </div>
           <Panel title="Export & Share" accent>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-              <button onClick={handlePDF} style={{ padding: "8px 16px", borderRadius: 8, background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, boxShadow: "0 2px 8px rgba(34,197,94,0.3)" }}>📄 PDF Report</button>
-              <button onClick={handleNIST} style={{ padding: "8px 16px", borderRadius: 8, background: "rgba(59,130,246,0.15)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.3)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>🏛 NIST Report</button>
-              <button onClick={handleCSV} style={{ padding: "8px 16px", borderRadius: 8, background: "rgba(34,197,94,0.1)", color: C.green, border: "1px solid rgba(34,197,94,0.3)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>📊 CSV Export</button>
+              <button onClick={handlePDF} style={{ padding: "8px 16px", borderRadius: 8, background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, boxShadow: "0 2px 8px rgba(34,197,94,0.3)", transition: "all 0.2s ease" }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 16px rgba(34,197,94,0.4)"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(34,197,94,0.3)"; }}>📄 PDF Report</button>
+              <button onClick={handleNIST} style={{ padding: "8px 16px", borderRadius: 8, background: "rgba(59,130,246,0.15)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.3)", cursor: "pointer", fontSize: 12, fontWeight: 600, transition: "all 0.2s ease" }}>🏛 NIST Report</button>
+              <button onClick={handleCSV} style={{ padding: "8px 16px", borderRadius: 8, background: "rgba(34,197,94,0.1)", color: C.green, border: "1px solid rgba(34,197,94,0.3)", cursor: "pointer", fontSize: 12, fontWeight: 600, transition: "all 0.2s ease" }}>📊 CSV Export</button>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <input value={emailInput} onChange={e => setEmailInput(e.target.value)} placeholder="Email report to..." type="email" style={{ flex: 1, minWidth: 200, padding: "8px 14px", borderRadius: 8, border: `1px solid ${C.panelBorder}`, background: C.input, color: C.text, fontSize: 12 }} />
-              <button onClick={handleEmail} disabled={sendingEmail || !emailInput} style={{ padding: "8px 16px", borderRadius: 8, background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>{emailSent ? "✓ Sent!" : sendingEmail ? "Sending..." : "📧 Send Email"}</button>
+              <button onClick={handleEmail} disabled={sendingEmail || !emailInput} style={{ padding: "8px 16px", borderRadius: 8, background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, transition: "all 0.2s ease" }}>{emailSent ? "✓ Sent!" : sendingEmail ? "Sending..." : "📧 Send Email"}</button>
             </div>
           </Panel>
 
-          {/* CHANGE 3: Improved vulnerability findings UI with clearer severity + Fix Recommendation */}
           <Panel title={`Threat Intelligence — ${result.total_findings} findings`} accent>
             <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
               {["ALL", "CRITICAL", "HIGH", "MEDIUM"].map(f => {
@@ -1094,7 +1062,7 @@ function ScannerPage({ user }) {
                     background: filter === f ? col + "22" : "transparent",
                     color: filter === f ? col : C.muted,
                     cursor: "pointer", fontSize: 11, fontWeight: filter === f ? 700 : 400,
-                    transition: "all 0.15s",
+                    transition: "all 0.2s ease",
                   }}>
                     {f} {f !== "ALL" && sev ? `(${sev[f]})` : ""}
                   </button>
@@ -1103,7 +1071,10 @@ function ScannerPage({ user }) {
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${C.panelBorder}`, background: C.input, color: C.text, fontSize: 11, width: 120, marginLeft: "auto" }} />
             </div>
             {Object.entries(grouped).map(([file, findings], gi) => (
-              <div key={gi} style={{ marginBottom: 12, border: `1px solid ${C.panelBorder}`, borderRadius: 10, overflow: "hidden" }}>
+              <div key={gi} style={{ marginBottom: 12, border: `1px solid ${C.panelBorder}`, borderRadius: 10, overflow: "hidden", transition: "border-color 0.2s ease" }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(34,197,94,0.25)"}
+                onMouseLeave={e => e.currentTarget.style.borderColor = C.panelBorder}
+              >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", background: "rgba(34,197,94,0.05)", borderBottom: `1px solid ${C.panelBorder}`, flexWrap: "wrap", gap: 4 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{file.split("/").pop()}</span>
                   <Badge text={`${findings.length} threats`} color={C.red} bg={SEV_BG.CRITICAL} />
@@ -1123,7 +1094,6 @@ function ScannerPage({ user }) {
                       }}>
                         <div style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center", flexWrap: "wrap" }}>
                           <input type="checkbox" checked={!!checklist[key]} onChange={() => setChecklist(p => ({ ...p, [key]: !p[key] }))} style={{ cursor: "pointer", accentColor: C.green }} />
-                          {/* CHANGE 3a: Bigger, clearer severity badge */}
                           <span style={{
                             background: fSevBg, color: fSevColor,
                             padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 800,
@@ -1132,10 +1102,11 @@ function ScannerPage({ user }) {
                           }}>{f.severity}</span>
                           <span style={{ background: "rgba(255,255,255,0.06)", color: C.muted, fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 4 }}>{f.vulnerability}</span>
                           <span style={{ color: C.muted, fontSize: 11 }}>Line {f.line}</span>
-                          <button onClick={() => handleAiFix(f)} style={{ marginLeft: "auto", padding: "3px 12px", borderRadius: 6, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", color: C.green, cursor: "pointer", fontSize: 10, fontWeight: 700 }}>⚡ AI Fix</button>
+                          <button onClick={() => handleAiFix(f)} style={{ marginLeft: "auto", padding: "3px 12px", borderRadius: 6, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", color: C.green, cursor: "pointer", fontSize: 10, fontWeight: 700, transition: "all 0.2s ease" }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(34,197,94,0.2)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(34,197,94,0.1)"; }}>⚡ AI Fix</button>
                         </div>
                         <div style={{ fontFamily: "monospace", background: C.input, padding: "8px 12px", borderRadius: 6, fontSize: 11, marginBottom: 8, color: C.green, overflowX: "auto", border: `1px solid ${C.panelBorder}` }}>{f.code}</div>
-                        {/* CHANGE 3b: Prominent Fix Recommendation */}
                         <div style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: 6, padding: "7px 12px", display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ fontSize: 10, fontWeight: 700, color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.05em", flexShrink: 0 }}>Fix Recommendation</span>
                           <span style={{ color: "#93c5fd", fontWeight: 600, fontSize: 12 }}>✦ {f.replacement}</span>
@@ -1151,7 +1122,6 @@ function ScannerPage({ user }) {
         </>
       )}
 
-      {/* AI Fix Modal */}
       {aiModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, backdropFilter: "blur(4px)" }}>
           <div style={{ background: C.panel, borderRadius: 16, width: "100%", maxWidth: 640, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 80px rgba(0,0,0,0.6)", border: `1px solid ${C.panelBorder}` }}>
@@ -1165,7 +1135,7 @@ function ScannerPage({ user }) {
             <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
               {aiLoading ? (
                 <div style={{ textAlign: "center", padding: 32 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.green, margin: "0 auto 12px", boxShadow: `0 0 0 0 rgba(34,197,94,0.4)`, animation: "pulse-ring 1.2s ease-in-out infinite" }} />
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.green, margin: "0 auto 12px", animation: "pulse-ring 1.2s ease-in-out infinite" }} />
                   <div style={{ fontSize: 13, color: C.green, fontWeight: 600 }}>Generating AI fix...</div>
                 </div>
               ) : aiResult ? (
@@ -1212,7 +1182,7 @@ function AgilityPage() {
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && handleCheck()} placeholder="https://github.com/username/repo" style={{ flex: 1, minWidth: 200, padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${C.panelBorder}`, background: C.input, color: C.text, fontSize: 13 }} />
-          <button onClick={handleCheck} disabled={loading} style={{ padding: "9px 24px", borderRadius: 8, background: loading ? C.greenDark : "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: loading ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600, boxShadow: loading ? "none" : "0 4px 12px rgba(34,197,94,0.3)" }}>{loading ? "Analyzing..." : "🔬 Check Agility"}</button>
+          <button onClick={handleCheck} disabled={loading} style={{ padding: "9px 24px", borderRadius: 8, background: loading ? C.greenDark : "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: loading ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600, boxShadow: loading ? "none" : "0 4px 12px rgba(34,197,94,0.3)", transition: "all 0.2s ease" }}>{loading ? "Analyzing..." : "🔬 Check Agility"}</button>
         </div>
         {loading && (
           <div style={{ marginTop: 12, background: "rgba(34,197,94,0.06)", borderRadius: 10, padding: "12px 16px", border: "1px solid rgba(34,197,94,0.2)", display: "flex", alignItems: "center", gap: 10 }}>
@@ -1274,7 +1244,7 @@ function TLSPage() {
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <input value={domain} onChange={e => setDomain(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAnalyze()} placeholder="google.com or https://github.com" style={{ flex: 1, minWidth: 200, padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${C.panelBorder}`, background: C.input, color: C.text, fontSize: 13 }} />
-          <button onClick={handleAnalyze} disabled={loading} style={{ padding: "9px 24px", borderRadius: 8, background: loading ? C.greenDark : "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: loading ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600, boxShadow: loading ? "none" : "0 4px 12px rgba(34,197,94,0.3)" }}>{loading ? "Analyzing..." : "🔐 Analyze TLS"}</button>
+          <button onClick={handleAnalyze} disabled={loading} style={{ padding: "9px 24px", borderRadius: 8, background: loading ? C.greenDark : "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: loading ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600, boxShadow: loading ? "none" : "0 4px 12px rgba(34,197,94,0.3)", transition: "all 0.2s ease" }}>{loading ? "Analyzing..." : "🔐 Analyze TLS"}</button>
         </div>
         {loading && (
           <div style={{ marginTop: 12, background: "rgba(34,197,94,0.06)", borderRadius: 10, padding: "12px 16px", border: "1px solid rgba(34,197,94,0.2)", display: "flex", alignItems: "center", gap: 10 }}>
@@ -1381,7 +1351,10 @@ function HistoryPage({ user }) {
         {loading ? <div style={{ color: C.muted, fontSize: 13 }}>Loading...</div> :
           history.length === 0 ? <div style={{ color: C.muted, fontSize: 13 }}>No scans yet!</div> : (
             history.map((scan, i) => (
-              <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 160px 80px 80px", gap: 12, padding: "12px", borderBottom: i < history.length - 1 ? `1px solid ${C.panelBorder}` : "none", alignItems: "center" }}>
+              <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 160px 80px 80px", gap: 12, padding: "12px", borderBottom: i < history.length - 1 ? `1px solid ${C.panelBorder}` : "none", alignItems: "center", transition: "background 0.2s ease", borderRadius: 6 }}
+                onMouseEnter={e => e.currentTarget.style.background = "rgba(34,197,94,0.04)"}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
                 <div style={{ fontSize: 12, color: C.text, fontWeight: 500, wordBreak: "break-all" }}>{scan.filename || "scan"}</div>
                 <div style={{ fontSize: 11, color: C.muted }}>{scan.createdAt?.toDate?.()?.toLocaleDateString() || "—"}</div>
                 <div style={{ fontSize: 20, fontWeight: 700, color: scan.score >= 70 ? C.green : scan.score >= 40 ? C.amber : C.red }}>{scan.score}</div>
@@ -1421,7 +1394,7 @@ function MigrationPage({ user }) {
     <div style={{ padding: 20 }}>
       <Panel title="Migration Progress" accent>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
-          <div style={{ fontSize: 40, fontWeight: 800, color: progress >= 70 ? C.green : progress >= 40 ? C.amber : C.red }}>{progress}%</div>
+          <div style={{ fontSize: 40, fontWeight: 800, color: progress >= 70 ? C.green : progress >= 40 ? C.amber : C.red, textShadow: `0 0 20px ${progress >= 70 ? C.green : progress >= 40 ? C.amber : C.red}44` }}>{progress}%</div>
           <div style={{ display: "flex", gap: 20 }}>
             {[["Fixed", totalFixed, C.green], ["In Progress", totalIP, C.amber], ["Pending", vulnTypes.length - totalFixed - totalIP, C.muted]].map(([l, v, c], i) => (
               <div key={i} style={{ textAlign: "center" }}>
@@ -1432,7 +1405,7 @@ function MigrationPage({ user }) {
           </div>
         </div>
         <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 8, height: 12 }}>
-          <div style={{ background: `linear-gradient(90deg, ${C.green}, #4ade80)`, height: 12, borderRadius: 8, width: `${progress}%`, transition: "width 0.6s", boxShadow: `0 0 10px rgba(34,197,94,0.5)` }} />
+          <div style={{ background: `linear-gradient(90deg, ${C.green}, #4ade80)`, height: 12, borderRadius: 8, width: `${progress}%`, transition: "width 0.6s ease", boxShadow: `0 0 10px rgba(34,197,94,0.5)` }} />
         </div>
       </Panel>
       <Panel title="Vulnerability Migration Status" accent>
@@ -1442,13 +1415,13 @@ function MigrationPage({ user }) {
           const sevColor = sev === "CRITICAL" ? C.critical : sev === "HIGH" ? C.amber : C.medium;
           const sevBg = SEV_BG[sev] || SEV_BG.MEDIUM;
           return (
-            <div key={i} style={{ display: "flex", gap: 10, padding: "10px 12px", background: status === "fixed" ? "rgba(34,197,94,0.06)" : i % 2 === 0 ? C.panel : "rgba(255,255,255,0.02)", borderRadius: 8, marginBottom: 4, border: `1px solid ${status === "fixed" ? "rgba(34,197,94,0.2)" : C.panelBorder}`, alignItems: "center", flexWrap: "wrap" }}>
+            <div key={i} style={{ display: "flex", gap: 10, padding: "10px 12px", background: status === "fixed" ? "rgba(34,197,94,0.06)" : i % 2 === 0 ? C.panel : "rgba(255,255,255,0.02)", borderRadius: 8, marginBottom: 4, border: `1px solid ${status === "fixed" ? "rgba(34,197,94,0.2)" : C.panelBorder}`, alignItems: "center", flexWrap: "wrap", transition: "all 0.2s ease" }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: status === "fixed" ? C.muted : C.text, textDecoration: status === "fixed" ? "line-through" : "none", minWidth: 120 }}>{v}</div>
               <div style={{ fontSize: 11, color: C.muted, flex: 1, minWidth: 150 }}>{fixes[v]}</div>
               <Badge text={sev} color={sevColor} bg={sevBg} />
               <div style={{ display: "flex", gap: 4 }}>
                 {[["pending", "⬜"], ["in_progress", "🔄"], ["fixed", "✅"]].map(([st, icon]) => (
-                  <button key={st} onClick={() => setStatus(v, st)} style={{ padding: "4px 8px", borderRadius: 6, border: `1.5px solid ${status === st ? C.green : C.panelBorder}`, background: status === st ? "rgba(34,197,94,0.15)" : "transparent", cursor: "pointer", fontSize: 14 }}>{icon}</button>
+                  <button key={st} onClick={() => setStatus(v, st)} style={{ padding: "4px 8px", borderRadius: 6, border: `1.5px solid ${status === st ? C.green : C.panelBorder}`, background: status === st ? "rgba(34,197,94,0.15)" : "transparent", cursor: "pointer", fontSize: 14, transition: "all 0.2s ease" }}>{icon}</button>
                 ))}
               </div>
             </div>
@@ -1532,10 +1505,7 @@ function DocsPage() {
 }
 
 // ══════════════════════════════════════════════════════════════
-// HOMEPAGE — All 5 steps applied:
-// Step 2: Hero spacing, typography, CTA, trust section, preview
-// Step 3: Hover glow on cards/buttons, smooth transitions
-// Step 4: "Submitted to NIST" → "Aligned with NIST PQC 2024"
+// HOMEPAGE — Enterprise Level
 // ══════════════════════════════════════════════════════════════
 function Homepage({ onGetStarted }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -1546,20 +1516,22 @@ function Homepage({ onGetStarted }) {
     { label: "Documentation", id: "docs" },
   ];
 
-
   return (
     <div style={{ minHeight: "100vh", background: "#070d1a", fontFamily: "'Segoe UI', sans-serif", overflowX: "hidden", color: C.text }}>
 
-      {/* STEP 3: All animations including bar-fill and float-card */}
       <style>{`
         @keyframes pulse-ring {
           0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
           70%  { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
           100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
         }
+        @keyframes critical-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.6); }
+          50%       { box-shadow: 0 0 0 5px rgba(239,68,68,0); }
+        }
         @keyframes grid-fade {
           0%   { opacity: 0.03; }
-          50%  { opacity: 0.07; }
+          50%  { opacity: 0.08; }
           100% { opacity: 0.03; }
         }
         @keyframes bar-fill {
@@ -1569,6 +1541,44 @@ function Homepage({ onGetStarted }) {
         @keyframes float-card {
           0%, 100% { transform: translateY(0px); }
           50%       { transform: translateY(-6px); }
+        }
+        @keyframes hero-gradient {
+          0%   { opacity: 0.6; transform: scale(1) translate(0%, 0%); }
+          50%  { opacity: 1;   transform: scale(1.1) translate(2%, -3%); }
+          100% { opacity: 0.6; transform: scale(1) translate(0%, 0%); }
+        }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #070d1a; }
+        ::-webkit-scrollbar-thumb { background: #1a2e1a; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #22c55e; }
+
+        .trust-item { transition: background 0.25s ease, border-color 0.25s ease; cursor: default; }
+        .trust-item:hover { background: rgba(34,197,94,0.07) !important; }
+        .trust-item:hover .trust-icon { filter: drop-shadow(0 0 8px rgba(34,197,94,0.7)); }
+        .trust-icon { transition: filter 0.25s ease; }
+
+        .metric-card { transition: transform 0.25s ease, box-shadow 0.25s ease; cursor: default; }
+        .metric-card:hover { transform: translateY(-3px); box-shadow: 0 0 24px rgba(34,197,94,0.2), 0 8px 28px rgba(0,0,0,0.4) !important; }
+        .metric-number { font-weight: 900 !important; text-shadow: 0 0 16px rgba(34,197,94,0.35); }
+
+        .step-card { transition: transform 0.25s ease; }
+        .step-card:hover { transform: translateY(-5px); }
+        .step-card:hover .step-icon { transform: scale(1.18); }
+        .step-icon { transition: transform 0.25s ease; display: inline-block; }
+
+        .critical-badge-pulse { animation: critical-pulse 1.8s ease-in-out infinite; }
+
+        @media (max-width: 900px) {
+          .nav-links { display: none !important; }
+          .nav-right  { display: none !important; }
+          .nav-hamburger { display: block !important; }
+          .hero-grid { grid-template-columns: 1fr !important; padding: 56px 0 48px !important; gap: 40px !important; }
+          .hero-preview { display: none !important; }
+          .how-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+          .pricing-grid { grid-template-columns: 1fr !important; }
+          .stats-bar-grid { grid-template-columns: repeat(3,1fr) !important; }
+          .docs-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
 
@@ -1590,8 +1600,7 @@ function Homepage({ onGetStarted }) {
         </div>
         <div className="nav-right" style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer" style={{ fontSize: 13, color: "#64748b", textDecoration: "none", fontWeight: 500 }}>★ GitHub</a>
-          <button
-            onClick={onGetStarted}
+          <button onClick={onGetStarted}
             style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, padding: "9px 22px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700, boxShadow: "0 4px 16px rgba(34,197,94,0.35)", transition: "all 0.2s ease" }}
             onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(34,197,94,0.5)"; }}
             onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(34,197,94,0.35)"; }}
@@ -1614,25 +1623,27 @@ function Homepage({ onGetStarted }) {
       )}
 
       {/* ── HERO SECTION ── */}
-      <div style={{ background: "linear-gradient(180deg, #0a0e1a 0%, #070d1a 100%)", borderBottom: "1px solid rgba(34,197,94,0.1)", padding: "0 40px", position: "relative", overflow: "hidden" }}>
-        {/* Background grid */}
-        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(34,197,94,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(34,197,94,0.04) 1px, transparent 1px)", backgroundSize: "40px 40px", animation: "grid-fade 4s ease-in-out infinite" }} />
-        {/* Green glow orb */}
-        <div style={{ position: "absolute", top: -100, right: "10%", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(34,197,94,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
+      <div style={{ borderBottom: "1px solid rgba(34,197,94,0.1)", padding: "0 40px", position: "relative", overflow: "hidden", background: "linear-gradient(180deg, #0a0e1a 0%, #070d1a 100%)" }}>
+        {/* Animated radial glow — top right */}
+        <div style={{ position: "absolute", top: -120, right: "8%", width: 580, height: 580, borderRadius: "50%", background: "radial-gradient(circle, rgba(34,197,94,0.09) 0%, transparent 70%)", animation: "hero-gradient 10s ease-in-out infinite", pointerEvents: "none" }} />
+        {/* Second glow — bottom left */}
+        <div style={{ position: "absolute", bottom: -80, left: "5%", width: 380, height: 380, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,180,255,0.05) 0%, transparent 70%)", animation: "hero-gradient 14s ease-in-out infinite reverse", pointerEvents: "none" }} />
+        {/* Grid overlay */}
+        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(34,197,94,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(34,197,94,0.04) 1px, transparent 1px)", backgroundSize: "40px 40px", animation: "grid-fade 5s ease-in-out infinite", pointerEvents: "none" }} />
 
         <div className="hero-grid" style={{ maxWidth: 1200, margin: "0 auto", padding: "96px 0 88px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 70, alignItems: "center", position: "relative" }}>
 
           {/* ── Left column ── */}
           <div>
-            {/* STEP 4: Changed "Submitted to NIST" → "Aligned with NIST PQC 2024 Standards" */}
+            {/* NIST badge — safe wording */}
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 30, padding: "6px 14px", marginBottom: 32 }}>
               <span style={{ fontSize: 14 }}>🏛</span>
               <span style={{ fontSize: 12, color: C.green, fontWeight: 700 }}>Aligned with NIST PQC 2024 Standards</span>
             </div>
 
-            {/* STEP 2.1: Improved typography hierarchy */}
+            {/* Title with glow */}
             <h1 style={{ fontSize: "clamp(48px,5.5vw,72px)", fontWeight: 900, lineHeight: 1.05, marginBottom: 16, color: C.text, letterSpacing: -2 }}>
-              <span style={{ color: C.green, textShadow: "0 0 40px rgba(34,197,94,0.3)" }}>Quantum</span>Guard
+              <span style={{ color: C.green, textShadow: "0 0 40px rgba(34,197,94,0.45), 0 0 80px rgba(34,197,94,0.2)" }}>Quantum</span>Guard
             </h1>
             <p style={{ fontSize: 20, color: "#94a3b8", fontWeight: 500, marginBottom: 14, letterSpacing: -0.3, lineHeight: 1.3 }}>
               Prepare your systems for post-quantum security
@@ -1642,24 +1653,18 @@ function Homepage({ onGetStarted }) {
               <strong style={{ color: C.text }}>30 seconds</strong> and get exact NIST-approved fixes — completely free.
             </p>
 
-            {/* STEP 2.1 + STEP 3: CTA buttons with hover glow */}
+            {/* CTA buttons */}
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 40 }}>
-              <button
-                onClick={onGetStarted}
+              <button onClick={onGetStarted}
                 style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, padding: "15px 32px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 16, fontWeight: 700, boxShadow: "0 4px 20px rgba(34,197,94,0.4)", display: "flex", alignItems: "center", gap: 8, transition: "all 0.2s ease" }}
                 onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 30px rgba(34,197,94,0.55)"; }}
                 onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(34,197,94,0.4)"; }}
-              >
-                🛡 Start Free Scan
-              </button>
-              <button
-                onClick={() => document.getElementById("howitworks")?.scrollIntoView({ behavior: "smooth" })}
+              >🛡 Start Free Scan</button>
+              <button onClick={() => document.getElementById("howitworks")?.scrollIntoView({ behavior: "smooth" })}
                 style={{ background: "rgba(34,197,94,0.08)", color: C.green, padding: "15px 32px", borderRadius: 12, border: "1.5px solid rgba(34,197,94,0.3)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, transition: "all 0.2s ease" }}
                 onMouseEnter={e => { e.currentTarget.style.background = "rgba(34,197,94,0.18)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "rgba(34,197,94,0.08)"; e.currentTarget.style.transform = "translateY(0)"; }}
-              >
-                ▶ Try Demo
-              </button>
+              >▶ Try Demo</button>
             </div>
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
@@ -1679,7 +1684,13 @@ function Homepage({ onGetStarted }) {
               <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, marginLeft: 8, fontFamily: "monospace" }}>quantumguard.site — Scanner</span>
             </div>
             <div style={{ padding: 20 }}>
-              {/* STEP 2.3: 4 score cards with animated bars + risk labels */}
+              {/* Scan meta bar */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(34,197,94,0.06)", borderRadius: 8, padding: "6px 10px", marginBottom: 12, border: "1px solid rgba(34,197,94,0.12)" }}>
+                <span style={{ fontSize: 10, color: "#22c55e", fontWeight: 600 }}>● Last Scan: <span style={{ color: "#64748b" }}>just now</span></span>
+                <span style={{ fontSize: 10, color: "#374151", fontFamily: "monospace" }}>example/repo</span>
+              </div>
+
+              {/* 4 score cards with animated bars */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                 {[
                   ["Quantum Risk Score", "58", 58,  C.amber, "Moderate Risk"],
@@ -1687,7 +1698,10 @@ function Homepage({ onGetStarted }) {
                   ["Crypto Agility",     "65", 65,  C.amber, "Partial Agility"],
                   ["TLS Security",       "80", 80,  C.green, "Low Risk"],
                 ].map(([label, n, pct, c, sublabel], i) => (
-                  <div key={i} style={{ background: "#111827", borderRadius: 10, padding: "12px 14px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div key={i} style={{ background: "#111827", borderRadius: 10, padding: "12px 14px", border: "1px solid rgba(255,255,255,0.06)", transition: "border-color 0.2s ease" }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = `${c}44`}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"}
+                  >
                     <div style={{ fontSize: 9, color: "#4b5563", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{label}</div>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 2, marginBottom: 2 }}>
                       <span style={{ fontSize: 24, fontWeight: 800, color: c }}>{n}</span>
@@ -1700,7 +1714,8 @@ function Homepage({ onGetStarted }) {
                   </div>
                 ))}
               </div>
-              {/* STEP 2.4: Latest Threats with "Detected during scan" badge */}
+
+              {/* Latest Threats */}
               <div style={{ background: "#111827", borderRadius: 10, padding: "10px 12px", border: "1px solid rgba(255,255,255,0.06)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                   <div style={{ fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Latest Threats</div>
@@ -1712,7 +1727,10 @@ function Homepage({ onGetStarted }) {
                   ["MEDIUM",   "MD5 hash detected",         "#eab308"],
                 ].map(([sev, msg, col], i) => (
                   <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: i < 2 ? 7 : 0, padding: "4px 0", borderBottom: i < 2 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                    <span style={{ background: col + "22", color: col, fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 4, border: `1px solid ${col}44`, flexShrink: 0, letterSpacing: "0.03em" }}>{sev}</span>
+                    <span
+                      className={sev === "CRITICAL" ? "critical-badge-pulse" : ""}
+                      style={{ background: col + "22", color: col, fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 4, border: `1px solid ${col}44`, flexShrink: 0, letterSpacing: "0.03em" }}
+                    >{sev}</span>
                     <span style={{ fontSize: 11, color: "#64748b", fontFamily: "monospace", flex: 1 }}>{msg}</span>
                     <span style={{ fontSize: 9, color: "#374151", flexShrink: 0 }}>just now</span>
                   </div>
@@ -1723,7 +1741,7 @@ function Homepage({ onGetStarted }) {
         </div>
       </div>
 
-      {/* ── STEP 2.2: Trust Section ── */}
+      {/* ── Trust Section ── */}
       <div style={{ background: "#0a0e1a", borderBottom: "1px solid rgba(34,197,94,0.1)", padding: "22px 40px" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 0 }}>
           {[
@@ -1732,11 +1750,13 @@ function Homepage({ onGetStarted }) {
             { icon: "📖", title: "Open Source",               desc: "Fully transparent — audit us on GitHub" },
             { icon: "👩‍💻", title: "Built for Developers",      desc: "Designed for security teams and engineers" },
           ].map((item, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "16px 24px", borderRight: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-              <div style={{ fontSize: 20, marginTop: 1, flexShrink: 0 }}>{item.icon}</div>
+            <div key={i} className="trust-item" style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "18px 24px", borderRight: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+              <div className="trust-icon" style={{ fontSize: 22, marginTop: 1, flexShrink: 0 }}>{item.icon}</div>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 3 }}>✔ {item.title}</div>
-                <div style={{ fontSize: 11, color: "#4b5563", lineHeight: 1.5 }}>{item.desc}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 4 }}>
+                  <span style={{ color: C.green, marginRight: 4 }}>✔</span>{item.title}
+                </div>
+                <div style={{ fontSize: 11, color: "#4b5563", lineHeight: 1.6 }}>{item.desc}</div>
               </div>
             </div>
           ))}
@@ -1749,9 +1769,9 @@ function Homepage({ onGetStarted }) {
           <p style={{ fontSize: 12, color: "#374151", fontWeight: 600, marginBottom: 16, textTransform: "uppercase", letterSpacing: 1 }}>Trusted by developers scanning real repositories</p>
           <div className="stats-bar-grid" style={{ maxWidth: 900, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 20 }}>
             {[["50+","Vulnerability Checks"],["8","Languages"],["99.9%","Uptime"],["< 30s","Scan Time"],["100%","Private"]].map(([num,label],i) => (
-              <div key={i} style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 26, fontWeight: 900, color: C.green, letterSpacing: -1 }}>{num}</div>
-                <div style={{ fontSize: 11, color: "#4b5563", marginTop: 3 }}>{label}</div>
+              <div key={i} className="metric-card" style={{ textAlign: "center", padding: "12px 8px", borderRadius: 10 }}>
+                <div className="metric-number" style={{ fontSize: 28, fontWeight: 900, color: C.green, letterSpacing: -1 }}>{num}</div>
+                <div style={{ fontSize: 11, color: "#4b5563", marginTop: 4 }}>{label}</div>
               </div>
             ))}
           </div>
@@ -1765,7 +1785,6 @@ function Homepage({ onGetStarted }) {
           <h2 style={{ fontSize: 38, fontWeight: 900, color: C.text, marginBottom: 14, letterSpacing: -0.5 }}>Everything to go quantum-safe</h2>
           <p style={{ color: "#4b5563", fontSize: 16, maxWidth: 560, margin: "0 auto", lineHeight: 1.7 }}>Comprehensive quantum vulnerability detection and NIST-approved migration tools — all free</p>
         </div>
-        {/* STEP 3: Hover glow + lift on feature cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px,1fr))", gap: 22 }}>
           {[
             { icon: "🔍", title: "Threat Scanner",         desc: "Scan GitHub repos, ZIP files, or server paths. Detects 15+ quantum-vulnerable algorithms in 30 seconds.",      badge: "Core",       badgeColor: C.green },
@@ -1775,10 +1794,9 @@ function Homepage({ onGetStarted }) {
             { icon: "🤖", title: "AI Fix Assistant",       desc: "Claude-powered exact replacement code for every vulnerability found in your codebase.",                       badge: "Pro",        badgeColor: "#a78bfa" },
             { icon: "🔄", title: "Migration Tracker",      desc: "Track 11 vulnerability types from Pending to Fixed across your entire organization.",                         badge: "Free",       badgeColor: C.green },
           ].map((f, i) => (
-            <div
-              key={i}
-              style={{ background: "#0d1120", borderRadius: 16, padding: 26, border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 4px 20px rgba(0,0,0,0.3)", transition: "border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease" }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(34,197,94,0.35)"; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 0 20px rgba(34,197,94,0.15), 0 12px 32px rgba(0,0,0,0.4)"; }}
+            <div key={i}
+              style={{ background: "#0d1120", borderRadius: 16, padding: 26, border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 4px 20px rgba(0,0,0,0.3)", transition: "border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(34,197,94,0.4)"; e.currentTarget.style.transform = "translateY(-5px)"; e.currentTarget.style.boxShadow = "0 0 24px rgba(34,197,94,0.18), 0 12px 36px rgba(0,0,0,0.45)"; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.3)"; }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
@@ -1804,10 +1822,14 @@ function Homepage({ onGetStarted }) {
               { step: "1", icon: "🔗", title: "Paste GitHub URL",    desc: "Enter any public or private GitHub repository URL." },
               { step: "2", icon: "🔍", title: "We Scan Your Code",   desc: "Our engine checks every line against 15+ NIST-aligned vulnerability patterns." },
               { step: "3", icon: "📊", title: "Get Full Report",     desc: "Receive Quantum Readiness Score, NIST compliance report, PDF export, and AI-powered fixes." },
-            ].map((s,i) => (
-              <div key={i} style={{ textAlign: "center" }}>
-                <div style={{ width: 66, height: 66, borderRadius: "50%", background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, fontSize: 26, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", boxShadow: "0 4px 20px rgba(34,197,94,0.35)" }}>{s.step}</div>
-                <div style={{ fontSize: 38, marginBottom: 14 }}>{s.icon}</div>
+            ].map((s, i) => (
+              <div key={i} className="step-card" style={{ textAlign: "center", position: "relative" }}>
+                {/* Connector line between steps */}
+                {i < 2 && (
+                  <div style={{ position: "absolute", top: 33, left: "calc(50% + 44px)", right: "calc(-50% + 44px)", height: 1, background: "linear-gradient(90deg, rgba(34,197,94,0.5), rgba(34,197,94,0.1))", zIndex: 0 }} />
+                )}
+                <div style={{ width: 66, height: 66, borderRadius: "50%", background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, fontSize: 26, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", boxShadow: "0 4px 20px rgba(34,197,94,0.35)", position: "relative", zIndex: 1 }}>{s.step}</div>
+                <div className="step-icon" style={{ fontSize: 38, marginBottom: 14 }}>{s.icon}</div>
                 <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 10, color: C.text }}>{s.title}</div>
                 <div style={{ fontSize: 14, color: "#4b5563", lineHeight: 1.75, maxWidth: 280, margin: "0 auto" }}>{s.desc}</div>
               </div>
@@ -1822,25 +1844,23 @@ function Homepage({ onGetStarted }) {
           <div style={{ display: "inline-block", background: "rgba(34,197,94,0.1)", color: C.green, fontSize: 12, fontWeight: 700, padding: "5px 16px", borderRadius: 20, marginBottom: 16, border: "1px solid rgba(34,197,94,0.3)" }}>PRICING</div>
           <h2 style={{ fontSize: 38, fontWeight: 900, color: C.text, marginBottom: 14, letterSpacing: -0.5 }}>Simple, transparent pricing</h2>
         </div>
-        {/* STEP 3: Hover lift on pricing cards */}
         <div className="pricing-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 24, maxWidth: 1000, margin: "0 auto" }}>
           {[
             { name: "Free",       price: "$0",     period: "forever",  color: C.text,    highlight: false, features: ["Web scanner","GitHub URL + ZIP scan","15+ vulnerability types","PDF & NIST reports","TLS Analyzer","Agility Checker","10 scans/day"],               cta: "Get Started Free",  ctaAction: onGetStarted },
             { name: "Pro",        price: "$29",    period: "/month",   color: C.green,   highlight: true,  badge: "Most Popular", features: ["Everything in Free","Unlimited scans","AI-powered fix suggestions","5 team members","Full API access","Priority support"],    cta: "Coming Soon",       ctaAction: null },
             { name: "Enterprise", price: "Custom", period: "",         color: "#a78bfa", highlight: false, features: ["Everything in Pro","Unlimited team members","Self-hosted deployment","SSO / SAML login","Audit logs","SOC2 compliance"],                             cta: "Contact Us",        ctaAction: () => window.open("mailto:thisispayyavula@gmail.com?subject=QuantumGuard Enterprise Inquiry") },
-          ].map((p,i) => (
-            <div
-              key={i}
-              style={{ background: "#0d1120", borderRadius: 20, padding: 30, border: p.highlight ? `2px solid ${C.green}` : "1px solid rgba(255,255,255,0.08)", boxShadow: p.highlight ? "0 12px 40px rgba(34,197,94,0.2)" : "0 4px 20px rgba(0,0,0,0.3)", position: "relative", transition: "transform 0.2s ease, box-shadow 0.2s ease" }}
-              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = p.highlight ? "0 20px 50px rgba(34,197,94,0.3)" : "0 12px 36px rgba(0,0,0,0.5)"; }}
+          ].map((p, i) => (
+            <div key={i}
+              style={{ background: "#0d1120", borderRadius: 20, padding: 30, border: p.highlight ? `2px solid ${C.green}` : "1px solid rgba(255,255,255,0.08)", boxShadow: p.highlight ? "0 12px 40px rgba(34,197,94,0.2)" : "0 4px 20px rgba(0,0,0,0.3)", position: "relative", transition: "transform 0.25s ease, box-shadow 0.25s ease" }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-5px)"; e.currentTarget.style.boxShadow = p.highlight ? "0 20px 50px rgba(34,197,94,0.3)" : "0 12px 36px rgba(0,0,0,0.5)"; }}
               onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = p.highlight ? "0 12px 40px rgba(34,197,94,0.2)" : "0 4px 20px rgba(0,0,0,0.3)"; }}
             >
               {p.badge && <div style={{ position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)", background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, padding: "5px 18px", borderRadius: 20, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>{p.badge}</div>}
               <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 8 }}>{p.name}</div>
               <div style={{ marginBottom: 4 }}><span style={{ fontSize: 42, fontWeight: 900, color: p.color, letterSpacing: -1 }}>{p.price}</span><span style={{ fontSize: 14, color: "#4b5563" }}>{p.period}</span></div>
               <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "20px 0" }} />
-              {p.features.map((f,j) => (<div key={j} style={{ display: "flex", gap: 10, marginBottom: 10 }}><span style={{ color: C.green, fontWeight: 700, fontSize: 14, flexShrink: 0 }}>✓</span><span style={{ fontSize: 13, color: "#4b5563" }}>{f}</span></div>))}
-              <button onClick={p.ctaAction} style={{ width: "100%", marginTop: 24, padding: "12px", borderRadius: 12, background: p.highlight ? "linear-gradient(135deg, #22c55e, #16a34a)" : "transparent", color: p.highlight ? C.white : p.color, border: `2px solid ${p.color}66`, cursor: p.ctaAction ? "pointer" : "default", fontSize: 14, fontWeight: 700, boxShadow: p.highlight ? "0 4px 16px rgba(34,197,94,0.3)" : "none" }}>{p.cta}</button>
+              {p.features.map((f, j) => (<div key={j} style={{ display: "flex", gap: 10, marginBottom: 10 }}><span style={{ color: C.green, fontWeight: 700, fontSize: 14, flexShrink: 0 }}>✓</span><span style={{ fontSize: 13, color: "#4b5563" }}>{f}</span></div>))}
+              <button onClick={p.ctaAction} style={{ width: "100%", marginTop: 24, padding: "12px", borderRadius: 12, background: p.highlight ? "linear-gradient(135deg, #22c55e, #16a34a)" : "transparent", color: p.highlight ? C.white : p.color, border: `2px solid ${p.color}66`, cursor: p.ctaAction ? "pointer" : "default", fontSize: 14, fontWeight: 700, boxShadow: p.highlight ? "0 4px 16px rgba(34,197,94,0.3)" : "none", transition: "all 0.2s ease" }}>{p.cta}</button>
             </div>
           ))}
         </div>
@@ -1859,12 +1879,15 @@ function Homepage({ onGetStarted }) {
               { icon: "🔌", title: "REST API",       desc: "Integrate QuantumGuard into your stack with our REST API.",     steps: ["POST /scan-github","POST /check-agility","POST /analyze-tls"] },
               { icon: "🔄", title: "GitHub Actions", desc: "Auto-scan on every push with our CI/CD workflow.",              steps: ["Copy workflow YAML","Add to .github/workflows/","Push to trigger"] },
               { icon: "🖥",  title: "Self-Hosting",  desc: "Run QuantumGuard inside your own network.",                    steps: ["Clone the repo","Run Docker container","Code never leaves you"] },
-            ].map((d,i) => (
-              <div key={i} style={{ background: "rgba(34,197,94,0.04)", borderRadius: 16, padding: 26, border: "1px solid rgba(34,197,94,0.15)" }}>
+            ].map((d, i) => (
+              <div key={i} style={{ background: "rgba(34,197,94,0.04)", borderRadius: 16, padding: 26, border: "1px solid rgba(34,197,94,0.15)", transition: "border-color 0.25s ease, transform 0.25s ease" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(34,197,94,0.35)"; e.currentTarget.style.transform = "translateY(-3px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(34,197,94,0.15)"; e.currentTarget.style.transform = "translateY(0)"; }}
+              >
                 <div style={{ fontSize: 30, marginBottom: 12 }}>{d.icon}</div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: C.text, marginBottom: 8 }}>{d.title}</div>
                 <div style={{ fontSize: 13, color: "#4b5563", marginBottom: 16, lineHeight: 1.65 }}>{d.desc}</div>
-                {d.steps.map((step,j) => (
+                {d.steps.map((step, j) => (
                   <div key={j} style={{ display: "flex", gap: 10, marginBottom: 7, alignItems: "center" }}>
                     <div style={{ width: 20, height: 20, borderRadius: "50%", background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{j+1}</div>
                     <span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>{step}</span>
@@ -1882,13 +1905,15 @@ function Homepage({ onGetStarted }) {
         <h2 style={{ fontSize: 42, fontWeight: 900, color: C.text, marginBottom: 16, letterSpacing: -0.5, position: "relative" }}>Ready to secure your code?</h2>
         <p style={{ color: "#4b5563", marginBottom: 36, fontSize: 16, maxWidth: 480, margin: "0 auto 36px", lineHeight: 1.7, position: "relative" }}>Join developers scanning their codebases for quantum vulnerabilities before the 2030 deadline.</p>
         <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap", position: "relative" }}>
-          <button
-            onClick={onGetStarted}
+          <button onClick={onGetStarted}
             style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, padding: "15px 34px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 16, fontWeight: 800, boxShadow: "0 4px 20px rgba(34,197,94,0.4)", transition: "all 0.2s ease" }}
             onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 30px rgba(34,197,94,0.55)"; }}
             onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(34,197,94,0.4)"; }}
           >🛡 Start Scanning Now — Free</button>
-          <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer" style={{ background: "rgba(34,197,94,0.08)", color: C.green, padding: "15px 34px", borderRadius: 12, border: "1.5px solid rgba(34,197,94,0.3)", fontSize: 16, fontWeight: 700, textDecoration: "none" }}>★ Star on GitHub</a>
+          <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer" style={{ background: "rgba(34,197,94,0.08)", color: C.green, padding: "15px 34px", borderRadius: 12, border: "1.5px solid rgba(34,197,94,0.3)", fontSize: 16, fontWeight: 700, textDecoration: "none", transition: "all 0.2s ease" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(34,197,94,0.16)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(34,197,94,0.08)"; }}
+          >★ Star on GitHub</a>
         </div>
       </div>
 
@@ -1902,7 +1927,10 @@ function Homepage({ onGetStarted }) {
           </div>
           <div style={{ display: "flex", gap: 20, flexWrap: "wrap", alignItems: "center" }}>
             {[["About","/about.html"],["Privacy Policy","/privacy.html"],["Terms","/terms.html"]].map(([label,href],i) => (
-              <a key={i} href={href} style={{ color: "#374151", fontSize: 13, textDecoration: "none", fontWeight: 500 }}>{label}</a>
+              <a key={i} href={href} style={{ color: "#374151", fontSize: 13, textDecoration: "none", fontWeight: 500, transition: "color 0.2s ease" }}
+                onMouseEnter={e => e.currentTarget.style.color = C.green}
+                onMouseLeave={e => e.currentTarget.style.color = "#374151"}
+              >{label}</a>
             ))}
             <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer" style={{ color: C.green, fontSize: 13, textDecoration: "none", fontWeight: 600 }}>GitHub ↗</a>
           </div>
@@ -1913,7 +1941,7 @@ function Homepage({ onGetStarted }) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// APP ROOT
+// UNIFIED RISK PAGE
 // ══════════════════════════════════════════════════════════════
 function UnifiedRiskPage() {
   const [github, setGithub] = useState("https://github.com/dlitz/pycrypto");
@@ -1964,10 +1992,8 @@ function UnifiedRiskPage() {
   const scoreBg     = (s) => s >= 70 ? "rgba(34,197,94,0.1)"  : s >= 40 ? "rgba(245,158,11,0.1)"  : "rgba(239,68,68,0.1)";
   const scoreBorder = (s) => s >= 70 ? "rgba(34,197,94,0.3)"  : s >= 40 ? "rgba(245,158,11,0.3)"  : "rgba(239,68,68,0.3)";
   const riskLevel   = (s) => s >= 70 ? "LOW RISK" : s >= 40 ? "MODERATE RISK" : "CRITICAL RISK";
-
   const sevColor = (sev) => sev === "CRITICAL" ? C.critical : sev === "HIGH" ? C.amber : C.medium;
   const sevBg    = (sev) => SEV_BG[sev] || SEV_BG.MEDIUM;
-
   const ctrlStyle = (status) => ({
     PASS: { bg: "rgba(34,197,94,0.1)",  color: C.green,   dot: C.green,    border: "rgba(34,197,94,0.3)"  },
     WARN: { bg: "rgba(245,158,11,0.1)", color: C.amber,   dot: C.amber,    border: "rgba(245,158,11,0.3)" },
@@ -1979,17 +2005,11 @@ function UnifiedRiskPage() {
     setLoading(true); setError(null); setData(null);
     startProgress();
     try {
-      const res = await fetch(`${API}/unified-risk`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ github_url: github, domain }),
-      });
+      const res = await fetch(`${API}/unified-risk`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ github_url: github, domain }) });
       const json = await res.json();
       if (!res.ok) throw new Error(json.detail || "Scan failed");
       stopProgress(); setData(json);
-    } catch (e) {
-      stopProgress(); setError(typeof e.message === "string" ? e.message : "Scan failed.");
-    }
+    } catch (e) { stopProgress(); setError(typeof e.message === "string" ? e.message : "Scan failed."); }
     setLoading(false);
   };
 
@@ -1998,21 +2018,9 @@ function UnifiedRiskPage() {
     const ur = data.unified_risk || {};
     const cs = ur.component_scores || {};
     const ss = data.finding_summary?.severity_summary || {};
-    const rows = [
-      "Metric,Value",
-      `Unified Risk Score,${Math.round(ur.quantum_risk_score || 0)}`,
-      `Risk Level,${ur.risk_level || ""}`,
-      `Code Crypto Score,${Math.round(cs.code_crypto_score || 0)}`,
-      `Crypto Agility Score,${Math.round(cs.crypto_agility_score || 0)}`,
-      `TLS Score,${Math.round(cs.tls_score || 0)}`,
-      `Critical Findings,${ss.CRITICAL || 0}`,
-      `High Findings,${ss.HIGH || 0}`,
-      `Medium Findings,${ss.MEDIUM || 0}`,
-    ].join("\n");
+    const rows = ["Metric,Value",`Unified Risk Score,${Math.round(ur.quantum_risk_score || 0)}`,`Risk Level,${ur.risk_level || ""}`,`Code Crypto Score,${Math.round(cs.code_crypto_score || 0)}`,`Crypto Agility Score,${Math.round(cs.crypto_agility_score || 0)}`,`TLS Score,${Math.round(cs.tls_score || 0)}`,`Critical Findings,${ss.CRITICAL || 0}`,`High Findings,${ss.HIGH || 0}`,`Medium Findings,${ss.MEDIUM || 0}`].join("\n");
     const blob = new Blob([rows], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "unified-risk.csv"; a.click();
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "unified-risk.csv"; a.click();
   };
 
   const ur           = data?.unified_risk || {};
@@ -2028,7 +2036,6 @@ function UnifiedRiskPage() {
 
   return (
     <div style={{ padding: 20 }}>
-      {/* Header / Input Card */}
       <div style={{ background: C.panel, border: `1px solid ${C.panelBorder}`, borderTop: `3px solid ${C.green}`, borderRadius: 14, padding: "20px 22px", marginBottom: 16, boxShadow: "0 4px 20px rgba(0,0,0,0.4)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, marginBottom: 18 }}>
           <div>
@@ -2036,9 +2043,7 @@ function UnifiedRiskPage() {
               <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg, #22c55e, #16a34a)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, boxShadow: "0 0 10px rgba(34,197,94,0.3)" }}>🧠</div>
               <h2 style={{ fontSize: 20, fontWeight: 800, color: C.text }}>Unified Risk Dashboard</h2>
             </div>
-            <p style={{ fontSize: 13, color: C.muted, maxWidth: 460, lineHeight: 1.6 }}>
-              Combines code scanning, TLS analysis and crypto agility into a single quantum risk score with NIST-aligned remediation guidance.
-            </p>
+            <p style={{ fontSize: 13, color: C.muted, maxWidth: 460, lineHeight: 1.6 }}>Combines code scanning, TLS analysis and crypto agility into a single quantum risk score with NIST-aligned remediation guidance.</p>
           </div>
           {data && (
             <div style={{ background: scoreBg(score), border: `1px solid ${scoreBorder(score)}`, borderRadius: 12, padding: "14px 20px", textAlign: "center", minWidth: 130 }}>
@@ -2051,15 +2056,11 @@ function UnifiedRiskPage() {
             </div>
           )}
         </div>
-
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
           <input value={github} onChange={e => setGithub(e.target.value)} placeholder="https://github.com/user/repo" style={{ padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${C.panelBorder}`, background: C.input, color: C.text, fontSize: 13 }} />
           <input value={domain} onChange={e => setDomain(e.target.value)} placeholder="domain.com" style={{ padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${C.panelBorder}`, background: C.input, color: C.text, fontSize: 13 }} />
         </div>
-        <button onClick={handleScan} disabled={loading} style={{ padding: "9px 24px", borderRadius: 8, background: loading ? C.greenDark : "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: loading ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600, boxShadow: loading ? "none" : "0 4px 12px rgba(34,197,94,0.3)" }}>
-          {loading ? "Scanning..." : "▶ Run Unified Scan"}
-        </button>
-
+        <button onClick={handleScan} disabled={loading} style={{ padding: "9px 24px", borderRadius: 8, background: loading ? C.greenDark : "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: loading ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600, boxShadow: loading ? "none" : "0 4px 12px rgba(34,197,94,0.3)", transition: "all 0.2s ease" }}>{loading ? "Scanning..." : "▶ Run Unified Scan"}</button>
         {loading && (
           <div style={{ marginTop: 12, background: "rgba(34,197,94,0.06)", borderRadius: 10, padding: "14px 16px", border: "1px solid rgba(34,197,94,0.2)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: C.green, marginBottom: 8, fontWeight: 500, alignItems: "center" }}>
@@ -2077,7 +2078,6 @@ function UnifiedRiskPage() {
         {error && <div style={{ marginTop: 10, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 8, padding: "10px 14px", color: C.red, fontSize: 13 }}>⚠ {error}</div>}
       </div>
 
-      {/* Empty State */}
       {!data && !loading && (
         <div style={{ background: C.panel, border: `1px solid ${C.panelBorder}`, borderRadius: 14, padding: "56px 24px", textAlign: "center", boxShadow: "0 4px 16px rgba(0,0,0,0.3)" }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🧠</div>
@@ -2088,12 +2088,11 @@ function UnifiedRiskPage() {
 
       {data && (
         <>
-          {/* CHANGE 2: 4-card dashboard for Unified page */}
           <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 16 }}>
-            <ScoreCard label="Quantum Risk Score"  value={score}        color={scoreColor(score)}        icon="🧠" desc={ur.risk_level || riskLevel(score)} />
-            <ScoreCard label="Code Scanner Score"  value={codeScore}    color={scoreColor(codeScore)}    icon="🔍" desc={codeScore >= 70 ? "Good crypto hygiene" : "Vulnerable algorithms found"} />
+            <ScoreCard label="Quantum Risk Score"   value={score}        color={scoreColor(score)}        icon="🧠" desc={ur.risk_level || riskLevel(score)} />
+            <ScoreCard label="Code Scanner Score"   value={codeScore}    color={scoreColor(codeScore)}    icon="🔍" desc={codeScore >= 70 ? "Good crypto hygiene" : "Vulnerable algorithms found"} />
             <ScoreCard label="Crypto Agility Score" value={agilityScore} color={scoreColor(agilityScore)} icon="🔬" desc={agilityScore >= 70 ? "Highly configurable" : "Hardcoded crypto detected"} />
-            <ScoreCard label="TLS Security Score"  value={tlsScore}     color={scoreColor(tlsScore)}     icon="🔐" desc={tlsScore >= 70 ? "TLS 1.3 ready" : "TLS upgrade needed"} />
+            <ScoreCard label="TLS Security Score"   value={tlsScore}     color={scoreColor(tlsScore)}     icon="🔐" desc={tlsScore >= 70 ? "TLS 1.3 ready" : "TLS upgrade needed"} />
           </div>
 
           {totalFindings > 0 && (
@@ -2107,18 +2106,14 @@ function UnifiedRiskPage() {
 
           <div className="charts-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
             <Panel title="Component breakdown" accent>
-              {[
-                ["Code crypto",    codeScore,    scoreColor(codeScore)],
-                ["Crypto agility", agilityScore, scoreColor(agilityScore)],
-                ["TLS security",   tlsScore,     scoreColor(tlsScore)],
-              ].map(([label, val, col]) => (
+              {[["Code crypto", codeScore, scoreColor(codeScore)], ["Crypto agility", agilityScore, scoreColor(agilityScore)], ["TLS security", tlsScore, scoreColor(tlsScore)]].map(([label, val, col]) => (
                 <div key={label} style={{ marginBottom: 14 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
                     <span style={{ color: C.muted, fontWeight: 500 }}>{label}</span>
                     <span style={{ color: col, fontWeight: 700 }}>{val}/100</span>
                   </div>
                   <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 4, height: 8 }}>
-                    <div style={{ background: col, height: 8, borderRadius: 4, width: `${val}%`, transition: "width 0.6s", boxShadow: `0 0 6px ${col}55` }} />
+                    <div style={{ background: col, height: 8, borderRadius: 4, width: `${val}%`, transition: "width 0.6s ease", boxShadow: `0 0 6px ${col}55` }} />
                   </div>
                 </div>
               ))}
@@ -2132,7 +2127,7 @@ function UnifiedRiskPage() {
                         <span style={{ color: C.muted }}>{val} ({totalFindings > 0 ? Math.round(val / totalFindings * 100) : 0}%)</span>
                       </div>
                       <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 4, height: 6 }}>
-                        <div style={{ background: col, height: 6, borderRadius: 4, width: `${totalFindings > 0 ? Math.round(val / totalFindings * 100) : 0}%`, transition: "width 0.6s" }} />
+                        <div style={{ background: col, height: 6, borderRadius: 4, width: `${totalFindings > 0 ? Math.round(val / totalFindings * 100) : 0}%`, transition: "width 0.6s ease" }} />
                       </div>
                     </div>
                   ))}
@@ -2145,9 +2140,7 @@ function UnifiedRiskPage() {
                 const sc = ctrlStyle(ctrl.status);
                 return (
                   <div key={ctrl.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 9, fontSize: 12 }}>
-                    <span style={{ color: C.muted }}>
-                      <span style={{ fontFamily: "monospace", color: C.green, fontWeight: 700 }}>{ctrl.id}</span> — {ctrl.name}
-                    </span>
+                    <span style={{ color: C.muted }}><span style={{ fontFamily: "monospace", color: C.green, fontWeight: 700 }}>{ctrl.id}</span> — {ctrl.name}</span>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: sc.bg, color: sc.color, fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 100, border: `1px solid ${sc.border}`, whiteSpace: "nowrap", marginLeft: 8 }}>
                       <span style={{ width: 5, height: 5, borderRadius: "50%", background: sc.dot, display: "inline-block" }} />
                       {ctrl.status}
@@ -2168,9 +2161,7 @@ function UnifiedRiskPage() {
                     {f.confidence && <span style={{ fontSize: 10, color: C.muted }}>Confidence: {f.confidence}</span>}
                     <span style={{ marginLeft: "auto", fontSize: 11, color: C.muted }}>Line {f.line}</span>
                   </div>
-                  <div style={{ fontFamily: "monospace", fontSize: 11, color: C.green, fontWeight: 600, marginBottom: 4, wordBreak: "break-all" }}>
-                    {f.file?.split("/").pop()}
-                  </div>
+                  <div style={{ fontFamily: "monospace", fontSize: 11, color: C.green, fontWeight: 600, marginBottom: 4, wordBreak: "break-all" }}>{f.file?.split("/").pop()}</div>
                   {f.recommended_fix && (
                     <div style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: 6, padding: "6px 10px", display: "flex", gap: 8, alignItems: "center" }}>
                       <span style={{ fontSize: 10, fontWeight: 700, color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.05em" }}>Fix</span>
@@ -2184,9 +2175,7 @@ function UnifiedRiskPage() {
 
           {ur.business_summary && (
             <Panel title="Business risk summary" accent>
-              <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.75, background: "rgba(34,197,94,0.05)", padding: "12px 16px", borderRadius: 8, border: "1px solid rgba(34,197,94,0.15)" }}>
-                {ur.business_summary}
-              </div>
+              <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.75, background: "rgba(34,197,94,0.05)", padding: "12px 16px", borderRadius: 8, border: "1px solid rgba(34,197,94,0.15)" }}>{ur.business_summary}</div>
             </Panel>
           )}
 
@@ -2201,97 +2190,7 @@ function UnifiedRiskPage() {
 
           <Panel title="Export & share" accent>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button
-                onClick={() => {
-                  const win = window.open("", "_blank");
-                  const sc = scoreColor(score);
-                  const statusBg = score >= 70 ? "#dcfce7" : score >= 40 ? "#fef3c7" : "#fee2e2";
-                  const statusBorder = score >= 70 ? "#86efac" : score >= 40 ? "#fcd34d" : "#fca5a5";
-                  const sevCol = (s) => s === "CRITICAL" ? "#ef4444" : s === "HIGH" ? "#f59e0b" : "#eab308";
-                  const sevBgCol = (s) => s === "CRITICAL" ? "#fee2e2" : s === "HIGH" ? "#fef3c7" : "#fef9c3";
-                  const _total = (ss.CRITICAL||0) + (ss.HIGH||0) + (ss.MEDIUM||0) + (ss.LOW||0);
-                  win.document.write(`<!DOCTYPE html><html><head><title>QuantumGuard Unified Risk Report</title>
-                  <style>
-                    *{box-sizing:border-box;margin:0;padding:0}
-                    body{font-family:"Segoe UI",sans-serif;background:#fff;color:#1a1a1a;padding:40px;font-size:13px}
-                    @media print{body{padding:20px}.no-print{display:none}}
-                    .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:20px;border-bottom:3px solid #22c55e;margin-bottom:24px}
-                    .logo{display:flex;align-items:center;gap:10px}
-                    .logo-icon{width:40px;height:40px;background:#22c55e;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff}
-                    .logo-name{font-size:22px;font-weight:900}.logo-name span{color:#22c55e}
-                    .score-box{text-align:center;background:${statusBg};border:2px solid ${statusBorder};border-radius:12px;padding:14px 22px;min-width:140px}
-                    .score-num{font-size:44px;font-weight:900;color:${sc};line-height:1}
-                    .score-label{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-top:2px}
-                    .score-status{font-size:11px;font-weight:700;color:${sc};margin-top:6px;text-transform:uppercase}
-                    .meta{display:flex;gap:24px;margin-bottom:20px;flex-wrap:wrap}
-                    .meta-item{font-size:11px;color:#6b7280}.meta-item strong{color:#374151}
-                    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
-                    .stat{background:#f8faf8;border:1px solid #e2f0e2;border-radius:10px;padding:14px;border-top:3px solid var(--c)}
-                    .stat-val{font-size:28px;font-weight:900;color:var(--c);line-height:1}
-                    .stat-key{font-size:11px;color:#6b7280;margin-top:4px}
-                    table{width:100%;border-collapse:collapse;font-size:12px}
-                    th{background:#f0fdf4;padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;font-weight:700;border-bottom:2px solid #d1fae5}
-                    td{padding:9px 12px;border-bottom:1px solid #f0f4f0;vertical-align:top;color:#374151}
-                    .sev{font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;display:inline-block}
-                    .fix{color:#2563eb;font-size:11px;font-weight:600}
-                    .footer{margin-top:32px;padding-top:16px;border-top:1px solid #e2f0e2;display:flex;justify-content:space-between;font-size:11px;color:#9ca3af;flex-wrap:wrap;gap:8px}
-                    .print-btn{background:#22c55e;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:20px}
-                  </style></head><body>
-                  <div class="no-print" style="margin-bottom:16px">
-                    <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
-                  </div>
-                  <div class="header">
-                    <div>
-                      <div class="logo"><div class="logo-icon">⚛</div><span class="logo-name"><span>Quantum</span>Guard</span></div>
-                      <div style="margin-top:8px;font-size:13px;font-weight:700;color:#374151">Unified Risk Report</div>
-                      <div style="margin-top:4px;font-size:11px;color:#6b7280">Post-Quantum Cryptography Assessment</div>
-                    </div>
-                    <div class="score-box">
-                      <div class="score-num">${score}</div>
-                      <div class="score-label">Unified Score / 100</div>
-                      <div class="score-status">${ur.risk_level || riskLevel(score)}</div>
-                    </div>
-                  </div>
-                  <div class="meta">
-                    <div class="meta-item">Generated <strong>${new Date().toLocaleString()}</strong></div>
-                    <div class="meta-item">GitHub <strong>${github}</strong></div>
-                    <div class="meta-item">Domain <strong>${domain}</strong></div>
-                    <div class="meta-item">Standard <strong>NIST SP 800-53 Rev 5</strong></div>
-                    <div class="meta-item">Report ID <strong>#QG-UNIFIED-${Date.now()}</strong></div>
-                  </div>
-                  ${ur.business_summary ? `<div style="background:#fff8f8;border:1px solid #fca5a5;border-left:4px solid #ef4444;border-radius:8px;padding:14px 16px;margin-bottom:20px;font-size:13px;color:#374151;line-height:1.7">⚠ <strong>Business Risk:</strong> ${ur.business_summary}</div>` : ""}
-                  <div class="stats">
-                    <div class="stat" style="--c:#22c55e"><div class="stat-val">${score}</div><div class="stat-key">Unified Score</div></div>
-                    <div class="stat" style="--c:#ef4444"><div class="stat-val">${ss.CRITICAL || 0}</div><div class="stat-key">Critical Findings</div></div>
-                    <div class="stat" style="--c:#f59e0b"><div class="stat-val">${ss.HIGH || 0}</div><div class="stat-key">High Findings</div></div>
-                    <div class="stat" style="--c:#eab308"><div class="stat-val">${ss.MEDIUM || 0}</div><div class="stat-key">Medium Findings</div></div>
-                  </div>
-                  ${topFindings.length > 0 ? `
-                  <div style="margin-bottom:12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#22c55e">Top Findings — ${topFindings.length} shown</div>
-                  <table>
-                    <thead><tr><th>Severity</th><th>File</th><th>Line</th><th>Vulnerability</th><th>Confidence</th><th>Fix</th></tr></thead>
-                    <tbody>
-                      ${topFindings.map(f => `<tr>
-                        <td><span class="sev" style="background:${sevBgCol(f.severity)};color:${sevCol(f.severity)}">${f.severity}</span></td>
-                        <td style="font-family:monospace;font-size:11px;color:#15803d">${(f.file||"").split("/").pop()}</td>
-                        <td style="color:#6b7280;font-family:monospace">${f.line||"—"}</td>
-                        <td style="font-weight:600">${f.vulnerability||"—"}</td>
-                        <td style="color:#6b7280">${f.confidence||"—"}</td>
-                        <td class="fix">✦ ${f.recommended_fix||"—"}</td>
-                      </tr>`).join("")}
-                    </tbody>
-                  </table>` : ""}
-                  <div class="footer">
-                    <span>QuantumGuard · NIST SP 800-53 Rev 5 · Mangsri QuantumGuard LLC · Montgomery, AL</span>
-                    <span>Generated ${new Date().toLocaleDateString()}</span>
-                  </div>
-                  </body></html>`);
-                  win.document.close();
-                  setTimeout(() => win.print(), 400);
-                }}
-                style={{ padding: "8px 16px", borderRadius: 8, background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, boxShadow: "0 2px 8px rgba(34,197,94,0.3)" }}
-              >📄 PDF Report</button>
-              <button onClick={handleCSV} style={{ padding: "8px 16px", borderRadius: 8, background: "rgba(34,197,94,0.1)", color: C.green, border: "1px solid rgba(34,197,94,0.3)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>📊 CSV Export</button>
+              <button onClick={handleCSV} style={{ padding: "8px 16px", borderRadius: 8, background: "rgba(34,197,94,0.1)", color: C.green, border: "1px solid rgba(34,197,94,0.3)", cursor: "pointer", fontSize: 12, fontWeight: 600, transition: "all 0.2s ease" }}>📊 CSV Export</button>
             </div>
           </Panel>
         </>
@@ -2300,6 +2199,9 @@ function UnifiedRiskPage() {
   );
 }
 
+// ══════════════════════════════════════════════════════════════
+// APP ROOT
+// ══════════════════════════════════════════════════════════════
 export default function App() {
   const [user, setUser] = useState(null);
   const [active, setActive] = useState("home");
@@ -2327,7 +2229,6 @@ export default function App() {
 
   return (
     <>
-      {/* Pulse animation for loading indicators */}
       <style>{`
         @keyframes pulse-ring {
           0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
