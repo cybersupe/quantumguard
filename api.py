@@ -131,73 +131,101 @@ FORWARD_SECRECY_KX = ["ECDHE", "DHE", "X25519", "X448"]
 
 
 def _analyze_tls_score(tls_version: str, cipher_name: str, cipher_bits: int) -> dict:
+    """
+    Analyze TLS configuration with correct TLS 1.3 handling.
+
+    Important truth:
+    - TLS 1.3 always provides forward secrecy.
+    - TLS 1.3 cipher suites do not show ECDHE/DHE in the cipher name.
+    - quantum_safe=True only when hybrid/post-quantum KEM is actually detected.
+    """
     score = 0
     issues = []
     strengths = []
     labels = []
 
-    cipher_upper = cipher_name.upper()
+    cipher_upper = (cipher_name or "").upper()
 
+    # ── TLS VERSION SCORING ───────────────────────────────
     if tls_version == "TLSv1.3":
         score += 30
-        strengths.append("TLS 1.3 — latest standard")
+        strengths.append("TLS 1.3 — modern and forward-secure")
     elif tls_version == "TLSv1.2":
-        score += 15
-        issues.append("TLS 1.2 detected — upgrade to TLS 1.3 recommended")
+        score += 20
+        strengths.append("TLS 1.2 detected")
+        issues.append("TLS 1.2 is still widely used, but TLS 1.3 is recommended")
     elif tls_version in ("TLSv1.1", "TLSv1.0"):
-        score += 0
-        issues.append(f"{tls_version} is deprecated and insecure — upgrade to TLS 1.3 immediately")
+        issues.append(f"{tls_version} is deprecated and insecure — upgrade to TLS 1.3")
     else:
-        score += 0
         issues.append(f"Unknown TLS version: {tls_version}")
 
+    # ── CIPHER STRENGTH SCORING ───────────────────────────
     if any(strong in cipher_upper for strong in STRONG_CIPHERS):
-        score += 40
-        strengths.append("AES-256/ChaCha20 — quantum-resilient symmetric encryption")
+        score += 35
+        strengths.append("Strong symmetric encryption detected")
     elif any(ok in cipher_upper for ok in ACCEPTABLE_CIPHERS):
         score += 20
-        issues.append(
-            "AES-128 detected — secure classically, but Grover's algorithm reduces effective "
-            "quantum security to ~64 bits. Upgrade to AES-256 for stronger quantum resilience."
-        )
+        issues.append("AES-128 is secure today, but AES-256 is preferred for long-term quantum resilience")
     elif cipher_bits and cipher_bits >= 256:
         score += 30
+        strengths.append(f"{cipher_bits}-bit cipher strength detected")
     elif cipher_bits and cipher_bits >= 128:
         score += 15
-        issues.append(f"Cipher key size {cipher_bits}-bit — recommend 256-bit minimum for quantum resilience")
+        issues.append(f"{cipher_bits}-bit cipher detected — AES-256 is recommended")
     else:
         issues.append("Weak or unknown cipher strength")
 
+    # ── PQC / FORWARD SECRECY LOGIC ───────────────────────
     has_pqc_kx = any(pqc in cipher_upper for pqc in PQC_INDICATORS)
-    has_forward_secrecy = any(kx in cipher_upper for kx in FORWARD_SECRECY_KX)
+
+    # Correct fix:
+    # TLS 1.3 always has forward secrecy, even when cipher name is TLS_AES_256_GCM_SHA384.
+    if tls_version == "TLSv1.3":
+        has_forward_secrecy = True
+        rsa_key_exchange = False
+    elif has_pqc_kx:
+        has_forward_secrecy = True
+        rsa_key_exchange = False
+    else:
+        has_forward_secrecy = any(kx in cipher_upper for kx in FORWARD_SECRECY_KX)
+        rsa_key_exchange = "RSA" in cipher_upper and not has_forward_secrecy
 
     if has_pqc_kx:
-        score += 20
-        strengths.append("Post-Quantum / Hybrid KEM key exchange detected!")
+        score += 25
+        strengths.append("Hybrid post-quantum key exchange detected")
+    elif tls_version == "TLSv1.3":
+        score += 10
+        strengths.append("TLS 1.3 provides forward secrecy")
+        issues.append("Not post-quantum safe yet — monitor hybrid PQC TLS adoption")
     elif has_forward_secrecy:
         score += 10
-        strengths.append("Forward secrecy via ECDHE/DHE")
-        issues.append(
-            "ECDHE/DHE key exchange provides forward secrecy but is NOT quantum-safe. "
-            "Shor's Algorithm will break ECDH. Upgrade to CRYSTALS-Kyber (ML-KEM FIPS 203) hybrid."
-        )
+        strengths.append("Forward secrecy detected")
+        issues.append("Classical ECDHE/DHE is forward-secure today but not quantum-safe")
     else:
-        issues.append("No forward secrecy detected — static RSA key exchange is quantum-vulnerable")
+        issues.append("No forward secrecy detected — possible static RSA key exchange")
 
     quantum_safe = has_pqc_kx
 
+    # ── LABELS ─────────────────────────────────────────────
     if quantum_safe:
         labels.append("Post-Quantum Safe")
-    elif tls_version == "TLSv1.3" and any(strong in cipher_upper for strong in STRONG_CIPHERS):
+    elif tls_version == "TLSv1.3":
         labels.append("Modern TLS Secure")
         labels.append("Not Post-Quantum Safe Yet")
-        labels.append("PQC Upgrade Recommended")
-    elif tls_version in ("TLSv1.3", "TLSv1.2"):
-        labels.append("Not Post-Quantum Safe Yet")
-        labels.append("PQC Upgrade Recommended")
+        labels.append("PQC Migration Recommended")
+    elif tls_version == "TLSv1.2":
+        labels.append("Classically Secure")
+        labels.append("Upgrade to TLS 1.3 Recommended")
+        labels.append("PQC Migration Recommended")
     else:
         labels.append("Insecure TLS Configuration")
-        labels.append("PQC Upgrade Required")
+
+    quantum_explanation = (
+        "Hybrid post-quantum key exchange was detected. This is aligned with future PQC migration."
+        if quantum_safe else
+        "This server uses classical TLS cryptography. It can be secure today if properly configured, "
+        "but it is not post-quantum safe yet because RSA/ECC/ECDHE may be vulnerable to future quantum attacks."
+    )
 
     score = max(0, min(100, score))
 
@@ -209,6 +237,8 @@ def _analyze_tls_score(tls_version: str, cipher_name: str, cipher_bits: int) -> 
         "issues": issues,
         "has_forward_secrecy": has_forward_secrecy,
         "has_pqc_kex": has_pqc_kx,
+        "rsa_key_exchange": rsa_key_exchange,
+        "quantum_explanation": quantum_explanation,
     }
 
 
@@ -227,27 +257,27 @@ def _calculate_tls_grade(score: int, quantum_safe: bool, tls_version: str, issue
     elif score < 65:
         grade = "C"
         color = "#d97706"
-        description = "Average — several issues need attention"
+        description = "Average — improvements recommended"
     elif score < 80:
         grade = "B"
         color = "#f59e0b"
         description = "Good — some improvements recommended"
-    elif score >= 95 and quantum_safe and tls_version == "TLSv1.3" and len(issues) == 0:
+    elif quantum_safe and tls_version == "TLSv1.3":
         grade = "A+"
         color = "#16a34a"
-        description = "Exceptional — post-quantum safe with perfect configuration"
-    elif score >= 80 and tls_version == "TLSv1.3":
+        description = "Excellent — post-quantum/hybrid TLS detected"
+    elif tls_version == "TLSv1.3":
         grade = "A"
         color = "#16a34a"
         description = "Strong — modern TLS configuration"
     else:
         grade = "B"
         color = "#f59e0b"
-        description = "Good — upgrade to TLS 1.3 recommended"
+        description = "Good — TLS 1.3 upgrade recommended"
 
     pqc_note = None
-    if grade in ("A+", "A") and not quantum_safe:
-        pqc_note = "Grade capped at A until PQC key exchange is deployed (CRYSTALS-Kyber FIPS 203)"
+    if grade in ("A", "B") and not quantum_safe:
+        pqc_note = "Not post-quantum safe yet. Monitor adoption of hybrid PQC TLS using ML-KEM/FIPS 203."
 
     return {
         "grade": grade,
@@ -255,8 +285,7 @@ def _calculate_tls_grade(score: int, quantum_safe: bool, tls_version: str, issue
         "grade_description": description,
         "pqc_note": pqc_note,
         "grade_breakdown": {
-            "tls_version_score": 30 if tls_version == "TLSv1.3" else 15 if tls_version == "TLSv1.2" else 0,
-            "cipher_score": score - (30 if tls_version == "TLSv1.3" else 15 if tls_version == "TLSv1.2" else 0),
+            "tls_version_score": 30 if tls_version == "TLSv1.3" else 20 if tls_version == "TLSv1.2" else 0,
             "quantum_ready": quantum_safe,
         }
     }
@@ -274,10 +303,11 @@ def _analyze_certificate(cert: dict) -> dict:
             exp_date = datetime.datetime.strptime(exp_str, "%b %d %H:%M:%S %Y %Z")
             days_remaining = (exp_date - datetime.datetime.utcnow()).days
             cert_info["days_until_expiry"] = days_remaining
+
             if days_remaining < 0:
-                cert_issues.append("CRITICAL: Certificate has already expired!")
+                cert_issues.append("CRITICAL: Certificate has already expired")
             elif days_remaining < 14:
-                cert_issues.append(f"URGENT: Certificate expires in {days_remaining} days!")
+                cert_issues.append(f"URGENT: Certificate expires in {days_remaining} days")
             elif days_remaining < 30:
                 cert_issues.append(f"WARNING: Certificate expires in {days_remaining} days — renew soon")
             elif days_remaining < 60:
@@ -287,11 +317,10 @@ def _analyze_certificate(cert: dict) -> dict:
 
     subject = dict(x[0] for x in cert.get("subject", []))
     issuer = dict(x[0] for x in cert.get("issuer", []))
+
     cert_info["subject_cn"] = subject.get("commonName", "")
     cert_info["issuer_cn"] = issuer.get("commonName", "")
-
-    san = cert.get("subjectAltName", [])
-    cert_info["san_count"] = len(san)
+    cert_info["san_count"] = len(cert.get("subjectAltName", []))
 
     return cert_info, cert_issues
 
@@ -475,17 +504,16 @@ async def analyze_tls(request: Request, body: dict):
         cert_info, cert_issues = _analyze_certificate(cert)
 
         if analysis["quantum_safe"]:
-            nist_recommendation = "Already using PQC — maintain and monitor NIST updates"
+            nist_recommendation = "Hybrid post-quantum TLS detected. Continue monitoring NIST PQC updates."
         elif tls_version == "TLSv1.3":
             nist_recommendation = (
-                "Upgrade key exchange to CRYSTALS-Kyber hybrid (X25519Kyber768) per NIST FIPS 203. "
-                "Google Chrome already supports this as an experiment."
+                "TLS 1.3 is modern and forward-secure. No immediate TLS downgrade issue found. "
+                "For long-term readiness, monitor hybrid post-quantum TLS adoption using ML-KEM/FIPS 203."
             )
         else:
             nist_recommendation = (
-                "Step 1: Upgrade to TLS 1.3. "
-                "Step 2: Upgrade cipher to AES-256-GCM. "
-                "Step 3: Deploy CRYSTALS-Kyber hybrid KEM per NIST FIPS 203."
+                "Upgrade to TLS 1.3 first. Then plan migration to hybrid post-quantum TLS "
+                "using NIST-approved algorithms such as ML-KEM/FIPS 203."
             )
 
         grade_info = _calculate_tls_grade(
@@ -515,6 +543,8 @@ async def analyze_tls(request: Request, body: dict):
             "certificate": cert_info,
             "has_forward_secrecy": analysis["has_forward_secrecy"],
             "has_pqc_key_exchange": analysis["has_pqc_kex"],
+            "rsa_key_exchange": analysis["rsa_key_exchange"],
+            "quantum_explanation": analysis["quantum_explanation"],
             "nist_recommendation": nist_recommendation,
             "nist_standard": "CRYSTALS-Kyber (ML-KEM) — NIST FIPS 203",
             "meta": {
