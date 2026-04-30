@@ -1188,7 +1188,39 @@ function TLSPage() {
           <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 16 }}>
             <Metric label="TLS Score" value={result.tls_score} suffix="/100" color={scoreColor} icon="🎯" desc={result.tls_score >= 70 ? "Quantum Ready" : "Needs Improvement"} />
             <Metric label="TLS Version" value={result.tls_version} color={result.tls_version === "TLSv1.3" ? C.green : C.amber} icon="🔒" desc={result.tls_version === "TLSv1.3" ? "Latest" : "Upgrade Needed"} />
-            <Metric label="Quantum Safe" value={result.quantum_safe ? "YES" : "NO"} color={result.quantum_safe ? C.green : C.red} icon={result.quantum_safe ? "✅" : "❌"} desc={result.quantum_safe ? "Post-quantum / hybrid KEM detected" : result.tls_version === "TLSv1.3" ? "Forward secure, not post-quantum yet" : result.rsa_key_exchange ? "Static RSA key exchange" : "Not post-quantum yet"} />
+            <Metric
+  label="Post-Quantum Readiness"
+  value={
+    result?.quantum_safe
+      ? "YES"
+      : result?.tls_version === "TLSv1.3"
+      ? "PARTIAL"
+      : "NO"
+  }
+  color={
+    result?.quantum_safe
+      ? C.green
+      : result?.tls_version === "TLSv1.3"
+      ? C.amber
+      : C.red
+  }
+  icon={
+    result?.quantum_safe
+      ? "✅"
+      : result?.tls_version === "TLSv1.3"
+      ? "⚠️"
+      : "❌"
+  }
+  desc={
+    result?.quantum_safe
+      ? "Post-quantum / hybrid TLS detected"
+      : result?.tls_version === "TLSv1.3"
+      ? "Secure today (forward secrecy), not quantum-resistant"
+      : result?.rsa_key_exchange
+      ? "Static RSA key exchange"
+      : "Not post-quantum yet"
+  }
+/>
             <Metric label="Key Size" value={result.cipher_bits} suffix=" bit" color={result.cipher_bits >= 256 ? C.green : C.amber} icon="🔑" desc={result.cipher_bits >= 256 ? "Strong" : "Upgrade Needed"} />
           </div>
           <Panel title="Cipher Suite Details" accent>
