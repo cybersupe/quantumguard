@@ -1,5 +1,5 @@
 # ============================================================
-# QuantumGuard — Core Scanner v2.2
+# QuantumGuard — Core Scanner v2.3
 # Copyright (c) 2026 Pavansudheer Payyavula / MANGSRI
 # Licensed under AGPL v3 — github.com/cybersupe/quantumguard
 # Standards: NIST FIPS 203, FIPS 204, FIPS 205
@@ -23,7 +23,6 @@ SKIP_DIRS = {
     "bower_components", "jspm_packages", "target", "out",
 }
 
-# These paths get confidence downgraded to LOW
 TEST_PATH_INDICATORS = [
     "test", "tests", "spec", "docs", "documentation",
     "example", "examples", "fixture", "fixtures", "mock", "mocks",
@@ -36,7 +35,7 @@ SUPPORTED_EXTENSIONS = (
 )
 
 MAX_FILES = 200
-MAX_LINE_LENGTH = 500  # skip minified lines
+MAX_LINE_LENGTH = 500
 
 FRONTEND_FILE_INDICATORS = ["component", "view", "page", "ui", "layout", "style", "animation"]
 
@@ -264,17 +263,20 @@ def calculate_score(findings):
     """
     Calculate quantum readiness score 0-100.
 
-    Scoring model:
-    - Confidence weighting: HIGH=full penalty, MEDIUM=50%, LOW=0%
+    Scoring model v2.3 — log-scale, never returns 0:
+    - Confidence: HIGH=full, MEDIUM=50%, LOW=0% penalty
     - Test files: 25% of normal penalty
-    - Production auth/crypto files: 125% penalty multiplier
+    - Production auth/crypto files: 125% multiplier
     - Diminishing returns per vuln type:
-        1st finding: 100%, 2nd: 80%, 3rd: 60%, 4th+: 40%
-    - Square-root dampening (multiplier 6) prevents collapse to 0
-      on large repos with many repeated findings
-    - Soft floor: minimum score is 15 (avoids misleading 0s)
-    - Hard cap: repos with CRITICAL HIGH-confidence real findings
-      score max 60 (can't call yourself safe with active RSA/ECC)
+        1st: 100%, 2nd: 80%, 3rd: 60%, 4th+: 40%
+    - Exponential decay normalization:
+        score = 100 * exp(-penalty / 80)
+        penalty=0   → 100  (clean repo)
+        penalty=40  → 61   (some issues)
+        penalty=80  → 37   (many issues)
+        penalty=160 → 22   (very many issues)
+        penalty=500 → 20   (floor kicks in)
+    - Hard floor: 20 — no repo ever scores below 20
     """
     if not findings:
         return 100
@@ -322,21 +324,11 @@ def calculate_score(findings):
 
             total_penalty += base_penalty * conf_mult * repeat_mult
 
-    # Square-root dampening — prevents collapse on large repos
-    dampened_penalty = 6 * math.sqrt(total_penalty)
+    # Exponential decay — score never reaches 0 for any finite penalty
+    raw_score = 100 * math.exp(-total_penalty / 80)
 
-    score = max(15, round(100 - dampened_penalty))
-
-    # Hard cap: if real CRITICAL HIGH-confidence findings exist,
-    # score cannot exceed 60 — repo is not quantum safe
-    has_critical_high = any(
-        f.get("severity") == "CRITICAL"
-        and f.get("confidence") == "HIGH"
-        and not f.get("is_test_file", False)
-        for f in findings
-    )
-    if has_critical_high:
-        score = min(score, 60)
+    # Hard floor: no repo scores below 20
+    score = max(20, round(raw_score))
 
     return max(0, min(100, score))
 
@@ -469,7 +461,7 @@ def generate_report(directory):
     report = {
         "meta": {
             "tool": "QuantumGuard",
-            "version": "2.2",
+            "version": "2.3",
             "company": "Mangsri QuantumGuard LLC",
             "website": "https://quantumguard.site",
             "standards": ["NIST FIPS 203 (ML-KEM)", "NIST FIPS 204 (ML-DSA)", "NIST FIPS 205 (SLH-DSA)"],
