@@ -390,6 +390,14 @@ function NISTReportPage() {
 
   return (
     <div style={{ padding: 20 }}>
+      {/* BUG FIX: Demo data notice — this page shows static sample data, not the user's live scan */}
+      <div style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.25)", borderRadius: 10, padding: "10px 16px", marginBottom: 14, display: "flex", alignItems: "flex-start", gap: 10 }}>
+        <span style={{ fontSize: 15, marginTop: 1 }}>ℹ️</span>
+        <div style={{ fontSize: 12, color: "#93c5fd", lineHeight: 1.6 }}>
+          <strong style={{ color: "#60a5fa" }}>Sample Report</strong> — This tab shows a fixed demo of QuantumGuard's own test files (<code style={{ fontSize: 11, background: "rgba(255,255,255,0.06)", padding: "1px 5px", borderRadius: 3 }}>tests/</code>).
+          To generate a live NIST report from <strong style={{ color: "#60a5fa" }}>your own repo</strong>, go to <strong style={{ color: "#60a5fa" }}>Scanner</strong> → run a scan → click <strong style={{ color: "#60a5fa" }}>🏛 NIST Report</strong>.
+        </div>
+      </div>
       {/* Header card */}
       <div style={{ background: C.panel, border: `1px solid ${C.panelBorder}`, borderRadius: 14, padding: "20px 22px", marginBottom: 16, boxShadow: "0 4px 20px rgba(0,0,0,0.4)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, borderTop: `3px solid ${C.green}` }}>
         <div>
@@ -972,20 +980,22 @@ function ScannerPage({ user }) {
             icon="🔍"
             desc={`${result.total_findings} vulnerabilities found`}
           />
-          <ScoreCard
-            label="Crypto Agility Score"
-            value={Math.max(0, result.quantum_readiness_score - 5)}
-            color={result.quantum_readiness_score >= 50 ? C.amber : C.red}
-            icon="🔬"
-            desc="Hardcoded crypto detected"
-          />
-          <ScoreCard
-            label="TLS Security Score"
-            value={sev.CRITICAL === 0 ? 85 : 40}
-            color={sev.CRITICAL === 0 ? C.green : C.amber}
-            icon="🔐"
-            desc="Based on crypto posture"
-          />
+          <div style={{ background: C.panel, border: `1px solid ${C.panelBorder}`, borderRadius: 14, padding: "20px", boxShadow: "0 4px 20px rgba(0,0,0,0.35)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+              <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>Crypto Agility Score</div>
+              <div style={{ fontSize: 20 }}>🔬</div>
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: C.muted, marginBottom: 6 }}>N/A</div>
+            <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>Run <strong style={{ color: C.green }}>Agility Checker</strong> tab for a real score</div>
+          </div>
+          <div style={{ background: C.panel, border: `1px solid ${C.panelBorder}`, borderRadius: 14, padding: "20px", boxShadow: "0 4px 20px rgba(0,0,0,0.35)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+              <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>TLS Security Score</div>
+              <div style={{ fontSize: 20 }}>🔐</div>
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: C.muted, marginBottom: 6 }}>N/A</div>
+            <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>Run <strong style={{ color: C.green }}>TLS Analyzer</strong> tab for a real score</div>
+          </div>
         </div>
       )}
 
@@ -1204,6 +1214,12 @@ function AgilityPage() {
           <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && handleCheck()} placeholder="https://github.com/username/repo" style={{ flex: 1, minWidth: 200, padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${C.panelBorder}`, background: C.input, color: C.text, fontSize: 13 }} />
           <button onClick={handleCheck} disabled={loading} style={{ padding: "9px 24px", borderRadius: 8, background: loading ? C.greenDark : "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: loading ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600, boxShadow: loading ? "none" : "0 4px 12px rgba(34,197,94,0.3)" }}>{loading ? "Analyzing..." : "🔬 Check Agility"}</button>
         </div>
+        {loading && (
+          <div style={{ marginTop: 12, background: "rgba(34,197,94,0.06)", borderRadius: 10, padding: "12px 16px", border: "1px solid rgba(34,197,94,0.2)", display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.green, flexShrink: 0, animation: "pulse-ring 1.2s ease-in-out infinite" }} />
+            <span style={{ fontSize: 12, color: C.green, fontWeight: 500 }}>Analyzing crypto agility...</span>
+          </div>
+        )}
         {error && <div style={{ marginTop: 12, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 8, padding: "10px 14px", color: C.red, fontSize: 13 }}>⚠ {error}</div>}
       </Panel>
       {result && (
@@ -1260,6 +1276,12 @@ function TLSPage() {
           <input value={domain} onChange={e => setDomain(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAnalyze()} placeholder="google.com or https://github.com" style={{ flex: 1, minWidth: 200, padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${C.panelBorder}`, background: C.input, color: C.text, fontSize: 13 }} />
           <button onClick={handleAnalyze} disabled={loading} style={{ padding: "9px 24px", borderRadius: 8, background: loading ? C.greenDark : "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, border: "none", cursor: loading ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600, boxShadow: loading ? "none" : "0 4px 12px rgba(34,197,94,0.3)" }}>{loading ? "Analyzing..." : "🔐 Analyze TLS"}</button>
         </div>
+        {loading && (
+          <div style={{ marginTop: 12, background: "rgba(34,197,94,0.06)", borderRadius: 10, padding: "12px 16px", border: "1px solid rgba(34,197,94,0.2)", display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.green, flexShrink: 0, animation: "pulse-ring 1.2s ease-in-out infinite" }} />
+            <span style={{ fontSize: 12, color: C.green, fontWeight: 500 }}>Analyzing TLS configuration...</span>
+          </div>
+        )}
         {error && <div style={{ marginTop: 12, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 8, padding: "10px 14px", color: C.red, fontSize: 13 }}>⚠ {error}</div>}
       </Panel>
       {result && (
@@ -1338,7 +1360,7 @@ function HistoryPage({ user }) {
         const q = query(collection(db, "scans"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
         const snap = await getDocs(q);
         setHistory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      } catch (e) { console.error(e); }
+      } catch (e) { console.error(e); setLoading(false); return; }
       setLoading(false);
     };
     fetch_();
