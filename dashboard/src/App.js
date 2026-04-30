@@ -1532,8 +1532,10 @@ function DocsPage() {
 }
 
 // ══════════════════════════════════════════════════════════════
-// HOMEPAGE — CHANGE 1: Updated hero with QuantumGuard title,
-// new subtitle, and "Scan Repo" + "Try Demo" buttons
+// HOMEPAGE — All 5 steps applied:
+// Step 2: Hero spacing, typography, CTA, trust section, preview
+// Step 3: Hover glow on cards/buttons, smooth transitions
+// Step 4: "Submitted to NIST" → "Aligned with NIST PQC 2024"
 // ══════════════════════════════════════════════════════════════
 function Homepage({ onGetStarted }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -1544,10 +1546,11 @@ function Homepage({ onGetStarted }) {
     { label: "Documentation", id: "docs" },
   ];
 
+
   return (
     <div style={{ minHeight: "100vh", background: "#070d1a", fontFamily: "'Segoe UI', sans-serif", overflowX: "hidden", color: C.text }}>
 
-      {/* Inject pulse animation for loading dots */}
+      {/* STEP 3: All animations including bar-fill and float-card */}
       <style>{`
         @keyframes pulse-ring {
           0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
@@ -1558,6 +1561,14 @@ function Homepage({ onGetStarted }) {
           0%   { opacity: 0.03; }
           50%  { opacity: 0.07; }
           100% { opacity: 0.03; }
+        }
+        @keyframes bar-fill {
+          from { width: 0%; }
+          to   { width: var(--bar-w); }
+        }
+        @keyframes float-card {
+          0%, 100% { transform: translateY(0px); }
+          50%       { transform: translateY(-6px); }
         }
       `}</style>
 
@@ -1570,7 +1581,8 @@ function Homepage({ onGetStarted }) {
         </div>
         <div className="nav-links" style={{ display: "flex", alignItems: "center", gap: 32 }}>
           {navItems.map(item => (
-            <span key={item.id} onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" })} style={{ fontSize: 14, color: "#64748b", cursor: "pointer", fontWeight: 500, transition: "color 0.15s" }}
+            <span key={item.id} onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" })}
+              style={{ fontSize: 14, color: "#64748b", cursor: "pointer", fontWeight: 500, transition: "color 0.2s ease" }}
               onMouseEnter={e => e.target.style.color = C.green}
               onMouseLeave={e => e.target.style.color = "#64748b"}
             >{item.label}</span>
@@ -1578,7 +1590,12 @@ function Homepage({ onGetStarted }) {
         </div>
         <div className="nav-right" style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer" style={{ fontSize: 13, color: "#64748b", textDecoration: "none", fontWeight: 500 }}>★ GitHub</a>
-          <button onClick={onGetStarted} style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, padding: "9px 22px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700, boxShadow: "0 4px 16px rgba(34,197,94,0.35)" }}>Get Started Free →</button>
+          <button
+            onClick={onGetStarted}
+            style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, padding: "9px 22px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700, boxShadow: "0 4px 16px rgba(34,197,94,0.35)", transition: "all 0.2s ease" }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(34,197,94,0.5)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(34,197,94,0.35)"; }}
+          >Get Started Free →</button>
         </div>
         <button className="nav-hamburger" onClick={() => setMobileMenuOpen(m => !m)} style={{ display: "none", background: "transparent", border: "none", fontSize: 26, cursor: "pointer", color: C.text, padding: "4px 8px" }}>
           {mobileMenuOpen ? "✕" : "☰"}
@@ -1596,40 +1613,50 @@ function Homepage({ onGetStarted }) {
         </div>
       )}
 
-      {/* ── HERO SECTION — Updated per requirements ── */}
+      {/* ── HERO SECTION ── */}
       <div style={{ background: "linear-gradient(180deg, #0a0e1a 0%, #070d1a 100%)", borderBottom: "1px solid rgba(34,197,94,0.1)", padding: "0 40px", position: "relative", overflow: "hidden" }}>
         {/* Background grid */}
         <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(34,197,94,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(34,197,94,0.04) 1px, transparent 1px)", backgroundSize: "40px 40px", animation: "grid-fade 4s ease-in-out infinite" }} />
         {/* Green glow orb */}
         <div style={{ position: "absolute", top: -100, right: "10%", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(34,197,94,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
 
-        <div className="hero-grid" style={{ maxWidth: 1200, margin: "0 auto", padding: "80px 0 72px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 70, alignItems: "center", position: "relative" }}>
+        <div className="hero-grid" style={{ maxWidth: 1200, margin: "0 auto", padding: "96px 0 88px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 70, alignItems: "center", position: "relative" }}>
+
+          {/* ── Left column ── */}
           <div>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 30, padding: "6px 14px", marginBottom: 28 }}>
+            {/* STEP 4: Changed "Submitted to NIST" → "Aligned with NIST PQC 2024 Standards" */}
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 30, padding: "6px 14px", marginBottom: 32 }}>
               <span style={{ fontSize: 14 }}>🏛</span>
-              <span style={{ fontSize: 12, color: C.green, fontWeight: 700 }}>Submitted to NIST NCCoE & NIST PQC Team</span>
+              <span style={{ fontSize: 12, color: C.green, fontWeight: 700 }}>Aligned with NIST PQC 2024 Standards</span>
             </div>
 
-            {/* CHANGE: Hero title updated to "QuantumGuard" */}
-            <h1 style={{ fontSize: "clamp(48px,5.5vw,72px)", fontWeight: 900, lineHeight: 1.05, marginBottom: 10, color: C.text, letterSpacing: -2 }}>
+            {/* STEP 2.1: Improved typography hierarchy */}
+            <h1 style={{ fontSize: "clamp(48px,5.5vw,72px)", fontWeight: 900, lineHeight: 1.05, marginBottom: 16, color: C.text, letterSpacing: -2 }}>
               <span style={{ color: C.green, textShadow: "0 0 40px rgba(34,197,94,0.3)" }}>Quantum</span>Guard
             </h1>
-            {/* CHANGE: Updated subtitle */}
-            <p style={{ fontSize: 18, color: "#64748b", fontWeight: 500, marginBottom: 12, letterSpacing: -0.3 }}>
+            <p style={{ fontSize: 20, color: "#94a3b8", fontWeight: 500, marginBottom: 14, letterSpacing: -0.3, lineHeight: 1.3 }}>
               Prepare your systems for post-quantum security
             </p>
-            <p style={{ fontSize: 15, color: "#4b5563", lineHeight: 1.75, marginBottom: 36, maxWidth: 500 }}>
-              Quantum computers will break RSA and ECC by 2030. Scan your codebase in <strong style={{ color: C.text }}>30 seconds</strong> and get exact NIST-approved fixes — completely free.
+            <p style={{ fontSize: 15, color: "#4b5563", lineHeight: 1.8, marginBottom: 40, maxWidth: 480 }}>
+              Quantum computers will break RSA and ECC by 2030. Scan your codebase in{" "}
+              <strong style={{ color: C.text }}>30 seconds</strong> and get exact NIST-approved fixes — completely free.
             </p>
 
-            {/* CHANGE: "Scan Repo" and "Try Demo" buttons */}
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 36 }}>
-              <button onClick={onGetStarted} style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, padding: "14px 30px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 16, fontWeight: 700, boxShadow: "0 4px 20px rgba(34,197,94,0.4)", display: "flex", alignItems: "center", gap: 8 }}>
-                🛡 Scan Repo
+            {/* STEP 2.1 + STEP 3: CTA buttons with hover glow */}
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 40 }}>
+              <button
+                onClick={onGetStarted}
+                style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, padding: "15px 32px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 16, fontWeight: 700, boxShadow: "0 4px 20px rgba(34,197,94,0.4)", display: "flex", alignItems: "center", gap: 8, transition: "all 0.2s ease" }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 30px rgba(34,197,94,0.55)"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(34,197,94,0.4)"; }}
+              >
+                🛡 Start Free Scan
               </button>
-              <button onClick={() => document.getElementById("howitworks")?.scrollIntoView({ behavior: "smooth" })} style={{ background: "rgba(34,197,94,0.08)", color: C.green, padding: "14px 30px", borderRadius: 12, border: "1.5px solid rgba(34,197,94,0.3)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, transition: "all 0.15s" }}
-                onMouseEnter={e => e.currentTarget.style.background = "rgba(34,197,94,0.15)"}
-                onMouseLeave={e => e.currentTarget.style.background = "rgba(34,197,94,0.08)"}
+              <button
+                onClick={() => document.getElementById("howitworks")?.scrollIntoView({ behavior: "smooth" })}
+                style={{ background: "rgba(34,197,94,0.08)", color: C.green, padding: "15px 32px", borderRadius: 12, border: "1.5px solid rgba(34,197,94,0.3)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, transition: "all 0.2s ease" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(34,197,94,0.18)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(34,197,94,0.08)"; e.currentTarget.style.transform = "translateY(0)"; }}
               >
                 ▶ Try Demo
               </button>
@@ -1642,49 +1669,77 @@ function Homepage({ onGetStarted }) {
             </div>
           </div>
 
-          {/* Hero preview card — dark theme */}
-          <div className="hero-preview" style={{ background: "#0d1120", borderRadius: 20, boxShadow: "0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(34,197,94,0.15)", overflow: "hidden" }}>
+          {/* ── Right column: Hero preview card ── */}
+          <div className="hero-preview" style={{ background: "#0d1120", borderRadius: 20, boxShadow: "0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(34,197,94,0.15)", overflow: "hidden", animation: "float-card 6s ease-in-out infinite" }}>
+            {/* Window chrome */}
             <div style={{ background: "#111827", padding: "12px 18px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              <div style={{ display: "flex", gap: 6 }}>{["#ff5f57","#febc2e","#28c840"].map((c,i) => <div key={i} style={{ width: 12, height: 12, borderRadius: "50%", background: c }}></div>)}</div>
+              <div style={{ display: "flex", gap: 6 }}>
+                {["#ff5f57","#febc2e","#28c840"].map((c,i) => <div key={i} style={{ width: 12, height: 12, borderRadius: "50%", background: c }} />)}
+              </div>
               <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, marginLeft: 8, fontFamily: "monospace" }}>quantumguard.site — Scanner</span>
             </div>
             <div style={{ padding: 20 }}>
-              {/* CHANGE 2: Dashboard cards preview in hero */}
+              {/* STEP 2.3: 4 score cards with animated bars + risk labels */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                 {[
-                  ["Quantum Risk Score", "58", "/100", C.amber],
-                  ["Code Scanner Score", "42", "/100", C.red],
-                  ["Crypto Agility", "65", "/100", C.amber],
-                  ["TLS Security", "80", "/100", C.green],
-                ].map(([label, n, sfx, c], i) => (
+                  ["Quantum Risk Score", "58", 58,  C.amber, "Moderate Risk"],
+                  ["Code Scanner Score", "42", 42,  C.red,   "High Risk"],
+                  ["Crypto Agility",     "65", 65,  C.amber, "Partial Agility"],
+                  ["TLS Security",       "80", 80,  C.green, "Low Risk"],
+                ].map(([label, n, pct, c, sublabel], i) => (
                   <div key={i} style={{ background: "#111827", borderRadius: 10, padding: "12px 14px", border: "1px solid rgba(255,255,255,0.06)" }}>
                     <div style={{ fontSize: 9, color: "#4b5563", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{label}</div>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 2 }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 2, marginBottom: 2 }}>
                       <span style={{ fontSize: 24, fontWeight: 800, color: c }}>{n}</span>
-                      <span style={{ fontSize: 10, color: "#4b5563" }}>{sfx}</span>
+                      <span style={{ fontSize: 10, color: "#4b5563" }}>/100</span>
                     </div>
-                    <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 3, height: 3, marginTop: 6 }}>
-                      <div style={{ background: c, height: 3, borderRadius: 3, width: `${n}%`, boxShadow: `0 0 4px ${c}` }} />
+                    <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 3, height: 3, marginTop: 6, overflow: "hidden" }}>
+                      <div style={{ background: c, height: 3, borderRadius: 3, boxShadow: `0 0 4px ${c}`, animation: `bar-fill 1.4s ${0.2 * i}s ease-out forwards`, width: "0%", "--bar-w": `${pct}%` }} />
                     </div>
+                    <div style={{ fontSize: 9, color: c, marginTop: 4, fontWeight: 700, opacity: 0.85 }}>{sublabel}</div>
                   </div>
                 ))}
               </div>
-              {/* Mini threat list */}
+              {/* STEP 2.4: Latest Threats with "Detected during scan" badge */}
               <div style={{ background: "#111827", borderRadius: 10, padding: "10px 12px", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div style={{ fontSize: 10, color: "#4b5563", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Latest Threats</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <div style={{ fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Latest Threats</div>
+                  <div style={{ fontSize: 9, color: C.green, fontWeight: 600, background: "rgba(34,197,94,0.1)", padding: "2px 7px", borderRadius: 10, border: "1px solid rgba(34,197,94,0.2)" }}>● Detected during scan</div>
+                </div>
                 {[
-                  ["CRITICAL", "RSA-2048 key generation", "#ef4444"],
-                  ["HIGH", "Diffie-Hellman exchange", "#f59e0b"],
-                  ["MEDIUM", "MD5 hash detected", "#eab308"],
+                  ["CRITICAL", "RSA-2048 key generation",  "#ef4444"],
+                  ["HIGH",     "Diffie-Hellman exchange",   "#f59e0b"],
+                  ["MEDIUM",   "MD5 hash detected",         "#eab308"],
                 ].map(([sev, msg, col], i) => (
-                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: i < 2 ? 6 : 0 }}>
-                    <span style={{ background: col + "22", color: col, fontSize: 9, fontWeight: 800, padding: "1px 6px", borderRadius: 4, border: `1px solid ${col}44`, flexShrink: 0 }}>{sev}</span>
-                    <span style={{ fontSize: 11, color: "#64748b", fontFamily: "monospace" }}>{msg}</span>
+                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: i < 2 ? 7 : 0, padding: "4px 0", borderBottom: i < 2 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                    <span style={{ background: col + "22", color: col, fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 4, border: `1px solid ${col}44`, flexShrink: 0, letterSpacing: "0.03em" }}>{sev}</span>
+                    <span style={{ fontSize: 11, color: "#64748b", fontFamily: "monospace", flex: 1 }}>{msg}</span>
+                    <span style={{ fontSize: 9, color: "#374151", flexShrink: 0 }}>just now</span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* ── STEP 2.2: Trust Section ── */}
+      <div style={{ background: "#0a0e1a", borderBottom: "1px solid rgba(34,197,94,0.1)", padding: "22px 40px" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 0 }}>
+          {[
+            { icon: "🏛", title: "NIST PQC 2024 Aligned",    desc: "FIPS 203, 204 & 205 compliant recommendations" },
+            { icon: "🔒", title: "No Code Stored",            desc: "Your source code is scanned in memory only" },
+            { icon: "📖", title: "Open Source",               desc: "Fully transparent — audit us on GitHub" },
+            { icon: "👩‍💻", title: "Built for Developers",      desc: "Designed for security teams and engineers" },
+          ].map((item, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "16px 24px", borderRight: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+              <div style={{ fontSize: 20, marginTop: 1, flexShrink: 0 }}>{item.icon}</div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 3 }}>✔ {item.title}</div>
+                <div style={{ fontSize: 11, color: "#4b5563", lineHeight: 1.5 }}>{item.desc}</div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -1710,18 +1765,21 @@ function Homepage({ onGetStarted }) {
           <h2 style={{ fontSize: 38, fontWeight: 900, color: C.text, marginBottom: 14, letterSpacing: -0.5 }}>Everything to go quantum-safe</h2>
           <p style={{ color: "#4b5563", fontSize: 16, maxWidth: 560, margin: "0 auto", lineHeight: 1.7 }}>Comprehensive quantum vulnerability detection and NIST-approved migration tools — all free</p>
         </div>
+        {/* STEP 3: Hover glow + lift on feature cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px,1fr))", gap: 22 }}>
           {[
-            { icon: "🔍", title: "Threat Scanner",         desc: "Scan GitHub repos, ZIP files, or server paths. Detects 15+ quantum-vulnerable algorithms in 30 seconds.",           badge: "Core",       badgeColor: C.green },
-            { icon: "🏛", title: "NIST Compliance Report", desc: "Generate professional FIPS 203/204/205 compliance reports with NIST references per finding.",                       badge: "Enterprise", badgeColor: C.blue },
-            { icon: "🔐", title: "TLS Analyzer",           desc: "Check any domain's TLS version, cipher suite, and quantum safety rating instantly.",                               badge: "Free",       badgeColor: C.green },
-            { icon: "🔬", title: "Agility Checker",        desc: "Detect hardcoded vs configurable crypto. Score 0-100 for migration readiness.",                                    badge: "Free",       badgeColor: C.green },
-            { icon: "🤖", title: "AI Fix Assistant",       desc: "Claude-powered exact replacement code for every vulnerability found in your codebase.",                            badge: "Pro",        badgeColor: "#a78bfa" },
-            { icon: "🔄", title: "Migration Tracker",      desc: "Track 11 vulnerability types from Pending to Fixed across your entire organization.",                              badge: "Free",       badgeColor: C.green },
+            { icon: "🔍", title: "Threat Scanner",         desc: "Scan GitHub repos, ZIP files, or server paths. Detects 15+ quantum-vulnerable algorithms in 30 seconds.",      badge: "Core",       badgeColor: C.green },
+            { icon: "🏛", title: "NIST Compliance Report", desc: "Generate professional FIPS 203/204/205 compliance reports with NIST references per finding.",                  badge: "Enterprise", badgeColor: C.blue },
+            { icon: "🔐", title: "TLS Analyzer",           desc: "Check any domain's TLS version, cipher suite, and quantum safety rating instantly.",                          badge: "Free",       badgeColor: C.green },
+            { icon: "🔬", title: "Agility Checker",        desc: "Detect hardcoded vs configurable crypto. Score 0-100 for migration readiness.",                               badge: "Free",       badgeColor: C.green },
+            { icon: "🤖", title: "AI Fix Assistant",       desc: "Claude-powered exact replacement code for every vulnerability found in your codebase.",                       badge: "Pro",        badgeColor: "#a78bfa" },
+            { icon: "🔄", title: "Migration Tracker",      desc: "Track 11 vulnerability types from Pending to Fixed across your entire organization.",                         badge: "Free",       badgeColor: C.green },
           ].map((f, i) => (
-            <div key={i} style={{ background: "#0d1120", borderRadius: 16, padding: 26, border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 4px 20px rgba(0,0,0,0.3)", transition: "border-color 0.15s, transform 0.15s" }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(34,197,94,0.3)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = "translateY(0)"; }}
+            <div
+              key={i}
+              style={{ background: "#0d1120", borderRadius: 16, padding: 26, border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 4px 20px rgba(0,0,0,0.3)", transition: "border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(34,197,94,0.35)"; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 0 20px rgba(34,197,94,0.15), 0 12px 32px rgba(0,0,0,0.4)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.3)"; }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
                 <div style={{ width: 50, height: 50, borderRadius: 14, background: "rgba(34,197,94,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, border: "1px solid rgba(34,197,94,0.15)" }}>{f.icon}</div>
@@ -1764,13 +1822,19 @@ function Homepage({ onGetStarted }) {
           <div style={{ display: "inline-block", background: "rgba(34,197,94,0.1)", color: C.green, fontSize: 12, fontWeight: 700, padding: "5px 16px", borderRadius: 20, marginBottom: 16, border: "1px solid rgba(34,197,94,0.3)" }}>PRICING</div>
           <h2 style={{ fontSize: 38, fontWeight: 900, color: C.text, marginBottom: 14, letterSpacing: -0.5 }}>Simple, transparent pricing</h2>
         </div>
+        {/* STEP 3: Hover lift on pricing cards */}
         <div className="pricing-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 24, maxWidth: 1000, margin: "0 auto" }}>
           {[
-            { name: "Free",       price: "$0",     period: "forever",  color: C.text,    highlight: false, features: ["Web scanner","GitHub URL + ZIP scan","15+ vulnerability types","PDF & NIST reports","TLS Analyzer","Agility Checker","10 scans/day"],                               cta: "Get Started Free",  ctaAction: onGetStarted },
-            { name: "Pro",        price: "$29",    period: "/month",   color: C.green,   highlight: true,  badge: "Most Popular", features: ["Everything in Free","Unlimited scans","AI-powered fix suggestions","5 team members","Full API access","Priority support"],                  cta: "Coming Soon",       ctaAction: null },
-            { name: "Enterprise", price: "Custom", period: "",         color: "#a78bfa", highlight: false, features: ["Everything in Pro","Unlimited team members","Self-hosted deployment","SSO / SAML login","Audit logs","SOC2 compliance"],                                           cta: "Contact Us",        ctaAction: () => window.open("mailto:thisispayyavula@gmail.com?subject=QuantumGuard Enterprise Inquiry") },
+            { name: "Free",       price: "$0",     period: "forever",  color: C.text,    highlight: false, features: ["Web scanner","GitHub URL + ZIP scan","15+ vulnerability types","PDF & NIST reports","TLS Analyzer","Agility Checker","10 scans/day"],               cta: "Get Started Free",  ctaAction: onGetStarted },
+            { name: "Pro",        price: "$29",    period: "/month",   color: C.green,   highlight: true,  badge: "Most Popular", features: ["Everything in Free","Unlimited scans","AI-powered fix suggestions","5 team members","Full API access","Priority support"],    cta: "Coming Soon",       ctaAction: null },
+            { name: "Enterprise", price: "Custom", period: "",         color: "#a78bfa", highlight: false, features: ["Everything in Pro","Unlimited team members","Self-hosted deployment","SSO / SAML login","Audit logs","SOC2 compliance"],                             cta: "Contact Us",        ctaAction: () => window.open("mailto:thisispayyavula@gmail.com?subject=QuantumGuard Enterprise Inquiry") },
           ].map((p,i) => (
-            <div key={i} style={{ background: "#0d1120", borderRadius: 20, padding: 30, border: p.highlight ? `2px solid ${C.green}` : "1px solid rgba(255,255,255,0.08)", boxShadow: p.highlight ? "0 12px 40px rgba(34,197,94,0.2)" : "0 4px 20px rgba(0,0,0,0.3)", position: "relative" }}>
+            <div
+              key={i}
+              style={{ background: "#0d1120", borderRadius: 20, padding: 30, border: p.highlight ? `2px solid ${C.green}` : "1px solid rgba(255,255,255,0.08)", boxShadow: p.highlight ? "0 12px 40px rgba(34,197,94,0.2)" : "0 4px 20px rgba(0,0,0,0.3)", position: "relative", transition: "transform 0.2s ease, box-shadow 0.2s ease" }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = p.highlight ? "0 20px 50px rgba(34,197,94,0.3)" : "0 12px 36px rgba(0,0,0,0.5)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = p.highlight ? "0 12px 40px rgba(34,197,94,0.2)" : "0 4px 20px rgba(0,0,0,0.3)"; }}
+            >
               {p.badge && <div style={{ position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)", background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, padding: "5px 18px", borderRadius: 20, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>{p.badge}</div>}
               <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 8 }}>{p.name}</div>
               <div style={{ marginBottom: 4 }}><span style={{ fontSize: 42, fontWeight: 900, color: p.color, letterSpacing: -1 }}>{p.price}</span><span style={{ fontSize: 14, color: "#4b5563" }}>{p.period}</span></div>
@@ -1818,7 +1882,12 @@ function Homepage({ onGetStarted }) {
         <h2 style={{ fontSize: 42, fontWeight: 900, color: C.text, marginBottom: 16, letterSpacing: -0.5, position: "relative" }}>Ready to secure your code?</h2>
         <p style={{ color: "#4b5563", marginBottom: 36, fontSize: 16, maxWidth: 480, margin: "0 auto 36px", lineHeight: 1.7, position: "relative" }}>Join developers scanning their codebases for quantum vulnerabilities before the 2030 deadline.</p>
         <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap", position: "relative" }}>
-          <button onClick={onGetStarted} style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, padding: "15px 34px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 16, fontWeight: 800, boxShadow: "0 4px 20px rgba(34,197,94,0.4)" }}>🛡 Start Scanning Now — Free</button>
+          <button
+            onClick={onGetStarted}
+            style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, padding: "15px 34px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 16, fontWeight: 800, boxShadow: "0 4px 20px rgba(34,197,94,0.4)", transition: "all 0.2s ease" }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 30px rgba(34,197,94,0.55)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(34,197,94,0.4)"; }}
+          >🛡 Start Scanning Now — Free</button>
           <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer" style={{ background: "rgba(34,197,94,0.08)", color: C.green, padding: "15px 34px", borderRadius: 12, border: "1.5px solid rgba(34,197,94,0.3)", fontSize: 16, fontWeight: 700, textDecoration: "none" }}>★ Star on GitHub</a>
         </div>
       </div>
