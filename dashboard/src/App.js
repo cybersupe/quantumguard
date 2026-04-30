@@ -46,6 +46,7 @@ function Sidebar({ active, setActive, user, onLogin, onLogout, open, onClose }) 
     { id: "scan",      icon: "⚡",  label: "Scanner" },
     { id: "agility",   icon: "🔬",  label: "Agility Checker" },
     { id: "tls",       icon: "🔐",  label: "TLS Analyzer" },
+    { id: "unified", icon: "🧠", label: "Unified Risk" },
     { id: "history",   icon: "🗂",  label: "Scan History" },
     { id: "migration", icon: "🔄",  label: "Migration" },
     { id: "dashboard", icon: "📊",  label: "Analytics" },
@@ -1701,6 +1702,48 @@ function Homepage({ onGetStarted }) {
 // ══════════════════════════════════════════════════════════════
 // APP ROOT
 // ══════════════════════════════════════════════════════════════
+function UnifiedRiskPage() {
+  const [github, setGithub] = React.useState("https://github.com/dlitz/pycrypto");
+  const [domain, setDomain] = React.useState("google.com");
+  const [data, setData] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
+
+  const runUnifiedRisk = async () => {
+    setLoading(true);
+
+    const res = await fetch("https://quantumguard-api.onrender.com/unified-risk", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        github_url: github,
+        domain: domain
+      })
+    });
+
+    const json = await res.json();
+    setData(json);
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ padding: 20 }}>
+      <h2>Unified Risk Dashboard</h2>
+
+      <button onClick={runUnifiedRisk}>
+        {loading ? "Scanning..." : "Run Unified Scan"}
+      </button>
+
+      {data && (
+        <div>
+          <h3>Score: {data.unified_risk.quantum_risk_score}</h3>
+          <p>{data.unified_risk.risk_level}</p>
+        </div>
+      )}
+    </div>
+  );
+}
 export default function App() {
   const [user, setUser] = useState(null);
   const [active, setActive] = useState("home");
@@ -1736,6 +1779,7 @@ export default function App() {
           {active === "scan"      && <ScannerPage user={user} />}
           {active === "agility"   && <AgilityPage />}
           {active === "tls"       && <TLSPage />}
+          {active === "unified" && <UnifiedRiskPage />}
           {active === "history"   && <HistoryPage user={user} />}
           {active === "migration" && <MigrationPage user={user} />}
           {active === "dashboard" && <AnalyticsPage />}
