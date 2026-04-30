@@ -1,5 +1,5 @@
 # ============================================================
-# QuantumGuard — Core Scanner v2.1
+# QuantumGuard — Core Scanner v2.2
 # Copyright (c) 2026 Pavansudheer Payyavula / MANGSRI
 # Licensed under AGPL v3 — github.com/cybersupe/quantumguard
 # Standards: NIST FIPS 203, FIPS 204, FIPS 205
@@ -7,11 +7,12 @@
 
 import os
 import re
+import math
 import json
 from datetime import datetime
 from scanner.patterns import VULNERABLE_PATTERNS, SEVERITY_SCORE
 from scanner.ast_scanner import scan_python_ast
-from scanner.js_ast_scanner import scan_js_directory  # ← NEW
+from scanner.js_ast_scanner import scan_js_directory
 
 # ── Directories to always skip ────────────────────────────
 SKIP_DIRS = {
@@ -37,11 +38,8 @@ SUPPORTED_EXTENSIONS = (
 MAX_FILES = 200
 MAX_LINE_LENGTH = 500  # skip minified lines
 
-# ── Patterns that are too noisy in non-crypto contexts ────
-# These vulns are skipped in files that look like UI/frontend
 FRONTEND_FILE_INDICATORS = ["component", "view", "page", "ui", "layout", "style", "animation"]
 
-# HARDCODED_SECRET: only flag if line is NOT in a test/example AND value looks real
 HARDCODED_SECRET_ALLOWLIST = [
     r"(?i)(example|sample|test|fake|dummy|placeholder|your[-_]?|<|>|\.\.\.|xxx)",
     r"(?i)(password\s*=\s*['\"](?:password|pass|test|admin|secret|changeme|letmein|123|abc)['\"])",
@@ -59,7 +57,6 @@ def _is_test_or_docs_path(filepath):
 
 
 def _is_frontend_file(filepath):
-    """Returns True if file looks like UI/frontend code where Math.random() is fine."""
     name = os.path.basename(filepath).lower()
     for indicator in FRONTEND_FILE_INDICATORS:
         if indicator in name:
@@ -68,7 +65,6 @@ def _is_frontend_file(filepath):
 
 
 def _is_comment_line(line, ext):
-    """Detect if a line is purely a comment."""
     stripped = line.strip()
     if not stripped:
         return True
@@ -78,14 +74,12 @@ def _is_comment_line(line, ext):
     if ext in (".js", ".ts", ".java", ".go", ".rs", ".c", ".cpp", ".cc", ".h", ".hpp"):
         if stripped.startswith("//") or stripped.startswith("*") or stripped.startswith("/*"):
             return True
-    # Multi-line comment continuation
     if stripped.startswith("*") or stripped.startswith("*/"):
         return True
     return False
 
 
 def _is_allowlisted_secret(line):
-    """Returns True if a HARDCODED_SECRET match is likely a false positive."""
     for pattern in HARDCODED_SECRET_ALLOWLIST:
         if re.search(pattern, line):
             return True
@@ -93,12 +87,7 @@ def _is_allowlisted_secret(line):
 
 
 def _is_weak_random_in_crypto_context(line):
-    """
-    Only flag WEAK_RANDOM if it's in a security-sensitive context.
-    Math.random() in UI animation code is not a vulnerability.
-    """
     line_lower = line.lower()
-    # Must be near crypto keywords to be flagged
     crypto_context = [
         "key", "token", "secret", "password", "salt", "nonce",
         "iv", "seed", "session", "auth", "csrf", "otp",
@@ -107,24 +96,13 @@ def _is_weak_random_in_crypto_context(line):
 
 
 def _get_confidence(vuln_name, line, is_test, ext):
-    """
-    Determine confidence level for a regex finding.
-    HIGH   = actual API/function call syntax
-    MEDIUM = clear pattern match in real code
-    LOW    = likely documentation, comments, or string reference only
-    """
     if is_test:
         return "LOW"
-
     stripped = line.strip()
-
     if _is_comment_line(line, ext):
         return "LOW"
-
-    # If the line has actual function call / import syntax → HIGH
     if any(tok in stripped for tok in ["(", "import ", "require(", "new ", "getInstance"]):
         return "HIGH"
-
     return "MEDIUM"
 
 
@@ -163,10 +141,6 @@ def _get_migration_priority(severity):
 
 
 def _deduplicate_findings(findings):
-    """
-    Remove exact duplicates: same file + line + vulnerability.
-    Keeps the highest confidence finding when duplicates exist.
-    """
     seen = {}
     confidence_rank = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
 
@@ -175,7 +149,6 @@ def _deduplicate_findings(findings):
         if key not in seen:
             seen[key] = f
         else:
-            # Keep higher confidence
             existing_rank = confidence_rank.get(seen[key].get("confidence", "MEDIUM"), 2)
             new_rank = confidence_rank.get(f.get("confidence", "MEDIUM"), 2)
             if new_rank > existing_rank:
@@ -196,32 +169,23 @@ def scan_file(filepath):
 
         code = "".join(lines)
 
-        # ── AST scan for Python (zero false positives from comments) ──
-        ast_lines_map = {}  # line -> vulnerability set
+        ast_lines_map = {}
         if ext == ".py":
             ast_findings = scan_python_ast(code, filepath)
             findings.extend(ast_findings)
-            # Track line+vuln pairs already caught by AST
             for af in ast_findings:
                 key = af["line"]
                 ast_lines_map.setdefault(key, set()).add(af["vulnerability"])
 
-        # ── Regex scan for all languages ───────────────────
         for line_num, line in enumerate(lines, start=1):
-            # Skip very long lines (minified JS/CSS)
             if len(line) > MAX_LINE_LENGTH:
                 continue
-
-            # Skip pure comment lines
             if _is_comment_line(line, ext):
                 continue
 
             for vuln_name, vuln_data in VULNERABLE_PATTERNS.items():
-                # Skip WEAK_RANDOM in frontend files — not a crypto context
                 if vuln_name == "WEAK_RANDOM" and is_frontend:
                     continue
-
-                # Skip WEAK_RANDOM unless it's in a crypto-relevant context
                 if vuln_name == "WEAK_RANDOM" and not _is_weak_random_in_crypto_context(line):
                     continue
 
@@ -229,21 +193,18 @@ def scan_file(filepath):
                 for pattern in patterns:
                     try:
                         if re.search(pattern, line):
-                            # For Python: skip if AST already caught this line+vuln
                             if ext == ".py":
                                 ast_vulns = ast_lines_map.get(line_num, set())
                                 base_vuln = vuln_name.split("_")[0]
                                 if any(av.startswith(base_vuln) or base_vuln in av for av in ast_vulns):
                                     break
 
-                            # Skip allowlisted false positives for HARDCODED_SECRET
                             if vuln_name == "HARDCODED_SECRET" and _is_allowlisted_secret(line):
                                 break
 
                             confidence = _get_confidence(vuln_name, line, is_test, ext)
                             severity = vuln_data["severity"]
 
-                            # Downgrade severity for test files
                             if is_test and severity == "CRITICAL":
                                 severity = "HIGH"
 
@@ -262,27 +223,21 @@ def scan_file(filepath):
                                 "detection_method": "REGEX",
                                 "is_test_file": is_test,
                             })
-                            break  # one match per pattern group per line
+                            break
                     except re.error:
                         continue
 
     except Exception as e:
         print(f"[QuantumGuard] Error reading {filepath}: {e}")
 
-    # Deduplicate before returning
     return _deduplicate_findings(findings)
 
 
 def scan_directory(directory):
-    """
-    Scan all supported files in a directory.
-    Returns deduplicated list of findings with full metadata.
-    """
     all_findings = []
     file_count = 0
 
     for root, dirs, files in os.walk(directory):
-        # Skip irrelevant directories in-place
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
 
         for file in files:
@@ -300,10 +255,8 @@ def scan_directory(directory):
         if file_count >= MAX_FILES:
             break
 
-    # ── JS/TS AST scan (NEW) ──────────────────────────────
     all_findings += scan_js_directory(directory)
 
-    # Global deduplication across all files
     return _deduplicate_findings(all_findings)
 
 
@@ -311,20 +264,22 @@ def calculate_score(findings):
     """
     Calculate quantum readiness score 0-100.
 
-    Improvements over v1:
-    - Diminishing returns curve: large repos with many findings
-      don't automatically score 0. Each additional finding of the
-      same type contributes less penalty after the first few.
-    - Confidence weighting: HIGH=full, MEDIUM=50%, LOW=0%
+    Scoring model:
+    - Confidence weighting: HIGH=full penalty, MEDIUM=50%, LOW=0%
     - Test files: 25% of normal penalty
-    - Production crypto/auth files: 125% penalty multiplier
-    - Score is clamped 0-100 with a soft floor at 5 for repos
-      that have at least some findings (avoids misleading 0s)
+    - Production auth/crypto files: 125% penalty multiplier
+    - Diminishing returns per vuln type:
+        1st finding: 100%, 2nd: 80%, 3rd: 60%, 4th+: 40%
+    - Square-root dampening (multiplier 6) prevents collapse to 0
+      on large repos with many repeated findings
+    - Soft floor: minimum score is 15 (avoids misleading 0s)
+    - Hard cap: repos with CRITICAL HIGH-confidence real findings
+      score max 60 (can't call yourself safe with active RSA/ECC)
     """
     if not findings:
         return 100
 
-    # Group findings by vulnerability type to apply diminishing returns
+    # Group by vulnerability type for diminishing returns
     vuln_groups = {}
     for f in findings:
         vuln = f.get("vulnerability", "UNKNOWN")
@@ -344,7 +299,7 @@ def calculate_score(findings):
             elif confidence == "MEDIUM":
                 conf_mult = 0.5
             else:
-                conf_mult = 0.0  # LOW confidence = no penalty
+                conf_mult = 0.0  # LOW = no penalty
 
             # Test file reduction
             if is_test:
@@ -355,9 +310,7 @@ def calculate_score(findings):
             if any(x in file_path for x in ["auth", "crypto", "security", "jwt", "token", "config", "key"]):
                 conf_mult *= 1.25
 
-            # Diminishing returns: each repeat of same vuln type
-            # contributes progressively less penalty.
-            # 1st: 100%, 2nd: 80%, 3rd: 60%, 4th+: 40%
+            # Diminishing returns per vuln type
             if i == 0:
                 repeat_mult = 1.0
             elif i == 1:
@@ -369,17 +322,16 @@ def calculate_score(findings):
 
             total_penalty += base_penalty * conf_mult * repeat_mult
 
-    # Soft scoring: use square-root dampening so scores
-    # don't collapse to 0 for large repos
-    import math
-    dampened_penalty = 10 * math.sqrt(total_penalty)
+    # Square-root dampening — prevents collapse on large repos
+    dampened_penalty = 6 * math.sqrt(total_penalty)
 
-    score = max(5, round(100 - dampened_penalty))
+    score = max(15, round(100 - dampened_penalty))
 
-    # If repo has any CRITICAL HIGH-confidence findings,
-    # cap score at 60 maximum (can't call yourself safe)
+    # Hard cap: if real CRITICAL HIGH-confidence findings exist,
+    # score cannot exceed 60 — repo is not quantum safe
     has_critical_high = any(
-        f.get("severity") == "CRITICAL" and f.get("confidence") == "HIGH"
+        f.get("severity") == "CRITICAL"
+        and f.get("confidence") == "HIGH"
         and not f.get("is_test_file", False)
         for f in findings
     )
@@ -517,7 +469,7 @@ def generate_report(directory):
     report = {
         "meta": {
             "tool": "QuantumGuard",
-            "version": "2.1",
+            "version": "2.2",
             "company": "Mangsri QuantumGuard LLC",
             "website": "https://quantumguard.site",
             "standards": ["NIST FIPS 203 (ML-KEM)", "NIST FIPS 204 (ML-DSA)", "NIST FIPS 205 (SLH-DSA)"],
