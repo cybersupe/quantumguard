@@ -1,5 +1,5 @@
 # ============================================================
-# QuantumGuard — FastAPI Backend
+# QuantumGuard — FastAPI Backend v2.2
 # Copyright (c) 2026 Pavansudheer Payyavula / MANGSRI
 # Licensed under AGPL v3 — github.com/cybersupe/quantumguard
 # Standards: NIST FIPS 203, FIPS 204, FIPS 205
@@ -53,7 +53,7 @@ limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
     title="QuantumGuard API",
     description="Post-quantum cryptography vulnerability scanner — Mangsri QuantumGuard LLC",
-    version="2.1",
+    version="2.2",
 )
 
 app.state.limiter = limiter
@@ -141,10 +141,6 @@ def _parse_github_url(github_url: str):
 
 
 def _download_github_zip(github_url: str, github_token: Optional[str] = None):
-    """
-    Download a GitHub repository as ZIP.
-    Tries main first, then master.
-    """
     if "github.com" not in github_url:
         raise HTTPException(status_code=400, detail="Only GitHub URLs allowed")
 
@@ -152,7 +148,7 @@ def _download_github_zip(github_url: str, github_token: Optional[str] = None):
 
     headers = {
         "Accept": "application/vnd.github+json",
-        "User-Agent": "QuantumGuard/2.1",
+        "User-Agent": "QuantumGuard/2.2",
     }
 
     if github_token:
@@ -201,22 +197,96 @@ def _summarize_findings(findings):
     return severity_summary, confidence_summary
 
 
+def _build_priority_actions(findings, severity_summary, score):
+    """Generate priority actions from scan findings."""
+    priority_actions = []
+
+    critical_count = severity_summary.get("CRITICAL", 0)
+    high_count = severity_summary.get("HIGH", 0)
+    medium_count = severity_summary.get("MEDIUM", 0)
+
+    if critical_count > 0:
+        priority_actions.append({
+            "priority": "P1",
+            "title": "Fix critical cryptographic vulnerabilities immediately",
+            "description": (
+                f"{critical_count} critical findings detected (RSA, ECC, RC4, DES, etc). "
+                "Review file/line results and remove quantum-vulnerable algorithms."
+            ),
+            "timeline": "Within 30 days"
+        })
+
+    if high_count > 0:
+        priority_actions.append({
+            "priority": "P2",
+            "title": "Remediate high-severity crypto risks",
+            "description": (
+                f"{high_count} high-severity findings. "
+                "Focus on auth, token, key, and config files first."
+            ),
+            "timeline": "Within 90 days"
+        })
+
+    if medium_count > 0:
+        priority_actions.append({
+            "priority": "P3",
+            "title": "Plan migration for medium-severity findings",
+            "description": (
+                f"{medium_count} medium-severity findings (MD5, SHA1, weak random). "
+                "Schedule for next sprint."
+            ),
+            "timeline": "Within 6 months"
+        })
+
+    if score < 50:
+        priority_actions.append({
+            "priority": "P1",
+            "title": "Begin NIST PQC migration planning",
+            "description": (
+                "Score below 50 — create a formal post-quantum migration plan "
+                "aligned with NIST FIPS 203/204/205."
+            ),
+            "timeline": "Within 60 days"
+        })
+
+    if not priority_actions:
+        priority_actions.append({
+            "priority": "P4",
+            "title": "Maintain monitoring",
+            "description": (
+                "No major issues detected. Run periodic scans and track NIST PQC updates."
+            ),
+            "timeline": "Ongoing"
+        })
+
+    return priority_actions
+
+
+def _build_top_findings(findings):
+    """Return top 10 non-LOW-confidence findings for summary display."""
+    return [
+        {
+            "file": f.get("file", "").split("/")[-1],
+            "line": f.get("line"),
+            "vulnerability": f.get("vulnerability"),
+            "severity": f.get("severity"),
+            "confidence": f.get("confidence"),
+            "recommended_fix": f.get("recommended_fix") or f.get("replacement"),
+        }
+        for f in findings[:10]
+        if f.get("confidence") != "LOW"
+    ]
+
+
 # ============================================================
 # TLS ANALYZER
 # ============================================================
 
 PQC_INDICATORS = [
-    "KYBER",
-    "MLKEM",
-    "ML_KEM",
-    "X25519KYBER768",
-    "X25519MLKEM768",
+    "KYBER", "MLKEM", "ML_KEM",
+    "X25519KYBER768", "X25519MLKEM768",
     "P256KYBER768DRAFT00",
-    "NTRU",
-    "FRODO",
-    "SABER",
-    "BIKE",
-    "HQC",
+    "NTRU", "FRODO", "SABER", "BIKE", "HQC",
 ]
 
 STRONG_CIPHERS = ["AES_256", "AES-256", "CHACHA20"]
@@ -232,7 +302,6 @@ def _analyze_tls_score(tls_version: str, cipher_name: str, cipher_bits: int) -> 
 
     cipher_upper = (cipher_name or "").upper()
 
-    # TLS version
     if tls_version == "TLSv1.3":
         score += 30
         strengths.append("TLS 1.3 — modern and forward-secure")
@@ -245,7 +314,6 @@ def _analyze_tls_score(tls_version: str, cipher_name: str, cipher_bits: int) -> 
     else:
         issues.append(f"Unknown TLS version: {tls_version}")
 
-    # Cipher strength
     if any(strong in cipher_upper for strong in STRONG_CIPHERS):
         score += 35
         strengths.append("Strong symmetric encryption detected")
@@ -261,12 +329,8 @@ def _analyze_tls_score(tls_version: str, cipher_name: str, cipher_bits: int) -> 
     else:
         issues.append("Weak or unknown cipher strength")
 
-    # PQC / Forward secrecy
     has_pqc_kx = any(pqc in cipher_upper for pqc in PQC_INDICATORS)
 
-    # CRITICAL FIX:
-    # TLS 1.3 always uses ephemeral key exchange and provides forward secrecy.
-    # Do NOT mark TLS 1.3 as static RSA key exchange.
     if tls_version == "TLSv1.3":
         has_forward_secrecy = True
         rsa_key_exchange = False
@@ -318,12 +382,13 @@ def _analyze_tls_score(tls_version: str, cipher_name: str, cipher_bits: int) -> 
         )
     elif rsa_key_exchange:
         quantum_explanation = (
-            "Static RSA key exchange may be present. This is not forward-secure and is quantum-vulnerable."
+            "Static RSA key exchange may be present. "
+            "This is not forward-secure and is quantum-vulnerable."
         )
     else:
         quantum_explanation = (
-            "This TLS configuration uses classical cryptography. It may be secure today, "
-            "but it is not post-quantum safe yet."
+            "This TLS configuration uses classical cryptography. "
+            "It may be secure today, but it is not post-quantum safe yet."
         )
 
     score = max(0, min(100, score))
@@ -404,7 +469,6 @@ def _analyze_certificate(cert: dict) -> tuple:
         try:
             exp_date = datetime.datetime.strptime(exp_str, "%b %d %H:%M:%S %Y %Z")
             days_remaining = (exp_date - datetime.datetime.utcnow()).days
-
             cert_info["days_until_expiry"] = days_remaining
 
             if days_remaining < 0:
@@ -495,7 +559,7 @@ def _analyze_tls_domain(domain: str) -> dict:
             "nist_recommendation": nist_recommendation,
             "nist_standard": "ML-KEM — NIST FIPS 203",
             "meta": {
-                "tool": "QuantumGuard TLS Analyzer v2.1",
+                "tool": "QuantumGuard TLS Analyzer v2.2",
                 "company": "Mangsri QuantumGuard LLC",
                 "website": "https://quantumguard.site",
                 "note": "quantum_safe=True only when actual PQC/hybrid KEM is detected.",
@@ -522,7 +586,7 @@ def _analyze_tls_domain(domain: str) -> dict:
 def root():
     return {
         "message": "QuantumGuard API is running!",
-        "version": "2.1",
+        "version": "2.2",
         "company": "Mangsri QuantumGuard LLC",
         "website": "https://quantumguard.site",
         "standards": ["NIST FIPS 203", "NIST FIPS 204", "NIST FIPS 205"],
@@ -543,7 +607,7 @@ def root():
 def health():
     return {
         "status": "healthy",
-        "version": "2.1",
+        "version": "2.2",
         "tool": "QuantumGuard",
         "company": "Mangsri QuantumGuard LLC",
     }
@@ -566,6 +630,8 @@ def scan(request: Request, body: ScanRequest, x_api_key: str = Header(...)):
         "total_findings": len(findings),
         "severity_summary": severity_summary,
         "confidence_summary": confidence_summary,
+        "top_findings": _build_top_findings(findings),
+        "priority_actions": _build_priority_actions(findings, severity_summary, score),
         "findings": findings,
     }
 
@@ -599,6 +665,8 @@ async def public_scan_zip(request: Request, file: UploadFile = File(...)):
             "total_findings": len(findings),
             "severity_summary": severity_summary,
             "confidence_summary": confidence_summary,
+            "top_findings": _build_top_findings(findings),
+            "priority_actions": _build_priority_actions(findings, severity_summary, score),
             "findings": findings,
         }
 
@@ -636,9 +704,11 @@ async def scan_github(request: Request, body: GitScanRequest):
             "total_findings": len(findings),
             "severity_summary": severity_summary,
             "confidence_summary": confidence_summary,
+            "top_findings": _build_top_findings(findings),
+            "priority_actions": _build_priority_actions(findings, severity_summary, score),
             "findings": findings,
             "meta": {
-                "tool": "QuantumGuard v2.1",
+                "tool": "QuantumGuard v2.2",
                 "standards": ["NIST FIPS 203", "NIST FIPS 204", "NIST FIPS 205"],
                 "company": "Mangsri QuantumGuard LLC",
                 "website": "https://quantumguard.site",
@@ -693,16 +763,6 @@ async def analyze_tls(request: Request, body: TLSRequest):
 @app.post("/unified-risk")
 @limiter.limit("5/minute")
 async def unified_risk(request: Request, body: UnifiedRiskRequest):
-    """
-    Final platform-level endpoint.
-
-    Combines:
-    1. Code crypto scanner
-    2. Crypto agility checker
-    3. Optional TLS analyzer
-
-    Returns one executive Quantum Risk Score.
-    """
     if calculate_unified_quantum_risk is None:
         raise HTTPException(
             status_code=500,
@@ -751,6 +811,8 @@ async def unified_risk(request: Request, body: UnifiedRiskRequest):
                 "total_findings": len(findings),
                 "severity_summary": severity_summary,
                 "confidence_summary": confidence_summary,
+                "top_findings": _build_top_findings(findings),
+                "priority_actions": _build_priority_actions(findings, severity_summary, code_score),
                 "findings": findings[:100],
                 "note": "Only first 100 findings returned for performance.",
             },
@@ -759,7 +821,7 @@ async def unified_risk(request: Request, body: UnifiedRiskRequest):
             "tls_error": tls_error,
             "meta": {
                 "tool": "QuantumGuard Unified Risk Engine",
-                "version": "1.0",
+                "version": "2.2",
                 "company": "Mangsri QuantumGuard LLC",
                 "website": "https://quantumguard.site",
                 "standards": ["NIST FIPS 203", "NIST FIPS 204", "NIST FIPS 205"],
@@ -841,6 +903,38 @@ hash_value = hashlib.sha3_256(data).hexdigest()
 
 # Why:
 SHA-1 is deprecated and collision-broken.
+"""
+    elif "DES" in vuln_upper:
+        fix_text = f"""# BEFORE:
+{code}
+
+# AFTER:
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+import os
+
+key = AESGCM.generate_key(bit_length=256)
+nonce = os.urandom(12)
+aesgcm = AESGCM(key)
+ciphertext = aesgcm.encrypt(nonce, plaintext, None)
+
+# Why:
+DES/3DES is deprecated. AES-256-GCM provides authenticated encryption.
+"""
+    elif "RC4" in vuln_upper:
+        fix_text = f"""# BEFORE:
+{code}
+
+# AFTER:
+from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
+import os
+
+key = ChaCha20Poly1305.generate_key()
+nonce = os.urandom(12)
+chacha = ChaCha20Poly1305(key)
+ciphertext = chacha.encrypt(nonce, plaintext, None)
+
+# Why:
+RC4 is completely broken. ChaCha20-Poly1305 is a modern authenticated cipher.
 """
     else:
         fix_text = f"""# BEFORE:
