@@ -2000,6 +2000,18 @@ function UnifiedRiskPage() {
   const sevCol = (s) => s === "CRITICAL" ? "#dc2626" : s === "HIGH" ? "#d97706" : "#ca8a04";
   const sevBgCol = (s) => s === "CRITICAL" ? "#fee2e2" : s === "HIGH" ? "#fef3c7" : "#fef9c3";
 
+  // ← ADD THESE LINES — snapshot directly from data
+  const _ur = data?.unified_risk || {};
+  const _cs = _ur.component_scores || {};
+  const _fs = data?.finding_summary || {};
+  const _ss = _fs.severity_summary || {};
+  const _tf = data?.top_findings || [];
+  const _score        = Math.round(_ur.quantum_risk_score || 0);
+  const _codeScore    = Math.round(_cs.code_crypto_score || 0);
+  const _agilityScore = Math.round(_cs.crypto_agility_score || 0);
+  const _tlsScore     = Math.round(_cs.tls_score || 0);
+  const _total        = (_ss.CRITICAL||0) + (_ss.HIGH||0) + (_ss.MEDIUM||0) + (_ss.LOW||0);
+
   win.document.write(`<!DOCTYPE html><html><head><title>QuantumGuard Unified Risk Report</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
