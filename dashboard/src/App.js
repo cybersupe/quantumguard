@@ -1188,12 +1188,12 @@ function TLSPage() {
           <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 16 }}>
             <Metric label="TLS Score" value={result.tls_score} suffix="/100" color={scoreColor} icon="🎯" desc={result.tls_score >= 70 ? "Quantum Ready" : "Needs Improvement"} />
             <Metric label="TLS Version" value={result.tls_version} color={result.tls_version === "TLSv1.3" ? C.green : C.amber} icon="🔒" desc={result.tls_version === "TLSv1.3" ? "Latest" : "Upgrade Needed"} />
-            <Metric label="Quantum Safe" value={result.quantum_safe ? "YES" : "NO"} color={result.quantum_safe ? C.green : C.red} icon={result.quantum_safe ? "✅" : "❌"} desc={result.quantum_safe ? "Forward secrecy active" : "RSA key exchange"} />
+            <Metric label="Quantum Safe" value={result.quantum_safe ? "YES" : "NO"} color={result.quantum_safe ? C.green : C.red} icon={result.quantum_safe ? "✅" : "❌"} desc={result.quantum_safe ? "Post-quantum / hybrid KEM detected" : result.tls_version === "TLSv1.3" ? "Forward secure, not post-quantum yet" : result.rsa_key_exchange ? "Static RSA key exchange" : "Not post-quantum yet"} />
             <Metric label="Key Size" value={result.cipher_bits} suffix=" bit" color={result.cipher_bits >= 256 ? C.green : C.amber} icon="🔑" desc={result.cipher_bits >= 256 ? "Strong" : "Upgrade Needed"} />
           </div>
           <Panel title="Cipher Suite Details" accent>
             <div className="tls-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              {[["Domain", result.domain, C.green], ["Cipher Suite", result.cipher_suite, C.text], ["Certificate Expires", result.cert_expires, C.amber], ["Recommendation", result.recommendation, C.green]].map(([label, value, color], i) => (
+              {[["Domain", result.domain, C.green], ["Cipher Suite", result.cipher_suite, C.text], ["Certificate Expires", result.certificate?.cert_expires || result.cert_expires || "—", C.amber], ["Recommendation", result.nist_recommendation || result.recommendation || "Monitor hybrid PQC TLS adoption", C.green]].map(([label, value, color], i) => (
                 <div key={i} style={{ background: C.input, borderRadius: 8, padding: "12px 14px" }}>
                   <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, fontWeight: 500 }}>{label}</div>
                   <div style={{ fontSize: 12, color, fontWeight: 500, wordBreak: "break-all" }}>{value}</div>
