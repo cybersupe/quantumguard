@@ -1224,14 +1224,48 @@ function TLSPage() {
             <Metric label="Key Size" value={result.cipher_bits} suffix=" bit" color={result.cipher_bits >= 256 ? C.green : C.amber} icon="🔑" desc={result.cipher_bits >= 256 ? "Strong" : "Upgrade Needed"} />
           </div>
           <Panel title="Cipher Suite Details" accent>
-            <div className="tls-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              [["Domain", result.domain, C.green],["Cipher Suite", result.cipher_suite, C.text],["Key Exchange",result.key_exchange ||(result.has_forward_secrecy? "ECDHE / Forward Secrecy": "Static RSA or Unknown"),C.green],["Certificate Expires",result.certificate?.cert_expires || result.cert_expires || "—", C.amber],["Recommendation",result.nist_recommendation ||"Monitor hybrid PQC TLS adoption",C.green],["Future Upgrade",result.pqc_roadmap ||"Hybrid TLS: X25519 + ML-KEM → NIST FIPS 203 readiness", C.blue]]
-                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, fontWeight: 500 }}>{label}</div>
-                  <div style={{ fontSize: 12, color, fontWeight: 500, wordBreak: "break-all" }}>{value}</div>
-                </div>
-              ))}
-            </div>
-          </Panel>
+  <div className="tls-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+    {[
+      ["Domain", result.domain, C.green],
+      ["Cipher Suite", result.cipher_suite, C.text],
+      [
+        "Key Exchange",
+        result.key_exchange ||
+          (result.has_forward_secrecy
+            ? "ECDHE / Forward Secrecy"
+            : "Static RSA or Unknown"),
+        C.green
+      ],
+      [
+        "Certificate Expires",
+        result.certificate?.cert_expires || result.cert_expires || "—",
+        C.amber
+      ],
+      [
+        "Recommendation",
+        result.nist_recommendation ||
+          result.recommendation ||
+          "Monitor hybrid PQC TLS adoption",
+        C.green
+      ],
+      [
+        "Future Upgrade",
+        result.pqc_roadmap ||
+          "Hybrid TLS: X25519 + ML-KEM → NIST FIPS 203 readiness",
+        C.blue
+      ]
+    ].map(([label, value, color]) => (
+      <div key={label} style={{ background: C.input, borderRadius: 8, padding: "12px 14px" }}>
+        <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, fontWeight: 500 }}>
+          {label}
+        </div>
+        <div style={{ fontSize: 12, color, fontWeight: 500, wordBreak: "break-all" }}>
+          {value}
+        </div>
+      </div>
+    ))}
+  </div>
+</Panel>
           {result.issues && result.issues.length > 0 && (
             <Panel title={`Issues Found — ${result.issues.length}`} accent>
               {result.issues.map((issue, i) => (
