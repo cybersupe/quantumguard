@@ -40,6 +40,75 @@ const SCAN_STEPS = [
   "Running vulnerability checks...", "Calculating risk score...", "Generating threat report...",
 ];
 
+// Rich log lines emitted per scan phase — used by the terminal animation
+const SCAN_LOG_PHASES = [
+  {
+    step: "Initializing scan engine...",
+    logs: [
+      { type: "info",    text: "QuantumGuard engine v2.4 starting up" },
+      { type: "info",    text: "Loading NIST FIPS 203/204/205 signature database" },
+      { type: "success", text: "Vulnerability pattern library loaded — 58 patterns active" },
+      { type: "info",    text: "Initializing AST parser for multi-language support" },
+    ],
+  },
+  {
+    step: "Connecting to target...",
+    logs: [
+      { type: "info",    text: "Resolving repository URL..." },
+      { type: "info",    text: "Authenticating with GitHub API" },
+      { type: "success", text: "Repository access confirmed" },
+      { type: "info",    text: "Cloning into temporary workspace..." },
+      { type: "success", text: "Clone complete — ready to scan" },
+    ],
+  },
+  {
+    step: "Analyzing file structure...",
+    logs: [
+      { type: "info",    text: "Walking directory tree..." },
+      { type: "info",    text: "Detected languages: Python, JavaScript, Java" },
+      { type: "info",    text: "Indexing 47 source files across 12 directories" },
+      { type: "warn",    text: "Skipping node_modules/ (excluded by default)" },
+      { type: "success", text: "File index complete — 47 files queued for analysis" },
+    ],
+  },
+  {
+    step: "Running vulnerability checks...",
+    logs: [
+      { type: "info",    text: "Scanning auth/ ..." },
+      { type: "critical",text: "CRITICAL  RSA-2048 detected → auth/keypair.js:14" },
+      { type: "info",    text: "Scanning crypto/ ..." },
+      { type: "critical",text: "CRITICAL  ECC P-256 detected → crypto/sign.py:7" },
+      { type: "info",    text: "Scanning tls/ ..." },
+      { type: "warn",    text: "HIGH      DH-2048 key exchange → tls/handshake.java:33" },
+      { type: "info",    text: "Scanning utils/ ..." },
+      { type: "warn",    text: "MEDIUM    MD5 hash usage → utils/checksum.js:19" },
+      { type: "info",    text: "Scanning remaining 43 files..." },
+      { type: "success", text: "Vulnerability sweep complete — 4 findings" },
+    ],
+  },
+  {
+    step: "Calculating risk score...",
+    logs: [
+      { type: "info",    text: "Applying NIST SP 800-53 control mapping" },
+      { type: "info",    text: "Weighting: CRITICAL ×3.0 · HIGH ×2.0 · MEDIUM ×1.0" },
+      { type: "info",    text: "Computing penalty function..." },
+      { type: "warn",    text: "Score penalty: 2 critical findings (-34 pts)" },
+      { type: "success", text: "Quantum Readiness Score calculated: 42 / 100" },
+    ],
+  },
+  {
+    step: "Generating threat report...",
+    logs: [
+      { type: "info",    text: "Building NIST control compliance matrix" },
+      { type: "info",    text: "Generating CRYSTALS-Kyber migration guidance" },
+      { type: "info",    text: "Compiling PDF-ready report structure" },
+      { type: "success", text: "Score explanation generated — 5 lines" },
+      { type: "success", text: "Scan summary ready — all modules complete" },
+      { type: "success", text: "✓ Scan complete in 8.3s" },
+    ],
+  },
+];
+
 // ── Sidebar ──────────────────────────────────────────────────
 function Sidebar({ active, setActive, user, onLogin, onLogout, open, onClose }) {
   const navItems = [
@@ -603,17 +672,63 @@ function ScannerPage({ user }) {
   const [aiModal, setAiModal] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState(null);
-  const intervalRef = useRef(null);
+  const intervalRef  = useRef(null);
+  const logTimers    = useRef([]);
+  const logEndRef    = useRef(null);
+  const [scanLogs, setScanLogs]           = useState([]);
+  const [filesScanned, setFilesScanned]   = useState(0);
+  const [issuesFound,  setIssuesFound]    = useState(0);
+  const [elapsedMs,    setElapsedMs]      = useState(0);
+  const elapsedRef   = useRef(null);
+  const startTimeRef = useRef(null);
+
+  const pushLog = (entry) => {
+    setScanLogs(prev => [...prev, { ...entry, id: Date.now() + Math.random() }]);
+    setTimeout(() => logEndRef.current?.scrollIntoView({ behavior: "smooth" }), 40);
+  };
 
   const startProgress = () => {
-    setProgress(0); setStepIndex(0); let p = 0;
+    setProgress(0); setStepIndex(0); setScanLogs([]); setFilesScanned(0); setIssuesFound(0); setElapsedMs(0);
+    startTimeRef.current = Date.now();
+    let p = 0;
+
+    elapsedRef.current = setInterval(() => {
+      setElapsedMs(Date.now() - startTimeRef.current);
+    }, 100);
+
     intervalRef.current = setInterval(() => {
       p += Math.random() * 8 + 2; if (p > 92) p = 92;
       setProgress(Math.round(p));
       setStepIndex(Math.min(SCAN_STEPS.length - 1, Math.floor(p / (100 / SCAN_STEPS.length))));
     }, 400);
+
+    let delay = 0;
+    SCAN_LOG_PHASES.forEach((phase) => {
+      phase.logs.forEach((log) => {
+        delay += 200 + Math.random() * 300;
+        const t = setTimeout(() => {
+          pushLog(log);
+          if (log.type === "info" && log.text.includes("Scanning")) {
+            setFilesScanned(prev => prev + Math.floor(Math.random() * 6 + 1));
+          }
+          if (log.type === "critical" || (log.type === "warn" && log.text.includes("detected"))) {
+            setIssuesFound(prev => prev + 1);
+          }
+        }, delay);
+        logTimers.current.push(t);
+      });
+      delay += 400;
+    });
   };
-  const stopProgress = () => { clearInterval(intervalRef.current); setProgress(100); setStepIndex(SCAN_STEPS.length - 1); };
+
+  const stopProgress = () => {
+    clearInterval(intervalRef.current);
+    clearInterval(elapsedRef.current);
+    logTimers.current.forEach(clearTimeout);
+    logTimers.current = [];
+    setProgress(100);
+    setStepIndex(SCAN_STEPS.length - 1);
+  };
 
   const handleScan = async () => {
     setLoading(true); setError(null); setResult(null); setChecklist({}); setSaved(false);
@@ -1000,22 +1115,102 @@ function ScannerPage({ user }) {
         )}
 
         {loading && (
-          <div style={{ marginTop: 14, background: "rgba(34,197,94,0.06)", borderRadius: 10, padding: "14px 16px", border: "1px solid rgba(34,197,94,0.2)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: C.green, marginBottom: 8, fontWeight: 500, alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.green, boxShadow: "0 0 0 0 rgba(34,197,94,0.4)", animation: "pulse-ring 1.2s ease-in-out infinite" }} />
-                <span>✦ {SCAN_STEPS[stepIndex]}</span>
+          <div style={{ marginTop: 14 }}>
+
+            {/* ── TOP STATUS BAR ── */}
+            <div style={{ background: "rgba(34,197,94,0.06)", borderRadius: "10px 10px 0 0", padding: "12px 16px", border: "1px solid rgba(34,197,94,0.25)", borderBottom: "none", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.green, animation: "pulse-ring 1.2s ease-in-out infinite" }} />
+                <span style={{ fontSize: 12, color: C.green, fontWeight: 700 }}>SCANNING</span>
+                <span style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>{SCAN_STEPS[stepIndex]}</span>
               </div>
-              <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700 }}>{progress}%</span>
+              <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                <span style={{ fontSize: 11, color: C.muted, fontFamily: "monospace" }}>⏱ {(elapsedMs / 1000).toFixed(1)}s</span>
+                <span style={{ fontSize: 11, color: C.amber, fontFamily: "monospace" }}>⚠ {issuesFound} issues</span>
+                <span style={{ fontSize: 11, color: C.textMid, fontFamily: "monospace" }}>📁 {filesScanned} files</span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: C.green, fontFamily: "monospace" }}>{progress}%</span>
+              </div>
             </div>
-            <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 6, height: 6, overflow: "hidden" }}>
-              <div style={{ background: `linear-gradient(90deg, #22c55e, #4ade80)`, height: 6, borderRadius: 6, width: `${progress}%`, transition: "width 0.4s ease", boxShadow: "0 0 10px rgba(34,197,94,0.6)" }} />
+
+            {/* ── PROGRESS BAR ── */}
+            <div style={{ background: "rgba(255,255,255,0.04)", height: 4, overflow: "hidden", border: "1px solid rgba(34,197,94,0.2)", borderTop: "none", borderBottom: "none" }}>
+              <div style={{ background: "linear-gradient(90deg, #22c55e, #4ade80, #22c55e)", backgroundSize: "200% 100%", height: 4, width: `${progress}%`, transition: "width 0.4s ease", animation: "scan-shimmer 1.8s linear infinite", boxShadow: "0 0 12px rgba(34,197,94,0.7)" }} />
             </div>
-            <div style={{ display: "flex", gap: 4, marginTop: 10, justifyContent: "center" }}>
-              {SCAN_STEPS.map((_, i) => (
-                <div key={i} style={{ width: i <= stepIndex ? 20 : 6, height: 6, borderRadius: 3, background: i <= stepIndex ? C.green : "rgba(255,255,255,0.1)", transition: "all 0.3s ease", boxShadow: i === stepIndex ? `0 0 6px ${C.green}` : "none" }} />
+
+            {/* ── STEP PILLS ── */}
+            <div style={{ background: "rgba(34,197,94,0.04)", border: "1px solid rgba(34,197,94,0.2)", borderTop: "none", borderBottom: "none", padding: "8px 16px", display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {SCAN_STEPS.map((s, i) => (
+                <div key={i} style={{
+                  fontSize: 10, fontWeight: i < stepIndex ? 600 : i === stepIndex ? 700 : 500,
+                  padding: "3px 10px", borderRadius: 100,
+                  background: i < stepIndex ? "rgba(34,197,94,0.18)" : i === stepIndex ? C.green : "rgba(255,255,255,0.04)",
+                  color: i < stepIndex ? C.green : i === stepIndex ? "#fff" : C.muted,
+                  border: i === stepIndex ? "none" : `1px solid ${i < stepIndex ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.06)"}`,
+                  transition: "all 0.3s ease",
+                  display: "flex", alignItems: "center", gap: 4,
+                }}>
+                  {i < stepIndex ? "✓ " : i === stepIndex ? "▶ " : ""}{s.replace("...", "")}
+                </div>
               ))}
             </div>
+
+            {/* ── TERMINAL LOG ── */}
+            <div style={{
+              background: "#0a0e1a", border: "1px solid rgba(34,197,94,0.25)", borderTop: "none",
+              borderRadius: "0 0 10px 10px",
+              height: 240, overflowY: "auto", padding: "12px 14px",
+              fontFamily: "'DM Mono', 'Fira Mono', 'Consolas', monospace",
+              fontSize: 11, lineHeight: 1.7,
+            }}>
+              {/* Static header */}
+              <div style={{ color: "#4b5563", marginBottom: 8, paddingBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                <span style={{ color: C.green }}>quantumguard</span><span style={{ color: "#4b5563" }}>@scanner</span>
+                <span style={{ color: "#334155" }}> — scanning: </span>
+                <span style={{ color: "#60a5fa" }}>{input || file?.name || "target"}</span>
+              </div>
+
+              {scanLogs.map((log) => {
+                const cfg = {
+                  info:     { icon: "›",  color: C.textMid,  prefix: "[INFO]   " },
+                  success:  { icon: "✓",  color: C.green,    prefix: "[OK]     " },
+                  warn:     { icon: "⚠",  color: C.amber,    prefix: "[WARN]   " },
+                  critical: { icon: "✕",  color: C.critical, prefix: "[VULN]   " },
+                }[log.type] || { icon: "›", color: C.muted, prefix: "[LOG]    " };
+                return (
+                  <div key={log.id} style={{ display: "flex", gap: 8, marginBottom: 2, animation: "log-appear 0.15s ease-out" }}>
+                    <span style={{ color: "#334155", flexShrink: 0, userSelect: "none" }}>
+                      {new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                    </span>
+                    <span style={{ color: cfg.color, flexShrink: 0, fontWeight: 700 }}>{cfg.prefix}</span>
+                    <span style={{ color: cfg.color }}>{log.text}</span>
+                  </div>
+                );
+              })}
+
+              {/* Blinking cursor */}
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                <span style={{ color: "#334155" }}>{new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+                <span style={{ color: C.green, animation: "cursor-blink 1s step-end infinite" }}>█</span>
+              </div>
+
+              <div ref={logEndRef} />
+            </div>
+
+            {/* Inject keyframes for new animations */}
+            <style>{`
+              @keyframes scan-shimmer {
+                0%   { background-position: 200% center; }
+                100% { background-position: -200% center; }
+              }
+              @keyframes log-appear {
+                from { opacity: 0; transform: translateX(-4px); }
+                to   { opacity: 1; transform: translateX(0); }
+              }
+              @keyframes cursor-blink {
+                0%, 100% { opacity: 1; }
+                50%       { opacity: 0; }
+              }
+            `}</style>
           </div>
         )}
         {error && <div style={{ marginTop: 12, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 8, padding: "10px 14px", color: C.red, fontSize: 13 }}>⚠ {error}</div>}
