@@ -1,5 +1,5 @@
 # ============================================================
-# QuantumGuard — Core Scanner v2.3
+# QuantumGuard — Core Scanner v2.4
 # Copyright (c) 2026 Pavansudheer Payyavula / MANGSRI
 # Licensed under AGPL v3 — github.com/cybersupe/quantumguard
 # Standards: NIST FIPS 203, FIPS 204, FIPS 205
@@ -8,6 +8,7 @@
 import os
 import re
 import math
+import time
 import json
 from datetime import datetime
 from scanner.patterns import VULNERABLE_PATTERNS, SEVERITY_SCORE
@@ -142,7 +143,6 @@ def _get_migration_priority(severity):
 def _deduplicate_findings(findings):
     seen = {}
     confidence_rank = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
-
     for f in findings:
         key = (f["file"], f["line"], f["vulnerability"])
         if key not in seen:
@@ -152,7 +152,6 @@ def _deduplicate_findings(findings):
             new_rank = confidence_rank.get(f.get("confidence", "MEDIUM"), 2)
             if new_rank > existing_rank:
                 seen[key] = f
-
     return list(seen.values())
 
 
@@ -255,33 +254,17 @@ def scan_directory(directory):
             break
 
     all_findings += scan_js_directory(directory)
-
     return _deduplicate_findings(all_findings)
 
 
 def calculate_score(findings):
     """
-    Calculate quantum readiness score 0-100.
-
-    Scoring model v2.3 — log-scale, never returns 0:
-    - Confidence: HIGH=full, MEDIUM=50%, LOW=0% penalty
-    - Test files: 25% of normal penalty
-    - Production auth/crypto files: 125% multiplier
-    - Diminishing returns per vuln type:
-        1st: 100%, 2nd: 80%, 3rd: 60%, 4th+: 40%
-    - Exponential decay normalization:
-        score = 100 * exp(-penalty / 80)
-        penalty=0   → 100  (clean repo)
-        penalty=40  → 61   (some issues)
-        penalty=80  → 37   (many issues)
-        penalty=160 → 22   (very many issues)
-        penalty=500 → 20   (floor kicks in)
-    - Hard floor: 20 — no repo ever scores below 20
+    Scoring v2.4 — exponential decay, never returns 0.
+    Floor: 20. Clean repo: 100.
     """
     if not findings:
         return 100
 
-    # Group by vulnerability type for diminishing returns
     vuln_groups = {}
     for f in findings:
         vuln = f.get("vulnerability", "UNKNOWN")
@@ -295,24 +278,20 @@ def calculate_score(findings):
             confidence = f.get("confidence", "MEDIUM")
             is_test = f.get("is_test_file", False)
 
-            # Confidence multiplier
             if confidence == "HIGH":
                 conf_mult = 1.0
             elif confidence == "MEDIUM":
                 conf_mult = 0.5
             else:
-                conf_mult = 0.0  # LOW = no penalty
+                conf_mult = 0.0
 
-            # Test file reduction
             if is_test:
                 conf_mult *= 0.25
 
-            # Production security file boost
             file_path = str(f.get("file", "")).lower()
             if any(x in file_path for x in ["auth", "crypto", "security", "jwt", "token", "config", "key"]):
                 conf_mult *= 1.25
 
-            # Diminishing returns per vuln type
             if i == 0:
                 repeat_mult = 1.0
             elif i == 1:
@@ -324,20 +303,155 @@ def calculate_score(findings):
 
             total_penalty += base_penalty * conf_mult * repeat_mult
 
-    # Exponential decay — score never reaches 0 for any finite penalty
     raw_score = 100 * math.exp(-total_penalty / 80)
-
-    # Hard floor: no repo scores below 20
     score = max(20, round(raw_score))
-
     return max(0, min(100, score))
 
 
+def generate_score_explanation(findings, score):
+    """
+    Generate human-readable bullet points explaining WHY the score is what it is.
+    Returns a list of strings shown in the UI under "Why this score?"
+    """
+    if not findings:
+        return ["No vulnerabilities detected — codebase appears quantum-safe."]
+
+    explanation = []
+
+    # Count by vuln type (HIGH confidence only, non-test)
+    vuln_counts = {}
+    for f in findings:
+        if f.get("confidence") == "LOW":
+            continue
+        if f.get("is_test_file"):
+            continue
+        vuln = f.get("vulnerability", "UNKNOWN")
+        sev = f.get("severity", "MEDIUM")
+        key = (vuln, sev)
+        vuln_counts[key] = vuln_counts.get(key, 0) + 1
+
+    # Build explanation lines ordered by severity
+    severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2}
+    sorted_vulns = sorted(vuln_counts.items(), key=lambda x: (severity_order.get(x[0][1], 3), -x[1]))
+
+    VULN_DESCRIPTIONS = {
+        "RSA":              "RSA encryption detected — quantum-vulnerable via Shor's algorithm",
+        "ECC":              "Elliptic curve cryptography detected — quantum-vulnerable via Shor's algorithm",
+        "DH":               "Diffie-Hellman key exchange detected — quantum-vulnerable",
+        "DSA":              "DSA signatures detected — quantum-vulnerable",
+        "MD5":              "MD5 hashing detected — cryptographically broken",
+        "SHA1":             "SHA-1 hashing detected — deprecated and collision-broken",
+        "RC4":              "RC4 cipher detected — completely broken",
+        "DES":              "DES/3DES cipher detected — deprecated, insufficient key size",
+        "ECB_MODE":         "ECB mode detected — reveals patterns in encrypted data",
+        "WEAK_TLS":         "Weak TLS version detected — upgrade to TLS 1.3",
+        "WEAK_KEY_SIZE":    "Weak RSA key size detected — minimum 3072-bit required",
+        "HARDCODED_SECRET": "Hardcoded secrets detected — exposed in source code",
+        "WEAK_RANDOM":      "Insecure random number generator detected in crypto context",
+        "JWT_NONE_ALG":     "JWT signature verification disabled — token forgery risk",
+        "BLOWFISH":         "Blowfish cipher detected — 64-bit block size, use AES-256-GCM",
+        "MD4":              "MD4 hashing detected — completely broken",
+        "SHA256_SIGNED":    "SHA-256 with asymmetric signing — inherits quantum vulnerability",
+    }
+
+    SEV_PREFIX = {
+        "CRITICAL": "🔴 CRITICAL",
+        "HIGH":     "🟡 HIGH",
+        "MEDIUM":   "🟠 MEDIUM",
+    }
+
+    for (vuln, sev), count in sorted_vulns[:8]:  # max 8 lines
+        base_vuln = vuln.split("_")[0] if "_" in vuln else vuln
+        desc = None
+        for key in VULN_DESCRIPTIONS:
+            if vuln.startswith(key) or key.startswith(base_vuln):
+                desc = VULN_DESCRIPTIONS[key]
+                break
+        if not desc:
+            desc = f"{vuln} detected — migration required"
+
+        prefix = SEV_PREFIX.get(sev, "⚪")
+        count_str = f" ({count} instance{'s' if count > 1 else ''})" if count > 1 else ""
+        explanation.append(f"{prefix}: {desc}{count_str}")
+
+    # Overall score context
+    if score <= 25:
+        explanation.append("⚠️  Score is critically low — immediate remediation required before production use.")
+    elif score <= 50:
+        explanation.append("⚠️  Score indicates significant quantum risk — migration planning should begin now.")
+    elif score <= 75:
+        explanation.append("ℹ️  Score indicates moderate risk — some algorithms need upgrading.")
+    else:
+        explanation.append("✅  Score indicates good quantum posture — continue monitoring NIST PQC updates.")
+
+    return explanation
+
+
+def generate_scan_summary(directory, findings, scan_start_time):
+    """
+    Generate scan metadata: files scanned, scan time, languages detected.
+    """
+    total_files = 0
+    files_scanned = 0
+    languages = set()
+    ext_map = {
+        ".py": "Python", ".js": "JavaScript", ".ts": "TypeScript",
+        ".java": "Java", ".go": "Go", ".rs": "Rust",
+        ".c": "C", ".cpp": "C++", ".cc": "C++",
+        ".h": "C/C++ Header", ".hpp": "C++ Header",
+    }
+
+    for root, dirs, files in os.walk(directory):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        for file in files:
+            ext = os.path.splitext(file)[1].lower()
+            if ext in ext_map:
+                total_files += 1
+                if files_scanned < MAX_FILES:
+                    files_scanned += 1
+                    languages.add(ext_map[ext])
+
+    scan_time_seconds = round(time.time() - scan_start_time, 1)
+    if scan_time_seconds < 60:
+        scan_time_str = f"{scan_time_seconds}s"
+    else:
+        scan_time_str = f"{round(scan_time_seconds / 60, 1)}m"
+
+    # Files with issues
+    files_with_issues = len({f["file"] for f in findings if f.get("confidence") != "LOW"})
+
+    # Overall confidence
+    high_conf = sum(1 for f in findings if f.get("confidence") == "HIGH")
+    med_conf  = sum(1 for f in findings if f.get("confidence") == "MEDIUM")
+    total_real = high_conf + med_conf
+
+    if total_real == 0:
+        overall_confidence = "High"
+        confidence_note = "No findings — high confidence the codebase is clean."
+    elif high_conf / max(total_real, 1) >= 0.7:
+        overall_confidence = "High"
+        confidence_note = f"{high_conf} of {total_real} findings confirmed by AST or direct API call."
+    elif high_conf / max(total_real, 1) >= 0.4:
+        overall_confidence = "Medium"
+        confidence_note = f"Mix of high and medium confidence findings. Review each finding before fixing."
+    else:
+        overall_confidence = "Low"
+        confidence_note = "Most findings are pattern-based. Manual review recommended."
+
+    return {
+        "total_files": total_files,
+        "files_scanned": files_scanned,
+        "files_with_issues": files_with_issues,
+        "scan_time": scan_time_str,
+        "languages_detected": sorted(list(languages)),
+        "overall_confidence": overall_confidence,
+        "confidence_note": confidence_note,
+        "max_files_limit": MAX_FILES,
+        "truncated": total_files > MAX_FILES,
+    }
+
+
 def check_crypto_agility(directory):
-    """
-    Crypto agility checker.
-    Score = max(0, min(100, 100 - hardcoded * 5 + configurable * 3))
-    """
     agility_findings = []
 
     hardcoded_patterns = [
@@ -387,12 +501,9 @@ def check_crypto_agility(directory):
                     for pattern, desc, fix in hardcoded_patterns:
                         if re.search(pattern, line):
                             agility_findings.append({
-                                "file": filepath,
-                                "line": line_num,
-                                "code": line.strip(),
-                                "type": "hardcoded",
-                                "description": desc,
-                                "fix": fix,
+                                "file": filepath, "line": line_num,
+                                "code": line.strip(), "type": "hardcoded",
+                                "description": desc, "fix": fix,
                                 "recommendation": "Move to environment variable or config file",
                                 "impact": "Hardcoded crypto makes quantum migration expensive and error-prone",
                             })
@@ -400,12 +511,9 @@ def check_crypto_agility(directory):
                     for pattern, desc in configurable_patterns:
                         if re.search(pattern, line):
                             agility_findings.append({
-                                "file": filepath,
-                                "line": line_num,
-                                "code": line.strip(),
-                                "type": "configurable",
-                                "description": desc,
-                                "fix": "Good practice — maintain this pattern",
+                                "file": filepath, "line": line_num,
+                                "code": line.strip(), "type": "configurable",
+                                "description": desc, "fix": "Good practice — maintain this pattern",
                                 "recommendation": "Ensure PQC algorithms are available as config options",
                                 "impact": "Configurable crypto enables fast PQC migration",
                             })
@@ -413,22 +521,18 @@ def check_crypto_agility(directory):
             except Exception:
                 continue
 
-    hardcoded = len([f for f in agility_findings if f["type"] == "hardcoded"])
+    hardcoded   = len([f for f in agility_findings if f["type"] == "hardcoded"])
     configurable = len([f for f in agility_findings if f["type"] == "configurable"])
     agility_score = max(0, min(100, 100 - (hardcoded * 5) + (configurable * 3)))
 
     if agility_score >= 90:
-        status = "HIGH AGILITY"
-        migration_ease = "Very Easy"
+        status = "HIGH AGILITY"; migration_ease = "Very Easy"
     elif agility_score >= 70:
-        status = "MODERATE AGILITY"
-        migration_ease = "Moderate"
+        status = "MODERATE AGILITY"; migration_ease = "Moderate"
     elif agility_score >= 40:
-        status = "LOW AGILITY"
-        migration_ease = "Difficult"
+        status = "LOW AGILITY"; migration_ease = "Difficult"
     else:
-        status = "VERY LOW AGILITY"
-        migration_ease = "Very Difficult"
+        status = "VERY LOW AGILITY"; migration_ease = "Very Difficult"
 
     return {
         "agility_score": agility_score,
@@ -448,8 +552,8 @@ def check_crypto_agility(directory):
 
 
 def generate_report(directory):
-    """Generate a full JSON report."""
     print(f"\n[QuantumGuard] Scanning: {directory}\n")
+    start = time.time()
     findings = scan_directory(directory)
     score = calculate_score(findings)
 
@@ -460,8 +564,7 @@ def generate_report(directory):
 
     report = {
         "meta": {
-            "tool": "QuantumGuard",
-            "version": "2.3",
+            "tool": "QuantumGuard", "version": "2.4",
             "company": "Mangsri QuantumGuard LLC",
             "website": "https://quantumguard.site",
             "standards": ["NIST FIPS 203 (ML-KEM)", "NIST FIPS 204 (ML-DSA)", "NIST FIPS 205 (SLH-DSA)"],
@@ -470,6 +573,8 @@ def generate_report(directory):
         },
         "directory": directory,
         "quantum_readiness_score": score,
+        "score_explanation": generate_score_explanation(findings, score),
+        "scan_summary": generate_scan_summary(directory, findings, start),
         "total_findings": len(findings),
         "severity_summary": severity_counts,
         "findings": findings,
@@ -481,13 +586,6 @@ def generate_report(directory):
         json.dump(report, f, indent=2)
 
     print(f"[QuantumGuard] Score: {score}/100")
-    print(f"[QuantumGuard] Findings: {len(findings)} (CRITICAL:{severity_counts['CRITICAL']} HIGH:{severity_counts['HIGH']} MEDIUM:{severity_counts['MEDIUM']})")
+    print(f"[QuantumGuard] Findings: {len(findings)}")
     print(f"[QuantumGuard] Report saved to: {output_path}\n")
-
-    for f in findings:
-        if f.get("confidence", "MEDIUM") != "LOW":
-            print(f"[{f['severity']}][{f.get('confidence','?')}] {f['file']}:{f['line']}")
-            print(f"  {f['vulnerability']} — {f['code']}")
-            print(f"  Fix: {f['replacement']}\n")
-
     return report
