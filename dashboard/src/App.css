@@ -1,60 +1,140 @@
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-html, body, #root {
+html,
+body,
+#root {
   width: 100%;
   min-height: 100%;
   overflow-x: hidden;
 }
 
 body {
-  background: #f8faf8;
-  color: #1a1a1a;
-  font-family: "Segoe UI", sans-serif;
+  background: linear-gradient(to bottom, #f0fdf4, #ffffff);
+  color: #0f172a;
+  font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-.sidebar-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.45);
-  z-index: 900;
-}
-
+/* Layout */
 .main-content {
   margin-left: 240px;
   width: calc(100% - 240px);
   overflow-x: hidden;
 }
 
+/* Sidebar overlay */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 900;
+}
+
+/* Hamburger */
 .hamburger {
   display: none;
   position: fixed;
   top: 12px;
   left: 12px;
   z-index: 1100;
-  background: #16a34a;
+  background: #22c55e;
   border: none;
-  border-radius: 8px;
-  width: 38px;
-  height: 38px;
+  border-radius: 10px;
+  width: 40px;
+  height: 40px;
   cursor: pointer;
   font-size: 18px;
   color: white;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 8px 20px rgba(34, 197, 94, 0.25);
 }
 
+.hamburger:hover {
+  background: #16a34a;
+}
+
+/* Brand green helper */
+.highlight {
+  color: #22c55e;
+  font-weight: 800;
+}
+
+/* Buttons */
+.btn-primary {
+  background: #22c55e;
+  color: white;
+  border: none;
+  border-radius: 14px;
+  padding: 13px 22px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(34, 197, 94, 0.28);
+}
+
+.btn-primary:hover {
+  background: #16a34a;
+}
+
+.btn-secondary {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 13px 22px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  border-color: #22c55e;
+  color: #16a34a;
+}
+
+/* Badges */
+.badge {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+/* Cards */
+.card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.06);
+}
+
+/* Mobile */
 @media (max-width: 768px) {
-  /* Hamburger menu */
-  .hamburger { display: flex; }
-  .hamburger-top { display: flex !important; }
-  .nav-hamburger { display: flex !important; }
-  .nav-right { display: none !important; }
-  .nav-links { display: none !important; }
+  .hamburger {
+    display: flex;
+  }
 
-  /* Main content full width */
-  .main-content { margin-left: 0 !important; width: 100% !important; }
+  .hamburger-top,
+  .nav-hamburger {
+    display: flex !important;
+  }
 
-  /* Sidebar slide-in */
+  .nav-right,
+  .nav-links {
+    display: none !important;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
   .sidebar {
     position: fixed !important;
     top: 0 !important;
@@ -65,51 +145,105 @@ body {
     transform: translateX(-100%);
     transition: transform 0.25s ease;
   }
-  .sidebar.open { transform: translateX(0) !important; }
 
-  /* Dashboard grids - single column */
+  .sidebar.open {
+    transform: translateX(0) !important;
+  }
+
   .stats-grid,
   .charts-grid,
   .analytics-grid,
   .docs-grid,
-  .tls-grid { grid-template-columns: 1fr !important; }
+  .tls-grid,
+  .how-grid,
+  .pricing-grid {
+    grid-template-columns: 1fr !important;
+  }
 
-  /* Homepage hero - stack vertically, hide dashboard preview */
   .hero-grid {
     grid-template-columns: 1fr !important;
-    gap: 24px !important;
-    padding: 32px 16px !important;
+    gap: 20px !important;
+    padding: 56px 20px 36px !important;
   }
-  .hero-preview { display: none !important; }
 
-  /* Stats bar - 2 columns on mobile */
+  .hero-preview {
+    display: none !important;
+  }
+
   .stats-bar-grid {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 12px !important;
-    padding: 0 16px !important;
+    padding: 0 20px !important;
   }
 
-  /* How It Works - stack */
-  .how-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
+  h1 {
+    font-size: 34px !important;
+    line-height: 1.08 !important;
+    letter-spacing: -0.04em !important;
+    margin-bottom: 22px !important;
+  }
 
-  /* Pricing - stack */
-  .pricing-grid { grid-template-columns: 1fr !important; }
+  h2 {
+    font-size: 26px !important;
+    line-height: 1.15 !important;
+  }
 
-  /* Typography */
-  h1 { font-size: 32px !important; line-height: 1.15 !important; }
-  h2 { font-size: 26px !important; }
+  p {
+    font-size: 15px !important;
+    line-height: 1.65 !important;
+  }
 
-  /* Homepage sections padding */
+  input,
+  button {
+    font-size: 15px !important;
+  }
+
   div[id="howitworks"],
   div[id="pricing"],
   div[id="docs"],
   div[id="features"] {
-    padding: 40px 16px !important;
+    padding: 44px 20px !important;
+  }
+}
+
+/* Small mobile */
+@media (max-width: 430px) {
+  h1 {
+    font-size: 31px !important;
+    line-height: 1.1 !important;
+  }
+
+  h2 {
+    font-size: 24px !important;
+  }
+
+  p {
+    font-size: 14.5px !important;
+  }
+
+  .hero-grid {
+    padding: 48px 18px 32px !important;
+  }
+
+  .stats-bar-grid {
+    grid-template-columns: 1fr !important;
   }
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #f0f7f0; }
-::-webkit-scrollbar-thumb { background: #86efac; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #16a34a; }
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f0fdf4;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #86efac;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #16a34a;
+}
