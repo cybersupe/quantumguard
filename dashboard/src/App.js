@@ -1024,6 +1024,52 @@ function ScannerPage({ user }) {
 
       {result && (
         <>
+          {/* ── NEW: Why this score? panel ── */}
+          {result.score_explanation && result.score_explanation.length > 0 && (
+            <Panel title="Why this score?" accent>
+              {result.score_explanation.map((line, i) => {
+                const color = line.startsWith("🔴") ? C.critical : line.startsWith("🟡") ? C.amber : line.startsWith("🟠") ? C.medium : C.green;
+                return (
+                  <div key={i} style={{ display: "flex", gap: 10, padding: "7px 0", borderBottom: i < result.score_explanation.length - 1 ? `1px solid ${C.panelBorder}` : "none", alignItems: "flex-start" }}>
+                    <span style={{ fontSize: 15, flexShrink: 0 }}>{line.slice(0, 2)}</span>
+                    <span style={{ fontSize: 12, color, lineHeight: 1.6 }}>{line.slice(2).trim()}</span>
+                  </div>
+                );
+              })}
+            </Panel>
+          )}
+
+          {/* ── NEW: Scan Summary panel ── */}
+          {result.scan_summary && (
+            <Panel title="Scan Summary" accent>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: result.scan_summary.languages_detected?.length > 0 ? 14 : 0 }}>
+                {[
+                  ["Files Scanned",     result.scan_summary.files_scanned,                  "📁", C.green],
+                  ["Files With Issues", result.scan_summary.files_with_issues,               "⚠️",  C.amber],
+                  ["Scan Time",         `${result.scan_summary.scan_time ?? "—"}s`,          "⏱",  C.blue],
+                  ["Confidence",        result.scan_summary.overall_confidence ?? "—",       "🎯",  C.textMid],
+                ].map(([label, value, icon, color]) => (
+                  <div key={label} style={{ background: C.input, borderRadius: 8, padding: "10px 12px", border: `1px solid ${C.panelBorder}`, textAlign: "center" }}>
+                    <div style={{ fontSize: 18, marginBottom: 4 }}>{icon}</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color }}>{value}</div>
+                    <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{label}</div>
+                  </div>
+                ))}
+              </div>
+              {result.scan_summary.languages_detected?.length > 0 && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
+                  <span style={{ fontSize: 11, color: C.muted, marginRight: 4, alignSelf: "center" }}>Languages:</span>
+                  {result.scan_summary.languages_detected.map(lang => (
+                    <span key={lang} style={{ background: "rgba(34,197,94,0.1)", color: C.green, border: "1px solid rgba(34,197,94,0.3)", fontSize: 10, fontWeight: 700, padding: "2px 9px", borderRadius: 100 }}>{lang}</span>
+                  ))}
+                </div>
+              )}
+              {result.scan_summary.confidence_note && (
+                <div style={{ marginTop: 10, fontSize: 11, color: C.muted, background: "rgba(34,197,94,0.05)", padding: "7px 12px", borderRadius: 6, border: "1px solid rgba(34,197,94,0.12)" }}>{result.scan_summary.confidence_note}</div>
+              )}
+            </Panel>
+          )}
+
           <div className="charts-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
             <Panel title="Severity Distribution" accent>
               <SevBar label="Critical" count={sev.CRITICAL} total={result.total_findings} color={C.critical} />
@@ -1624,24 +1670,16 @@ function Homepage({ onGetStarted }) {
 
       {/* ── HERO SECTION ── */}
       <div style={{ borderBottom: "1px solid rgba(34,197,94,0.1)", padding: "0 40px", position: "relative", overflow: "hidden", background: "linear-gradient(180deg, #0a0e1a 0%, #070d1a 100%)" }}>
-        {/* Animated radial glow — top right */}
         <div style={{ position: "absolute", top: -120, right: "8%", width: 580, height: 580, borderRadius: "50%", background: "radial-gradient(circle, rgba(34,197,94,0.09) 0%, transparent 70%)", animation: "hero-gradient 10s ease-in-out infinite", pointerEvents: "none" }} />
-        {/* Second glow — bottom left */}
         <div style={{ position: "absolute", bottom: -80, left: "5%", width: 380, height: 380, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,180,255,0.05) 0%, transparent 70%)", animation: "hero-gradient 14s ease-in-out infinite reverse", pointerEvents: "none" }} />
-        {/* Grid overlay */}
         <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(34,197,94,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(34,197,94,0.04) 1px, transparent 1px)", backgroundSize: "40px 40px", animation: "grid-fade 5s ease-in-out infinite", pointerEvents: "none" }} />
 
         <div className="hero-grid" style={{ maxWidth: 1200, margin: "0 auto", padding: "96px 0 88px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 70, alignItems: "center", position: "relative" }}>
-
-          {/* ── Left column ── */}
           <div>
-            {/* NIST badge — safe wording */}
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 30, padding: "6px 14px", marginBottom: 32 }}>
               <span style={{ fontSize: 14 }}>🏛</span>
               <span style={{ fontSize: 12, color: C.green, fontWeight: 700 }}>Aligned with NIST PQC 2024 Standards</span>
             </div>
-
-            {/* Title with glow */}
             <h1 style={{ fontSize: "clamp(48px,5.5vw,72px)", fontWeight: 900, lineHeight: 1.05, marginBottom: 16, color: C.text, letterSpacing: -2 }}>
               <span style={{ color: C.green, textShadow: "0 0 40px rgba(34,197,94,0.45), 0 0 80px rgba(34,197,94,0.2)" }}>Quantum</span>Guard
             </h1>
@@ -1652,8 +1690,6 @@ function Homepage({ onGetStarted }) {
               Quantum computers will break RSA and ECC by 2030. Scan your codebase in{" "}
               <strong style={{ color: C.text }}>30 seconds</strong> and get exact NIST-approved fixes — completely free.
             </p>
-
-            {/* CTA buttons */}
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 40 }}>
               <button onClick={onGetStarted}
                 style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)", color: C.white, padding: "15px 32px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 16, fontWeight: 700, boxShadow: "0 4px 20px rgba(34,197,94,0.4)", display: "flex", alignItems: "center", gap: 8, transition: "all 0.2s ease" }}
@@ -1666,7 +1702,6 @@ function Homepage({ onGetStarted }) {
                 onMouseLeave={e => { e.currentTarget.style.background = "rgba(34,197,94,0.08)"; e.currentTarget.style.transform = "translateY(0)"; }}
               >▶ Try Demo</button>
             </div>
-
             <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
               {["✓ Free Forever", "✓ No Signup Required", "✓ NIST FIPS 203/204/205", "✓ Open Source"].map((text, i) => (
                 <span key={i} style={{ fontSize: 13, color: C.green, fontWeight: 600 }}>{text}</span>
@@ -1674,9 +1709,7 @@ function Homepage({ onGetStarted }) {
             </div>
           </div>
 
-          {/* ── Right column: Hero preview card ── */}
           <div className="hero-preview" style={{ background: "#0d1120", borderRadius: 20, boxShadow: "0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(34,197,94,0.15)", overflow: "hidden", animation: "float-card 6s ease-in-out infinite" }}>
-            {/* Window chrome */}
             <div style={{ background: "#111827", padding: "12px 18px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
               <div style={{ display: "flex", gap: 6 }}>
                 {["#ff5f57","#febc2e","#28c840"].map((c,i) => <div key={i} style={{ width: 12, height: 12, borderRadius: "50%", background: c }} />)}
@@ -1684,13 +1717,10 @@ function Homepage({ onGetStarted }) {
               <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, marginLeft: 8, fontFamily: "monospace" }}>quantumguard.site — Scanner</span>
             </div>
             <div style={{ padding: 20 }}>
-              {/* Scan meta bar */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(34,197,94,0.06)", borderRadius: 8, padding: "6px 10px", marginBottom: 12, border: "1px solid rgba(34,197,94,0.12)" }}>
                 <span style={{ fontSize: 10, color: "#22c55e", fontWeight: 600 }}>● Live scan detected • <span style={{ color: "#64748b" }}>just now</span></span>
                 <span style={{ fontSize: 10, color: "#374151", fontFamily: "monospace" }}>example/repo</span>
               </div>
-
-              {/* 4 score cards with animated bars */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                 {[
                   ["Quantum Risk Score", "58", 58,  C.amber, "Moderate Risk"],
@@ -1714,8 +1744,6 @@ function Homepage({ onGetStarted }) {
                   </div>
                 ))}
               </div>
-
-              {/* Latest Threats */}
               <div style={{ background: "#111827", borderRadius: 10, padding: "10px 12px", border: "1px solid rgba(255,255,255,0.06)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                   <div style={{ fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Latest Threats</div>
@@ -1824,7 +1852,6 @@ function Homepage({ onGetStarted }) {
               { step: "3", icon: "📊", title: "Get Full Report",     desc: "Receive Quantum Readiness Score, NIST compliance report, PDF export, and AI-powered fixes." },
             ].map((s, i) => (
               <div key={i} className="step-card" style={{ textAlign: "center", position: "relative" }}>
-                {/* Connector line between steps */}
                 {i < 2 && (
                   <div style={{ position: "absolute", top: 33, left: "calc(50% + 44px)", right: "calc(-50% + 44px)", height: 1, background: "linear-gradient(90deg, rgba(34,197,94,0.5), rgba(34,197,94,0.1))", zIndex: 0 }} />
                 )}
