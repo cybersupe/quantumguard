@@ -1790,8 +1790,8 @@ const NAV_GROUPS_HP = [
 ];
 
 function HpNavDropdown({ item, isOpen, onToggle }) {
-  const ref = React.useRef(null);
-  React.useEffect(() => {
+  const ref = useRef(null);
+  useEffect(() => {
     if (!isOpen) return;
     const h = (e) => { if (ref.current && !ref.current.contains(e.target)) onToggle(null); };
     document.addEventListener("mousedown", h);
