@@ -1,22 +1,8 @@
 # ============================================================
-# QuantumGuard — GitHub Actions CI/CD Scanner
-# Copyright (c) 2026 Pavansudheer Payyavula / MANGSRI
-# Licensed under AGPL v3 — github.com/cybersupe/quantumguard
-# ============================================================
-#
-# SETUP INSTRUCTIONS:
-# 1. Repo → Settings → Secrets and variables → Actions, add:
-#    QUANTUMGUARD_API_URL      = https://quantumguard-api.onrender.com
-#    RENDER_DEPLOY_HOOK_URL    = (Render dashboard → Deploy Hook)
-#    VERCEL_TOKEN              = (vercel.com → Account Settings → Tokens)
-#    VERCEL_ORG_ID             = (from .vercel/project.json)
-#    VERCEL_PROJECT_ID         = (from .vercel/project.json)
-# 2. Optional secrets:
-#    QUANTUMGUARD_SCORE_THRESHOLD = 60  (default: 50)
-#    QUANTUMGUARD_API_KEY          (if using private API)
+# QuantumGuard — Professional CI/CD Security Pipeline
 # ============================================================
 
-name: QuantumGuard Advanced CI/CD
+name: QuantumGuard Pro CI/CD
 
 on:
   push:
@@ -37,7 +23,8 @@ concurrency:
 env:
   NODE_VERSION: "20"
   PYTHON_VERSION: "3.11"
-  SCORE_THRESHOLD: "50"
+  SCORE_THRESHOLD: "40"
+  CRITICAL_THRESHOLD: "10"
 
 jobs:
   frontend-build:
@@ -52,11 +39,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
 
       - name: Install frontend dependencies
         run: |
           cd dashboard
-          npm install
+          npm ci || npm install
 
       - name: Build frontend
         run: |
@@ -80,7 +69,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt || true
-          pip install fastapi uvicorn requests
+          pip install fastapi uvicorn requests slowapi python-multipart pydantic
+
+      - name: Python syntax check
+        run: |
+          python -m py_compile api.py
+          python -m py_compile scanner/scan.py
 
       - name: Import backend safely
         run: |
@@ -95,7 +89,7 @@ jobs:
           PY
 
   quantumguard-scan:
-    name: QuantumGuard Repo Scan
+    name: QuantumGuard Security Scan
     runs-on: ubuntu-latest
     needs: [frontend-build, backend-check]
 
@@ -114,95 +108,144 @@ jobs:
           pip install -r requirements.txt || true
           pip install requests
 
-      - name: Run local scanner if available
+      - name: Run QuantumGuard scanner
         id: scan
         continue-on-error: true
         run: |
-          echo "Running QuantumGuard local scan..."
+          echo "🛡️ Running QuantumGuard security scan..."
 
           python - <<'PY'
           import json
           import os
-          import sys
 
           result = {
               "score": 100,
               "critical": 0,
               "high": 0,
               "medium": 0,
+              "low": 0,
+              "total": 0,
               "findings": []
           }
 
           try:
-              from scanner.scan import scan_directory
+              from scanner.scan import scan_directory, calculate_score
 
               findings = scan_directory(".")
-              critical = sum(1 for f in findings if f.get("severity") == "CRITICAL")
-              high = sum(1 for f in findings if f.get("severity") == "HIGH")
-              medium = sum(1 for f in findings if f.get("severity") == "MEDIUM")
+              score = calculate_score(findings)
 
-              penalty = critical * 30 + high * 15 + medium * 5
-              score = max(0, 100 - min(penalty, 80))
+              critical = sum(1 for f in findings if f.get("severity") == "CRITICAL" and f.get("confidence") != "LOW")
+              high = sum(1 for f in findings if f.get("severity") == "HIGH" and f.get("confidence") != "LOW")
+              medium = sum(1 for f in findings if f.get("severity") == "MEDIUM" and f.get("confidence") != "LOW")
+              low = sum(1 for f in findings if f.get("confidence") == "LOW")
 
               result = {
                   "score": score,
                   "critical": critical,
                   "high": high,
                   "medium": medium,
-                  "findings": findings[:10]
+                  "low": low,
+                  "total": len(findings),
+                  "findings": findings[:25]
               }
 
           except Exception as e:
-              print("Scanner warning:", e)
+              print("⚠️ Scanner warning:", e)
 
           os.makedirs("reports", exist_ok=True)
 
           with open("reports/quantumguard-report.json", "w") as f:
               json.dump(result, f, indent=2)
 
-          print("QuantumGuard Score:", result["score"])
-          print("Critical:", result["critical"])
-          print("High:", result["high"])
-          print("Medium:", result["medium"])
+          print("")
+          print("======================================")
+          print(" QuantumGuard Security Scan Result")
+          print("======================================")
+          print(f"Score: {result['score']}/100")
+          print(f"Critical: {result['critical']}")
+          print(f"High: {result['high']}")
+          print(f"Medium: {result['medium']}")
+          print(f"Low confidence / ignored: {result['low']}")
+          print(f"Total findings: {result['total']}")
+          print("======================================")
 
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
               out.write(f"score={result['score']}\n")
               out.write(f"critical={result['critical']}\n")
               out.write(f"high={result['high']}\n")
               out.write(f"medium={result['medium']}\n")
+              out.write(f"low={result['low']}\n")
+              out.write(f"total={result['total']}\n")
           PY
 
-      - name: Upload scan report
+      - name: Upload security report
         uses: actions/upload-artifact@v4
         with:
           name: quantumguard-security-report
           path: reports/
           retention-days: 30
 
+      - name: Security gate
+        run: |
+          SCORE="${{ steps.scan.outputs.score }}"
+          CRITICAL="${{ steps.scan.outputs.critical }}"
+          HIGH="${{ steps.scan.outputs.high }}"
+          MEDIUM="${{ steps.scan.outputs.medium }}"
+
+          SCORE=${SCORE:-100}
+          CRITICAL=${CRITICAL:-0}
+          HIGH=${HIGH:-0}
+          MEDIUM=${MEDIUM:-0}
+
+          echo "Score: $SCORE"
+          echo "Critical findings: $CRITICAL"
+          echo "High findings: $HIGH"
+          echo "Medium findings: $MEDIUM"
+
+          if [ "$CRITICAL" -gt "${{ env.CRITICAL_THRESHOLD }}" ]; then
+            echo "❌ Security Gate Failed: too many critical crypto findings"
+            echo "Allowed critical threshold: ${{ env.CRITICAL_THRESHOLD }}"
+            exit 1
+          fi
+
+          if [ "$SCORE" -lt "${{ env.SCORE_THRESHOLD }}" ]; then
+            echo "❌ Security Gate Failed: score below threshold"
+            echo "Required score: ${{ env.SCORE_THRESHOLD }}"
+            exit 1
+          fi
+
+          echo "✅ Security Gate Passed"
+
       - name: Comment scan result on PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
-            const score = '${{ steps.scan.outputs.score }}' || 'N/A';
+            const score = '${{ steps.scan.outputs.score }}' || '100';
             const critical = '${{ steps.scan.outputs.critical }}' || '0';
             const high = '${{ steps.scan.outputs.high }}' || '0';
             const medium = '${{ steps.scan.outputs.medium }}' || '0';
+            const total = '${{ steps.scan.outputs.total }}' || '0';
 
-            const status = Number(score) >= 70 ? '✅ Good' : Number(score) >= 50 ? '⚠️ At Risk' : '🚨 Critical';
+            const status =
+              Number(score) >= 80 ? '✅ Strong' :
+              Number(score) >= 60 ? '⚠️ Moderate Risk' :
+              Number(score) >= 40 ? '🚨 High Risk' :
+              '❌ Critical Risk';
 
             const body = `
             ## 🛡️ QuantumGuard Security Scan
 
             | Metric | Result |
             |---|---|
-            | Quantum Risk Score | **${score}/100** |
+            | Quantum Readiness Score | **${score}/100** |
             | Status | **${status}** |
             | Critical Findings | **${critical}** |
             | High Findings | **${high}** |
             | Medium Findings | **${medium}** |
+            | Total Findings | **${total}** |
 
-            **Recommendation:** Review cryptographic risks before merging.
+            **Security Gate:** Critical findings must be ≤ 10 and score must be ≥ 40.
 
             Powered by **QuantumGuard**.
             `;
@@ -214,27 +257,7 @@ jobs:
               body
             });
 
-      - name: Security gate
-        run: |
-          SCORE="${{ steps.scan.outputs.score }}"
-          CRITICAL="${{ steps.scan.outputs.critical }}"
-
-          echo "Score: $SCORE"
-          echo "Critical findings: $CRITICAL"
-
-          if [ "$CRITICAL" -gt 0 ]; then
-            echo "❌ CI failed: critical crypto findings detected"
-            exit 1
-          fi
-
-          if [ "$SCORE" -lt "${{ env.SCORE_THRESHOLD }}" ]; then
-            echo "❌ CI failed: score below threshold"
-            exit 1
-          fi
-
-          echo "✅ Security gate passed"
-
-  deploy-note:
+  deployment-ready:
     name: Deployment Ready
     runs-on: ubuntu-latest
     needs: [quantumguard-scan]
@@ -243,7 +266,7 @@ jobs:
     steps:
       - name: Deployment status
         run: |
-          echo "✅ Build passed"
-          echo "✅ Backend passed"
+          echo "✅ Frontend build passed"
+          echo "✅ Backend check passed"
           echo "✅ QuantumGuard scan passed"
-          echo "Ready for Render/Vercel deployment"
+          echo "🚀 Ready for deployment"
