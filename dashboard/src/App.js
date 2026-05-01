@@ -1553,7 +1553,7 @@ function DocsPage() {
 // ══════════════════════════════════════════════════════════════
 // HOMEPAGE — Enterprise Level
 // ══════════════════════════════════════════════════════════════
-// HOMEPAGE — Clean Modern SaaS
+// HOMEPAGE — with 5 new sections added below hero
 // ══════════════════════════════════════════════════════════════
 function Homepage({ onGetStarted }) {
   const [demoOpen, setDemoOpen] = useState(false);
@@ -1592,6 +1592,12 @@ function Homepage({ onGetStarted }) {
         .hp-sev-badge{font-size:10px;font-weight:800;padding:3px 8px;border-radius:5px;letter-spacing:.04em;flex-shrink:0}
         .hp-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(3px)}
         .hp-modal{background:#fff;border-radius:20px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.2)}
+        .hp-live-finding{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:8px;margin-bottom:8px;background:#fff;border:1.5px solid #e2e8f0;font-family:'DM Mono',monospace;font-size:12px;transition:border-color .2s}
+        .hp-live-finding:hover{border-color:#22c55e}
+        .hp-trust-card{background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:24px 20px;text-align:center;transition:border-color .2s,box-shadow .2s}
+        .hp-trust-card:hover{border-color:#22c55e;box-shadow:0 4px 20px rgba(34,197,94,.1)}
+        .hp-who-card{background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:22px 20px;display:flex;gap:14px;align-items:flex-start;transition:border-color .2s,box-shadow .2s}
+        .hp-who-card:hover{border-color:#22c55e;box-shadow:0 4px 20px rgba(34,197,94,.1)}
         @media(max-width:768px){
           .hp-hero-btns{flex-direction:column!important;align-items:stretch!important}
           .hp-hero-btns button,.hp-hero-btns a{width:100%!important;text-align:center!important}
@@ -1601,6 +1607,11 @@ function Homepage({ onGetStarted }) {
           .hp-hamburger{display:block!important}
           .hp-stats-grid{grid-template-columns:repeat(2,1fr)!important}
           .hp-matter-grid{grid-template-columns:1fr!important}
+          .hp-trust-grid{grid-template-columns:1fr!important}
+          .hp-who-grid{grid-template-columns:1fr!important}
+          .hp-live-grid{grid-template-columns:1fr!important}
+          .hp-get-grid{grid-template-columns:1fr!important}
+          .hp-speed-inner{flex-direction:column!important;text-align:center!important}
         }
       `}</style>
 
@@ -1671,6 +1682,212 @@ function Homepage({ onGetStarted }) {
               <div style={{fontSize:12,color:"#64748b",marginTop:4,fontWeight:500}}>{label}</div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════
+          NEW SECTION 1 — LIVE EXAMPLE
+      ══════════════════════════════════════════════════════ */}
+      <section id="liveexample" style={{padding:"80px 24px",background:"#f8fafc",borderBottom:"1px solid #e2e8f0"}}>
+        <div style={{maxWidth:960,margin:"0 auto"}}>
+          <div style={{textAlign:"center",marginBottom:48}}>
+            <div style={{display:"inline-block",background:"#f0fdf4",color:"#16a34a",fontSize:11,fontWeight:700,padding:"4px 14px",borderRadius:100,marginBottom:14,border:"1px solid #bbf7d0",textTransform:"uppercase",letterSpacing:"0.08em"}}>Live Example</div>
+            <h2 style={{fontSize:"clamp(24px,4vw,36px)",fontWeight:800,letterSpacing:-0.5,color:"#0f172a",marginBottom:10}}>What a real scan looks like</h2>
+            <p style={{fontSize:15,color:"#64748b",maxWidth:480,margin:"0 auto"}}>This is actual output from scanning a sample Python + JavaScript repo. Your results will look exactly like this.</p>
+          </div>
+
+          <div className="hp-live-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24,alignItems:"start"}}>
+
+            {/* Left: score card + summary */}
+            <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:16,overflow:"hidden",boxShadow:"0 4px 20px rgba(0,0,0,0.06)"}}>
+              {/* Header bar */}
+              <div style={{background:"#f8fafc",borderBottom:"1px solid #e2e8f0",padding:"12px 18px",display:"flex",alignItems:"center",gap:8}}>
+                <div style={{display:"flex",gap:5}}>
+                  {["#ff5f57","#febc2e","#28c840"].map((c,i)=><div key={i} style={{width:10,height:10,borderRadius:"50%",background:c}}/>)}
+                </div>
+                <span style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:"#94a3b8",marginLeft:4}}>quantumguard — scan result</span>
+              </div>
+              {/* Score */}
+              <div style={{padding:"24px 22px",borderBottom:"1px solid #e2e8f0",display:"flex",alignItems:"center",gap:20}}>
+                <div style={{textAlign:"center",minWidth:80}}>
+                  <div style={{fontSize:56,fontWeight:900,color:"#f59e0b",lineHeight:1}}>42</div>
+                  <div style={{fontSize:10,color:"#94a3b8",textTransform:"uppercase",letterSpacing:1,marginTop:2}}>/ 100</div>
+                </div>
+                <div>
+                  <div style={{fontSize:14,fontWeight:700,color:"#0f172a",marginBottom:6}}>Quantum Risk Score</div>
+                  <span style={{background:"#fef3c7",color:"#b45309",fontSize:11,fontWeight:700,padding:"3px 12px",borderRadius:100,border:"1px solid #fde68a"}}>⚠ At Risk</span>
+                  <div style={{marginTop:10,display:"flex",gap:12}}>
+                    {[["4","Findings"],["2","Critical"],["1","High"]].map(([n,l],i)=>(
+                      <div key={i} style={{textAlign:"center"}}>
+                        <div style={{fontSize:18,fontWeight:800,color:i===1?"#ef4444":i===2?"#f59e0b":"#0f172a"}}>{n}</div>
+                        <div style={{fontSize:10,color:"#94a3b8"}}>{l}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              {/* Scan meta */}
+              <div style={{padding:"12px 22px",background:"#f8fafc"}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#94a3b8"}}>
+                  <span>Target: <span style={{fontFamily:"'DM Mono',monospace",color:"#475569"}}>github.com/example/myapp</span></span>
+                  <span style={{color:"#22c55e",fontWeight:600}}>✓ Scan complete · 8.3s</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: findings list */}
+            <div>
+              <div style={{fontSize:12,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:12}}>Findings — with NIST fixes</div>
+              {demoResult.findings.map((f,i)=>(
+                <div key={i} className="hp-live-finding">
+                  <span className="hp-sev-badge" style={{background:sevBg(f.sev),color:sevColor(f.sev)}}>{f.sev}</span>
+                  <span style={{fontWeight:700,color:"#0f172a",minWidth:88,flexShrink:0}}>{f.vuln}</span>
+                  <span style={{color:"#94a3b8",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:11}}>{f.file}</span>
+                  <span style={{color:"#2563eb",fontWeight:600,fontSize:11,flexShrink:0,whiteSpace:"nowrap"}}>→ {f.fix}</span>
+                </div>
+              ))}
+              <div style={{marginTop:16,background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:"12px 16px",fontSize:13,color:"#15803d",lineHeight:1.6}}>
+                💡 Each finding includes the <strong>exact file, line number</strong>, and a NIST-approved drop-in replacement algorithm.
+              </div>
+              <button className="hp-btn-primary" style={{marginTop:14,width:"100%",fontSize:13}} onClick={onGetStarted}>
+                Scan my own repo →
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════
+          NEW SECTION 2 — TRUST SIGNALS
+      ══════════════════════════════════════════════════════ */}
+      <section style={{padding:"72px 24px",background:"#fff",borderBottom:"1px solid #e2e8f0"}}>
+        <div style={{maxWidth:960,margin:"0 auto"}}>
+          <div style={{textAlign:"center",marginBottom:44}}>
+            <div style={{display:"inline-block",background:"#f0fdf4",color:"#16a34a",fontSize:11,fontWeight:700,padding:"4px 14px",borderRadius:100,marginBottom:14,border:"1px solid #bbf7d0",textTransform:"uppercase",letterSpacing:"0.08em"}}>You Can Trust Us</div>
+            <h2 style={{fontSize:"clamp(24px,4vw,36px)",fontWeight:800,letterSpacing:-0.5,color:"#0f172a"}}>Built on security, privacy, and open standards</h2>
+          </div>
+          <div className="hp-trust-grid" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:18}}>
+            {[
+              { icon:"🏛", title:"NIST Aligned", desc:"Recommendations follow FIPS 203, 204, and 205 — the official 2024 post-quantum standards." },
+              { icon:"🔒", title:"No Code Stored", desc:"Your source code is scanned in memory only. Nothing is logged, saved, or sent to third parties." },
+              { icon:"👁", title:"Open Source", desc:"Every line of our scanner is public on GitHub. Audit it yourself — no black boxes." },
+              { icon:"🆓", title:"Always Free", desc:"Core scanning is free forever. No credit card, no trial expiry, no hidden paywalls." },
+            ].map((t,i)=>(
+              <div key={i} className="hp-trust-card">
+                <div style={{fontSize:28,marginBottom:12}}>{t.icon}</div>
+                <div style={{fontSize:14,fontWeight:700,color:"#0f172a",marginBottom:6}}>{t.title}</div>
+                <div style={{fontSize:12,color:"#64748b",lineHeight:1.65}}>{t.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════
+          NEW SECTION 3 — SPEED INDICATOR
+      ══════════════════════════════════════════════════════ */}
+      <section style={{padding:"56px 24px",background:"linear-gradient(90deg,#f0fdf4 0%,#fff 100%)",borderBottom:"1px solid #e2e8f0"}}>
+        <div style={{maxWidth:860,margin:"0 auto"}}>
+          <div className="hp-speed-inner" style={{display:"flex",alignItems:"center",gap:40,flexWrap:"wrap"}}>
+            {/* Left: big number */}
+            <div style={{flexShrink:0,textAlign:"center",minWidth:160}}>
+              <div style={{fontSize:72,fontWeight:900,color:"#22c55e",lineHeight:1,letterSpacing:-2}}>~30s</div>
+              <div style={{fontSize:13,color:"#64748b",fontWeight:600,marginTop:4,textTransform:"uppercase",letterSpacing:"0.08em"}}>average scan time</div>
+            </div>
+            {/* Divider */}
+            <div style={{width:1,height:90,background:"#e2e8f0",flexShrink:0}} className="hp-speed-divider"/>
+            {/* Right: breakdown */}
+            <div style={{flex:1,minWidth:280}}>
+              <div style={{fontSize:16,fontWeight:700,color:"#0f172a",marginBottom:16}}>From paste to full report in under a minute</div>
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {[
+                  {label:"Repo clone + parse",    time:"~5s",  pct:17},
+                  {label:"Vulnerability scan",     time:"~15s", pct:50},
+                  {label:"Score calculation",      time:"~5s",  pct:17},
+                  {label:"Report generation",      time:"~5s",  pct:17},
+                ].map((step,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:12}}>
+                    <div style={{fontSize:12,color:"#475569",width:160,flexShrink:0}}>{step.label}</div>
+                    <div style={{flex:1,height:6,background:"#e2e8f0",borderRadius:4,overflow:"hidden"}}>
+                      <div style={{width:`${step.pct}%`,height:"100%",background:"#22c55e",borderRadius:4}}/>
+                    </div>
+                    <div style={{fontSize:12,fontWeight:700,color:"#22c55e",width:36,flexShrink:0,textAlign:"right"}}>{step.time}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════
+          NEW SECTION 4 — WHO IS THIS FOR
+      ══════════════════════════════════════════════════════ */}
+      <section style={{padding:"80px 24px",background:"#f8fafc",borderBottom:"1px solid #e2e8f0"}}>
+        <div style={{maxWidth:960,margin:"0 auto"}}>
+          <div style={{textAlign:"center",marginBottom:48}}>
+            <div style={{display:"inline-block",background:"#f0fdf4",color:"#16a34a",fontSize:11,fontWeight:700,padding:"4px 14px",borderRadius:100,marginBottom:14,border:"1px solid #bbf7d0",textTransform:"uppercase",letterSpacing:"0.08em"}}>Who It's For</div>
+            <h2 style={{fontSize:"clamp(24px,4vw,36px)",fontWeight:800,letterSpacing:-0.5,color:"#0f172a"}}>Built for anyone who writes or ships code</h2>
+          </div>
+          <div className="hp-who-grid" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16}}>
+            {[
+              { icon:"👩‍💻", role:"Security Engineers",    desc:"Run PQC audits on your entire codebase. Export NIST SP 800-53 compliance reports with one click." },
+              { icon:"🧑‍💼", role:"CTOs & Tech Leads",     desc:"Get a single risk score across all your repos. Understand your quantum exposure before it becomes a liability." },
+              { icon:"🔬", role:"Developers",              desc:"Paste your GitHub URL and see exactly which lines to fix, with copy-paste replacement code." },
+              { icon:"🏦", role:"Fintech & Healthcare",   desc:"Industries handling sensitive data must migrate early. Use QuantumGuard to document your compliance roadmap." },
+              { icon:"🎓", role:"Researchers & Students", desc:"Free access to a production-grade scanner for academic research, coursework, and NIST standard exploration." },
+              { icon:"🏢", role:"Enterprise Teams",        desc:"Scan unlimited repos, export CSV/PDF reports, and integrate into your CI/CD pipeline via REST API." },
+            ].map((w,i)=>(
+              <div key={i} className="hp-who-card">
+                <div style={{fontSize:26,flexShrink:0,marginTop:2}}>{w.icon}</div>
+                <div>
+                  <div style={{fontSize:14,fontWeight:700,color:"#0f172a",marginBottom:5}}>{w.role}</div>
+                  <div style={{fontSize:12,color:"#64748b",lineHeight:1.65}}>{w.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════
+          NEW SECTION 5 — WHAT YOU GET
+      ══════════════════════════════════════════════════════ */}
+      <section style={{padding:"80px 24px",background:"#fff",borderBottom:"1px solid #e2e8f0"}}>
+        <div style={{maxWidth:860,margin:"0 auto"}}>
+          <div style={{textAlign:"center",marginBottom:48}}>
+            <div style={{display:"inline-block",background:"#f0fdf4",color:"#16a34a",fontSize:11,fontWeight:700,padding:"4px 14px",borderRadius:100,marginBottom:14,border:"1px solid #bbf7d0",textTransform:"uppercase",letterSpacing:"0.08em"}}>What You Get</div>
+            <h2 style={{fontSize:"clamp(24px,4vw,36px)",fontWeight:800,letterSpacing:-0.5,color:"#0f172a"}}>Everything included. No paywall.</h2>
+            <p style={{fontSize:15,color:"#64748b",marginTop:10,maxWidth:480,margin:"10px auto 0"}}>Every scan gives you a complete security picture — not a teaser that asks you to upgrade.</p>
+          </div>
+          <div className="hp-get-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            {[
+              { icon:"🎯", item:"Quantum Readiness Score",      detail:"0–100 score showing your overall post-quantum risk level" },
+              { icon:"📍", item:"Exact file + line numbers",    detail:"Every vulnerable line pinpointed — no manual searching" },
+              { icon:"🔧", item:"NIST-approved fix per finding", detail:"Drop-in replacement algorithms from FIPS 203/204/205" },
+              { icon:"📄", item:"PDF security report",          detail:"Print-ready report formatted to NIST SP 800-53 Rev 5" },
+              { icon:"📊", item:"CSV export",                   detail:"Full findings table for spreadsheets and audit trails" },
+              { icon:"🏛", item:"NIST compliance mapping",      detail:"Each finding mapped to SC-12, SC-13, IA-7, SC-28 controls" },
+              { icon:"⚡", item:"AI-powered fix suggestions",   detail:"One-click AI explanation and migration code for any finding" },
+              { icon:"📧", item:"Email report delivery",        detail:"Send the full report to any address straight from the scanner" },
+            ].map((g,i)=>(
+              <div key={i} style={{display:"flex",gap:14,padding:"14px 16px",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#f8fafc",alignItems:"flex-start",transition:"border-color .2s"}}
+                onMouseEnter={e=>e.currentTarget.style.borderColor="#22c55e"}
+                onMouseLeave={e=>e.currentTarget.style.borderColor="#e2e8f0"}
+              >
+                <div style={{width:36,height:36,borderRadius:8,background:"#f0fdf4",border:"1.5px solid #bbf7d0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{g.icon}</div>
+                <div>
+                  <div style={{fontSize:13,fontWeight:700,color:"#0f172a",marginBottom:3}}>{g.item}</div>
+                  <div style={{fontSize:12,color:"#64748b",lineHeight:1.5}}>{g.detail}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{textAlign:"center",marginTop:32}}>
+            <button className="hp-btn-primary" style={{fontSize:15,padding:"13px 32px"}} onClick={onGetStarted}>
+              Get everything — free →
+            </button>
+          </div>
         </div>
       </section>
 
@@ -1859,9 +2076,6 @@ function Homepage({ onGetStarted }) {
   );
 }
 
-// ══════════════════════════════════════════════════════════════
-// UNIFIED RISK PAGE
-// ══════════════════════════════════════════════════════════════
 function UnifiedRiskPage() {
   const [github, setGithub] = useState("https://github.com/dlitz/pycrypto");
   const [domain, setDomain] = useState("google.com");
