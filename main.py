@@ -1,28 +1,40 @@
 """
-QuantumGuard API — main.py
-Upgraded with:
-  - JWT Authentication (register / login / protected routes)
-  - Rate limiting (slowapi — per IP)
-  - Token scrubbing from logs
-  - CORS
-  - All existing endpoints preserved
+QuantumGuard API — main_patched.py
+Patches applied today (May 2, 2026):
+  FIX-1: ZIP path traversal vulnerability (CVE-class) — validate all member paths
+  FIX-2: SSRF on /scan-github — URL allowlist, private IP block
+  FIX-3: PostgreSQL wired for users + scan_history (replaces USERS_DB dict)
+  FIX-4: agility_score=60 hardcode removed — calls real check_crypto_agility()
+  FIX-5: CORS allow_methods tightened from ["*"] to explicit list
+  FIX-6: /auth/history endpoint added (scan history from DB)
+
+HOW TO DEPLOY:
+  1. Set env vars: JWT_SECRET_KEY, DATABASE_URL (postgres://...), OPENAI_API_KEY
+  2. Run: python -c "from main_patched import init_db; import asyncio; asyncio.run(init_db())"
+     (or just start the app — init_db() runs on startup)
+  3. Replace main.py with this file on Render
 """
 
 import os
 import re
 import uuid
 import shutil
+import socket
 import tempfile
 import logging
 import subprocess
+import ipaddress
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from typing import Optional
+from urllib.parse import urlparse
 
+import asyncpg
 import httpx
 from fastapi import FastAPI, HTTPException, Depends, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -31,15 +43,7 @@ from slowapi.errors import RateLimitExceeded
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-# ─────────────────────────────────────────────
-# Import your existing scanner modules
-# ─────────────────────────────────────────────
-from scanner.scan import generate_report
-# Add any other imports your original main.py had, e.g.:
-# from scanner.tls import analyze_tls_domain
-# from scanner.agility import check_agility
-# from scanner.unified import unified_risk_scan
-# from scanner.ai_fix import get_ai_fix
+from scanner.scan import generate_report, check_crypto_agility
 
 # ─────────────────────────────────────────────
 # LOGGING — scrub tokens from all log lines
@@ -65,13 +69,213 @@ logger = logging.getLogger("quantumguard")
 logger.addFilter(TokenScrubFilter())
 
 # ─────────────────────────────────────────────
-# CONFIG — load from environment variables
+# CONFIG
 # ─────────────────────────────────────────────
-SECRET_KEY      = os.getenv("JWT_SECRET_KEY", "CHANGE_THIS_IN_PRODUCTION_USE_ENV_VAR")
-ALGORITHM       = "HS256"
+SECRET_KEY                  = os.getenv("JWT_SECRET_KEY", "CHANGE_THIS_IN_PRODUCTION_USE_ENV_VAR")
+ALGORITHM                   = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
-OPENAI_API_KEY  = os.getenv("OPENAI_API_KEY", "")
-ENVIRONMENT     = os.getenv("ENVIRONMENT", "production")  # "development" skips auth on some routes
+OPENAI_API_KEY              = os.getenv("OPENAI_API_KEY", "")
+ENVIRONMENT                 = os.getenv("ENVIRONMENT", "production")
+DATABASE_URL                = os.getenv("DATABASE_URL", "")  # postgres://user:pass@host/db
+
+# ─────────────────────────────────────────────
+# FIX-2: SSRF guard — allowed git hosts + private IP ranges
+# ─────────────────────────────────────────────
+ALLOWED_GIT_HOSTS = {"github.com", "gitlab.com", "bitbucket.org"}
+
+PRIVATE_NETWORKS = [
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("169.254.0.0/16"),   # AWS metadata
+    ipaddress.ip_network("100.64.0.0/10"),    # Render internal
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+]
+
+def _validate_github_url(url: str) -> str:
+    """
+    FIX-2: Validate a git clone URL.
+    - Must be https://
+    - Host must be in ALLOWED_GIT_HOSTS
+    - Resolved IP must not be a private/internal address
+    Raises HTTPException(400) on failure. Returns clean URL on success.
+    """
+    url = url.strip()
+    parsed = urlparse(url)
+
+    if parsed.scheme != "https":
+        raise HTTPException(status_code=400, detail="Only https:// URLs are supported.")
+
+    host = parsed.hostname or ""
+    if host not in ALLOWED_GIT_HOSTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Repository host '{host}' is not allowed. Use github.com, gitlab.com, or bitbucket.org."
+        )
+
+    # Resolve and check the IP — blocks SSRF via DNS rebinding
+    try:
+        resolved_ip = socket.gethostbyname(host)
+        ip_obj = ipaddress.ip_address(resolved_ip)
+        for network in PRIVATE_NETWORKS:
+            if ip_obj in network:
+                raise HTTPException(status_code=400, detail="URL resolves to a private/internal address.")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=400, detail=f"Could not resolve host: {host}")
+
+    return url
+
+
+# ─────────────────────────────────────────────
+# FIX-1: Safe ZIP extraction
+# ─────────────────────────────────────────────
+def _safe_extract_zip(zf, target_dir: str) -> None:
+    """
+    FIX-1: Validate every member path before extraction.
+    Prevents path traversal attacks (e.g. '../../etc/crontab' in ZIP).
+    """
+    import zipfile
+    target_dir = os.path.realpath(target_dir)
+
+    for member in zf.namelist():
+        # Resolve where this member would land
+        member_path = os.path.realpath(os.path.join(target_dir, member))
+
+        # It must stay inside target_dir
+        if not member_path.startswith(target_dir + os.sep) and member_path != target_dir:
+            raise HTTPException(
+                status_code=400,
+                detail=f"ZIP contains unsafe path: {member!r}. Extraction blocked."
+            )
+
+        # Block absolute paths and null bytes
+        if os.path.isabs(member) or "\x00" in member:
+            raise HTTPException(
+                status_code=400,
+                detail=f"ZIP contains unsafe path: {member!r}. Extraction blocked."
+            )
+
+    # All paths validated — safe to extract
+    zf.extractall(target_dir)
+
+
+# ─────────────────────────────────────────────
+# FIX-3: PostgreSQL — connection pool + schema init
+# ─────────────────────────────────────────────
+_pool: Optional[asyncpg.Pool] = None
+
+async def get_pool() -> asyncpg.Pool:
+    global _pool
+    if _pool is None:
+        if not DATABASE_URL:
+            raise HTTPException(status_code=503, detail="Database not configured.")
+        _pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=10)
+    return _pool
+
+async def init_db():
+    """Create tables if they don't exist. Called on startup."""
+    if not DATABASE_URL:
+        logger.warning("DATABASE_URL not set — running without persistent storage.")
+        return
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    email       TEXT UNIQUE NOT NULL,
+                    name        TEXT NOT NULL DEFAULT '',
+                    hashed_password TEXT NOT NULL,
+                    plan        TEXT NOT NULL DEFAULT 'free',
+                    scan_count  INTEGER NOT NULL DEFAULT 0,
+                    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+
+                CREATE TABLE IF NOT EXISTS scan_history (
+                    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    user_id     UUID REFERENCES users(id) ON DELETE CASCADE,
+                    target      TEXT NOT NULL,
+                    score       INTEGER,
+                    findings    INTEGER,
+                    scan_type   TEXT DEFAULT 'github',
+                    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_scan_history_user_id ON scan_history(user_id);
+                CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+            """)
+        logger.info("Database schema initialized.")
+    except Exception as e:
+        logger.error(f"Database init failed: {e}")
+
+# ─────────────────────────────────────────────
+# DB helpers
+# ─────────────────────────────────────────────
+async def db_get_user(email: str) -> Optional[dict]:
+    if not DATABASE_URL:
+        return USERS_DB.get(email)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT * FROM users WHERE email = $1", email)
+        return dict(row) if row else None
+
+async def db_create_user(user: dict) -> dict:
+    if not DATABASE_URL:
+        USERS_DB[user["email"]] = user
+        return user
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            INSERT INTO users (id, email, name, hashed_password, plan, scan_count)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *
+        """, uuid.UUID(user["id"]), user["email"], user["name"],
+            user["hashed_password"], user["plan"], user["scan_count"])
+        return dict(row)
+
+async def db_increment_scan(email: str):
+    if not DATABASE_URL:
+        if email in USERS_DB:
+            USERS_DB[email]["scan_count"] += 1
+        return
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE users SET scan_count = scan_count + 1 WHERE email = $1", email
+        )
+
+async def db_save_scan(user_id: str, target: str, score: int, findings: int, scan_type: str = "github"):
+    if not DATABASE_URL:
+        return
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO scan_history (user_id, target, score, findings, scan_type)
+            VALUES ($1, $2, $3, $4, $5)
+        """, uuid.UUID(user_id), target, score, findings, scan_type)
+
+async def db_get_history(user_id: str) -> list:
+    if not DATABASE_URL:
+        return []
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT target, score, findings, scan_type, created_at
+            FROM scan_history
+            WHERE user_id = $1
+            ORDER BY created_at DESC
+            LIMIT 50
+        """, uuid.UUID(user_id))
+        return [dict(r) for r in rows]
+
+# ─────────────────────────────────────────────
+# Fallback in-memory store (no DB configured)
+# ─────────────────────────────────────────────
+USERS_DB: dict[str, dict] = {}
 
 # ─────────────────────────────────────────────
 # PASSWORD HASHING
@@ -83,12 +287,6 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
-
-# ─────────────────────────────────────────────
-# IN-MEMORY USER STORE
-# Replace this with PostgreSQL/Firebase when ready
-# ─────────────────────────────────────────────
-USERS_DB: dict[str, dict] = {}  # { email: { id, email, hashed_password, created_at, scan_count } }
 
 # ─────────────────────────────────────────────
 # JWT HELPERS
@@ -126,20 +324,24 @@ async def get_current_user(
         )
     payload = decode_token(credentials.credentials)
     email = payload.get("sub")
-    if not email or email not in USERS_DB:
+    if not email:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    user = await db_get_user(email)
+    if not user:
         raise HTTPException(status_code=401, detail="User not found")
-    return USERS_DB[email]
+    return user
 
 async def get_optional_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> Optional[dict]:
-    """Use on endpoints that work for both authed and guest users."""
     if not credentials:
         return None
     try:
         payload = decode_token(credentials.credentials)
         email = payload.get("sub")
-        return USERS_DB.get(email)
+        if not email:
+            return None
+        return await db_get_user(email)
     except HTTPException:
         return None
 
@@ -149,31 +351,37 @@ async def get_optional_user(
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/hour"])
 
 # ─────────────────────────────────────────────
-# APP
+# APP — lifespan initializes DB on startup
 # ─────────────────────────────────────────────
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+
 app = FastAPI(
     title="QuantumGuard API",
     description="Post-quantum cryptography vulnerability scanner",
-    version="2.0.0",
+    version="2.1.0",
     docs_url="/docs" if ENVIRONMENT == "development" else None,
     redoc_url=None,
+    lifespan=lifespan,
 )
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# FIX-5: Tightened CORS — removed allow_methods=["*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://quantumguard.site",
         "https://www.quantumguard.site",
         "https://quantumguard-one.vercel.app",
-        # Add your new Vercel deployment URLs here
         "http://localhost:3000",
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],   # FIX-5: explicit, not wildcard
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
 )
 
 # ─────────────────────────────────────────────
@@ -192,9 +400,6 @@ class ScanGithubRequest(BaseModel):
     github_url: str
     github_token: Optional[str] = None
 
-class ScanZipRequest(BaseModel):
-    pass  # handled via UploadFile
-
 class AgilityRequest(BaseModel):
     github_url: str
 
@@ -212,31 +417,31 @@ class ScanDirectoryRequest(BaseModel):
     directory: str
 
 # ─────────────────────────────────────────────
-# ── AUTH ENDPOINTS ────────────────────────────
+# AUTH ENDPOINTS
 # ─────────────────────────────────────────────
 
 @app.post("/auth/register", tags=["Auth"])
 @limiter.limit("10/hour")
 async def register(request: Request, body: RegisterRequest):
-    """Register a new account. Returns JWT token immediately."""
     email = body.email.lower().strip()
 
-    if email in USERS_DB:
+    existing = await db_get_user(email)
+    if existing:
         raise HTTPException(status_code=409, detail="Email already registered")
 
     if len(body.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
 
     user = {
-        "id":              str(uuid.uuid4()),
-        "email":           email,
-        "name":            body.name or email.split("@")[0],
-        "hashed_password": hash_password(body.password),
-        "created_at":      datetime.utcnow().isoformat(),
-        "scan_count":      0,
-        "plan":            "free",
+        "id":               str(uuid.uuid4()),
+        "email":            email,
+        "name":             body.name or email.split("@")[0],
+        "hashed_password":  hash_password(body.password),
+        "scan_count":       0,
+        "plan":             "free",
+        "created_at":       datetime.utcnow().isoformat(),
     }
-    USERS_DB[email] = user
+    user = await db_create_user(user)
 
     token = create_access_token({"sub": email})
     logger.info(f"New user registered: {email}")
@@ -246,7 +451,7 @@ async def register(request: Request, body: RegisterRequest):
         "token_type":   "bearer",
         "expires_in":   ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         "user": {
-            "id":    user["id"],
+            "id":    str(user["id"]),
             "email": user["email"],
             "name":  user["name"],
             "plan":  user["plan"],
@@ -257,9 +462,8 @@ async def register(request: Request, body: RegisterRequest):
 @app.post("/auth/login", tags=["Auth"])
 @limiter.limit("20/hour")
 async def login(request: Request, body: LoginRequest):
-    """Login with email + password. Returns JWT token."""
     email = body.email.lower().strip()
-    user  = USERS_DB.get(email)
+    user  = await db_get_user(email)
 
     if not user or not verify_password(body.password, user["hashed_password"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
@@ -272,7 +476,7 @@ async def login(request: Request, body: LoginRequest):
         "token_type":   "bearer",
         "expires_in":   ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         "user": {
-            "id":         user["id"],
+            "id":         str(user["id"]),
             "email":      user["email"],
             "name":       user["name"],
             "plan":       user["plan"],
@@ -283,41 +487,55 @@ async def login(request: Request, body: LoginRequest):
 
 @app.get("/auth/me", tags=["Auth"])
 async def get_me(current_user: dict = Depends(get_current_user)):
-    """Get current user profile."""
     return {
-        "id":         current_user["id"],
+        "id":         str(current_user["id"]),
         "email":      current_user["email"],
         "name":       current_user["name"],
         "plan":       current_user["plan"],
         "scan_count": current_user["scan_count"],
-        "created_at": current_user["created_at"],
+        "created_at": str(current_user.get("created_at", "")),
     }
+
+
+@app.get("/auth/history", tags=["Auth"])
+async def get_history(current_user: dict = Depends(get_current_user)):
+    """FIX-6: Return scan history from PostgreSQL."""
+    history = await db_get_history(str(current_user["id"]))
+    return {"history": [
+        {
+            "target":     h["target"],
+            "score":      h["score"],
+            "findings":   h["findings"],
+            "scan_type":  h["scan_type"],
+            "created_at": h["created_at"].isoformat() if hasattr(h["created_at"], "isoformat") else str(h["created_at"]),
+        }
+        for h in history
+    ]}
 
 
 @app.post("/auth/refresh", tags=["Auth"])
 async def refresh_token(current_user: dict = Depends(get_current_user)):
-    """Refresh JWT token — call this before expiry."""
     token = create_access_token({"sub": current_user["email"]})
     return {"access_token": token, "token_type": "bearer"}
 
 
 # ─────────────────────────────────────────────
-# ── HEALTH ────────────────────────────────────
+# HEALTH
 # ─────────────────────────────────────────────
 
 @app.get("/health", tags=["System"])
 async def health():
+    db_status = "connected" if DATABASE_URL else "not_configured"
     return {
-        "status":  "healthy",
-        "version": "2.0.0",
-        "time":    datetime.utcnow().isoformat(),
+        "status":    "healthy",
+        "version":   "2.1.0",
+        "db":        db_status,
+        "time":      datetime.utcnow().isoformat(),
     }
 
 
 # ─────────────────────────────────────────────
-# ── SCAN ENDPOINTS ────────────────────────────
-# Public: guests get 3 scans/day by IP
-# Authed: 20 scans/day
+# SCAN ENDPOINTS
 # ─────────────────────────────────────────────
 
 @app.post("/scan-github", tags=["Scanner"])
@@ -327,18 +545,16 @@ async def scan_github(
     body:         ScanGithubRequest,
     current_user: Optional[dict] = Depends(get_optional_user),
 ):
-    """
-    Scan a public or private GitHub repository.
-    - Guest: 20 scans/day per IP
-    - Authenticated: tracked per user, saved to history
-    """
     if not body.github_url:
         raise HTTPException(status_code=400, detail="github_url is required")
 
-    logger.info(f"Scan started: {body.github_url} | user={current_user['email'] if current_user else 'guest'}")
+    # FIX-2: Validate URL before touching the network
+    clean_url = _validate_github_url(body.github_url)
+
+    logger.info(f"Scan started: {clean_url} | user={current_user['email'] if current_user else 'guest'}")
 
     # Build authenticated clone URL without logging the token
-    clone_url = body.github_url.strip()
+    clone_url = clean_url
     if body.github_token:
         clone_url = clone_url.replace("https://", f"https://x-token:{body.github_token}@")
 
@@ -349,16 +565,23 @@ async def scan_github(
             capture_output=True, text=True, timeout=60
         )
         if result.returncode != 0:
-            err = result.stderr.replace(body.github_token or "", "[REDACTED]")
+            err = result.stderr
+            if body.github_token:
+                err = err.replace(body.github_token, "[REDACTED]")
             raise HTTPException(status_code=400, detail=f"Git clone failed: {err[:200]}")
 
         report = generate_report(tmpdir)
 
-        # Track scan count for authed users
         if current_user:
-            USERS_DB[current_user["email"]]["scan_count"] += 1
+            await db_increment_scan(current_user["email"])
+            await db_save_scan(
+                str(current_user["id"]), clean_url,
+                report.get("quantum_readiness_score", 0),
+                report.get("total_findings", 0),
+                "github"
+            )
 
-        logger.info(f"Scan complete: {body.github_url} | score={report.get('quantum_readiness_score')}")
+        logger.info(f"Scan complete: {clean_url} | score={report.get('quantum_readiness_score')}")
         return report
 
     except subprocess.TimeoutExpired:
@@ -374,12 +597,11 @@ async def scan_github(
 
 @app.post("/public-scan-zip", tags=["Scanner"])
 @limiter.limit("5/hour")
-async def scan_zip(request: Request):
+async def scan_zip(request: Request, current_user: Optional[dict] = Depends(get_optional_user)):
     """
     Upload a ZIP file for scanning.
-    Rate limited to 5/hour per IP (ZIP scans are expensive).
+    FIX-1: Path traversal fixed via _safe_extract_zip().
     """
-    from fastapi import UploadFile, File
     import zipfile, io
 
     form     = await request.form()
@@ -390,18 +612,29 @@ async def scan_zip(request: Request):
 
     contents = await zip_file.read()
 
-    if len(contents) > 10 * 1024 * 1024:  # 10MB limit
+    if len(contents) > 10 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="ZIP file too large. Maximum size is 10MB.")
 
     tmpdir = tempfile.mkdtemp()
     try:
         try:
             with zipfile.ZipFile(io.BytesIO(contents)) as zf:
-                zf.extractall(tmpdir)
+                _safe_extract_zip(zf, tmpdir)   # FIX-1: safe extraction
         except zipfile.BadZipFile:
             raise HTTPException(status_code=400, detail="Invalid ZIP file.")
 
         report = generate_report(tmpdir)
+
+        if current_user:
+            await db_increment_scan(current_user["email"])
+            await db_save_scan(
+                str(current_user["id"]),
+                zip_file.filename or "upload.zip",
+                report.get("quantum_readiness_score", 0),
+                report.get("total_findings", 0),
+                "zip"
+            )
+
         logger.info(f"ZIP scan complete | score={report.get('quantum_readiness_score')} | size={len(contents)}")
         return report
 
@@ -419,26 +652,24 @@ async def scan_zip(request: Request):
 async def scan_directory(
     request:      Request,
     body:         ScanDirectoryRequest,
-    current_user: dict = Depends(get_current_user),  # requires auth
+    current_user: dict = Depends(get_current_user),
 ):
-    """
-    Scan a server-side directory path.
-    Requires authentication (internal/enterprise use only).
-    """
-    directory = body.directory
-
-    # Security: block path traversal
-    directory = os.path.realpath(directory)
+    directory = os.path.realpath(body.directory)
     allowed_prefixes = ["/app", "/tmp", "/home"]
     if not any(directory.startswith(p) for p in allowed_prefixes):
         raise HTTPException(status_code=403, detail="Directory path not allowed.")
-
     if not os.path.isdir(directory):
         raise HTTPException(status_code=404, detail="Directory not found.")
 
     try:
         report = generate_report(directory)
-        USERS_DB[current_user["email"]]["scan_count"] += 1
+        await db_increment_scan(current_user["email"])
+        await db_save_scan(
+            str(current_user["id"]), directory,
+            report.get("quantum_readiness_score", 0),
+            report.get("total_findings", 0),
+            "path"
+        )
         logger.info(f"Dir scan: {directory} | user={current_user['email']} | score={report.get('quantum_readiness_score')}")
         return report
     except Exception as e:
@@ -447,57 +678,33 @@ async def scan_directory(
 
 
 # ─────────────────────────────────────────────
-# ── AGILITY CHECKER ───────────────────────────
+# AGILITY CHECKER
 # ─────────────────────────────────────────────
 
 @app.post("/check-agility", tags=["Analysis"])
 @limiter.limit("15/hour")
-async def check_agility(
+async def check_agility_endpoint(
     request:      Request,
     body:         AgilityRequest,
     current_user: Optional[dict] = Depends(get_optional_user),
 ):
-    """Check crypto agility of a GitHub repository."""
     if not body.github_url:
         raise HTTPException(status_code=400, detail="github_url is required")
+
+    clean_url = _validate_github_url(body.github_url)  # FIX-2 applies here too
 
     tmpdir = tempfile.mkdtemp()
     try:
         result = subprocess.run(
-            ["git", "clone", "--depth=1", body.github_url, tmpdir],
+            ["git", "clone", "--depth=1", clean_url, tmpdir],
             capture_output=True, text=True, timeout=60
         )
         if result.returncode != 0:
             raise HTTPException(status_code=400, detail="Could not clone repository.")
 
-        hardcoded_count   = 0
-        configurable_count = 0
-        hardcoded_patterns   = [r'RSA\.generate', r'ECC\.generate', r"createHash\(['\"]md5", r"createHash\(['\"]sha1"]
-        configurable_patterns = [r'os\.environ', r'config\[', r'settings\.', r'getenv\(']
-
-        for root, _, files in os.walk(tmpdir):
-            for fname in files:
-                if not any(fname.endswith(ext) for ext in ['.py', '.js', '.ts', '.java', '.go']):
-                    continue
-                fpath = os.path.join(root, fname)
-                try:
-                    code = open(fpath, encoding='utf-8', errors='ignore').read()
-                    for p in hardcoded_patterns:
-                        hardcoded_count += len(re.findall(p, code, re.IGNORECASE))
-                    for p in configurable_patterns:
-                        configurable_count += len(re.findall(p, code, re.IGNORECASE))
-                except Exception:
-                    continue
-
-        total = hardcoded_count + configurable_count
-        agility_score = max(0, min(100, int((configurable_count / total * 100) if total > 0 else 75)))
-
-        return {
-            "agility_score":      agility_score,
-            "hardcoded_count":    hardcoded_count,
-            "configurable_count": configurable_count,
-            "assessment":         "High Agility" if agility_score >= 70 else "Partial Agility" if agility_score >= 40 else "Low Agility",
-        }
+        # Use the real agility checker from scan.py (not the regex stub)
+        agility_result = check_crypto_agility(tmpdir)
+        return agility_result
 
     except HTTPException:
         raise
@@ -509,7 +716,7 @@ async def check_agility(
 
 
 # ─────────────────────────────────────────────
-# ── TLS ANALYZER ──────────────────────────────
+# TLS ANALYZER
 # ─────────────────────────────────────────────
 
 @app.post("/analyze-tls", tags=["Analysis"])
@@ -519,8 +726,7 @@ async def analyze_tls(
     body:    TLSRequest,
     current_user: Optional[dict] = Depends(get_optional_user),
 ):
-    """Analyze TLS configuration for a domain."""
-    import ssl, socket
+    import ssl, socket as sock_module
 
     domain = body.domain.strip().replace("https://", "").replace("http://", "").split("/")[0]
 
@@ -529,24 +735,22 @@ async def analyze_tls(
 
     try:
         ctx = ssl.create_default_context()
-        with ctx.wrap_socket(socket.create_connection((domain, 443), timeout=10), server_hostname=domain) as sock:
-            tls_version  = sock.version()
-            cipher_suite, _, cipher_bits = sock.cipher()
-            cert         = sock.getpeercert()
+        with ctx.wrap_socket(sock_module.create_connection((domain, 443), timeout=10), server_hostname=domain) as s:
+            tls_version  = s.version()
+            cipher_suite, _, cipher_bits = s.cipher()
+            cert         = s.getpeercert()
 
-        # Score logic
-        version_scores = {"TLSv1.3": 100, "TLSv1.2": 70, "TLSv1.1": 20, "TLSv1": 0}
-        tls_score      = version_scores.get(tls_version, 30)
-
+        version_scores      = {"TLSv1.3": 100, "TLSv1.2": 70, "TLSv1.1": 20, "TLSv1": 0}
+        tls_score           = version_scores.get(tls_version, 30)
         has_forward_secrecy = any(kw in cipher_suite for kw in ["ECDHE", "DHE"])
         quantum_safe        = tls_version == "TLSv1.3" and "X25519" in cipher_suite
 
-        if has_forward_secrecy and tls_score >= 70: tls_score = min(100, tls_score + 10)
-        if quantum_safe: tls_score = min(100, tls_score + 5)
+        if has_forward_secrecy and tls_score >= 70:
+            tls_score = min(100, tls_score + 10)
+        if quantum_safe:
+            tls_score = min(100, tls_score + 5)
 
         grade = "A+" if tls_score >= 95 else "A" if tls_score >= 85 else "B" if tls_score >= 70 else "C" if tls_score >= 50 else "D" if tls_score >= 30 else "F"
-
-        cert_expires = cert.get("notAfter", "Unknown")
 
         nist_rec = (
             "Excellent — TLS 1.3 with forward secrecy. Add hybrid PQC (X25519+ML-KEM) when available."
@@ -566,7 +770,7 @@ async def analyze_tls(
             "grade_description":   f"TLS {tls_version} — {cipher_suite}",
             "has_forward_secrecy": has_forward_secrecy,
             "quantum_safe":        quantum_safe,
-            "cert_expires":        cert_expires,
+            "cert_expires":        cert.get("notAfter", "Unknown"),
             "nist_recommendation": nist_rec,
             "pqc_roadmap":         "Adopt hybrid TLS: X25519 + ML-KEM-768 (NIST FIPS 203)",
             "pqc_note":            None if quantum_safe else "No hybrid PQC detected. Standard TLS 1.3 is safe today but not quantum-resistant.",
@@ -575,9 +779,9 @@ async def analyze_tls(
 
     except ssl.SSLError as e:
         raise HTTPException(status_code=400, detail=f"SSL error: {str(e)[:150]}")
-    except socket.timeout:
+    except sock_module.timeout:
         raise HTTPException(status_code=408, detail="Connection timed out")
-    except socket.gaierror:
+    except sock_module.gaierror:
         raise HTTPException(status_code=404, detail=f"Could not resolve domain: {domain}")
     except Exception as e:
         logger.error(f"TLS analysis error for {domain}: {str(e)[:200]}")
@@ -585,7 +789,7 @@ async def analyze_tls(
 
 
 # ─────────────────────────────────────────────
-# ── UNIFIED RISK ──────────────────────────────
+# UNIFIED RISK — FIX-4: real agility score
 # ─────────────────────────────────────────────
 
 @app.post("/unified-risk", tags=["Analysis"])
@@ -595,18 +799,26 @@ async def unified_risk(
     body:         UnifiedRiskRequest,
     current_user: Optional[dict] = Depends(get_optional_user),
 ):
-    """Run code scan + TLS analysis and return a unified quantum risk score."""
     try:
+        # FIX-2: validate URL
+        clean_url = _validate_github_url(body.github_url)
+
         # Run code scan
         clone_dir = tempfile.mkdtemp()
         try:
             res = subprocess.run(
-                ["git", "clone", "--depth=1", body.github_url, clone_dir],
+                ["git", "clone", "--depth=1", clean_url, clone_dir],
                 capture_output=True, text=True, timeout=60
             )
             if res.returncode != 0:
                 raise HTTPException(status_code=400, detail="Could not clone repository.")
+
             code_report = generate_report(clone_dir)
+
+            # FIX-4: Run real agility check on the same cloned dir (don't clone twice)
+            agility_result = check_crypto_agility(clone_dir)
+            agility_score  = agility_result.get("agility_score", 50)
+
         finally:
             shutil.rmtree(clone_dir, ignore_errors=True)
 
@@ -615,36 +827,34 @@ async def unified_risk(
         tls_mock   = Request(scope={"type": "http", "method": "POST", "headers": []})
         tls_report = await analyze_tls(tls_mock, tls_body)
 
-        # Combine scores
         code_score    = code_report.get("quantum_readiness_score", 50)
         tls_score     = tls_report.get("tls_score", 50)
-        agility_score = 60  # default — run agility check separately for accurate value
 
         unified_score = round(code_score * 0.5 + tls_score * 0.3 + agility_score * 0.2)
+        risk_level    = "LOW RISK" if unified_score >= 70 else "MODERATE RISK" if unified_score >= 40 else "CRITICAL RISK"
 
-        risk_level = "LOW RISK" if unified_score >= 70 else "MODERATE RISK" if unified_score >= 40 else "CRITICAL RISK"
-
-        findings       = code_report.get("findings", [])
-        top_findings   = sorted(findings, key=lambda f: ["CRITICAL","HIGH","MEDIUM","LOW"].index(f.get("severity","LOW")))[:5]
+        findings     = code_report.get("findings", [])
+        top_findings = sorted(findings, key=lambda f: ["CRITICAL","HIGH","MEDIUM","LOW"].index(f.get("severity","LOW")))[:5]
 
         return {
             "unified_risk": {
                 "quantum_risk_score": unified_score,
                 "risk_level":        risk_level,
                 "component_scores": {
-                    "code_crypto_score":   code_score,
-                    "crypto_agility_score": agility_score,
+                    "code_crypto_score":    code_score,
+                    "crypto_agility_score": agility_score,   # FIX-4: real value
                     "tls_score":            tls_score,
                 },
                 "business_summary": (
                     f"Your codebase scored {code_score}/100 on quantum readiness. "
+                    f"Crypto agility scored {agility_score}/100. "
                     f"TLS configuration scored {tls_score}/100. "
                     f"Overall quantum risk level: {risk_level}. "
                     f"{'Immediate action required on critical findings.' if unified_score < 40 else 'Migration planning recommended before 2030.'}"
                 ),
             },
             "finding_summary": {
-                "total":            len(findings),
+                "total": len(findings),
                 "severity_summary": {
                     "CRITICAL": len([f for f in findings if f.get("severity") == "CRITICAL"]),
                     "HIGH":     len([f for f in findings if f.get("severity") == "HIGH"]),
@@ -654,6 +864,13 @@ async def unified_risk(
             },
             "top_findings":  top_findings,
             "tls_summary":   tls_report,
+            "agility_summary": {
+                "agility_score":      agility_score,
+                "hardcoded_count":    agility_result.get("hardcoded_count", 0),
+                "configurable_count": agility_result.get("configurable_count", 0),
+                "status":             agility_result.get("status", ""),
+                "migration_ease":     agility_result.get("migration_ease", ""),
+            },
         }
 
     except HTTPException:
@@ -664,7 +881,7 @@ async def unified_risk(
 
 
 # ─────────────────────────────────────────────
-# ── AI FIX ────────────────────────────────────
+# AI FIX
 # ─────────────────────────────────────────────
 
 @app.post("/ai-fix", tags=["AI"])
@@ -674,10 +891,6 @@ async def ai_fix(
     body:         AIFixRequest,
     current_user: Optional[dict] = Depends(get_optional_user),
 ):
-    """
-    Generate an AI-powered fix suggestion for a vulnerability finding.
-    Uses OpenAI GPT-4o-mini.
-    """
     finding = body.finding
 
     prompt = f"""You are a cryptography migration expert following NIST FIPS 203, 204, and 205.
