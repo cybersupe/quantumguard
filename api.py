@@ -1,10 +1,11 @@
 # ============================================================
-# QuantumGuard — FastAPI Backend v2.5
+# QuantumGuard — FastAPI Backend v2.6
 # Copyright (c) 2026 Pavansudheer Payyavula / MANGSRI
 # Licensed under AGPL v3 — github.com/cybersupe/quantumguard
 # Standards: NIST FIPS 203, FIPS 204, FIPS 205
 # ============================================================
-# v2.5 adds: JWT Auth, Token scrubbing, enhanced rate limits
+# v2.6 adds: PostgreSQL persistent storage (users + scan history)
+#            Tables auto-created on startup — no migrations needed
 # ============================================================
 
 import os
@@ -22,6 +23,10 @@ import requests
 
 from typing import Optional
 from datetime import timedelta
+
+import psycopg2
+import psycopg2.extras
+from psycopg2.pool import ThreadedConnectionPool
 
 from fastapi import FastAPI, HTTPException, Header, UploadFile, File, Request, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -58,23 +63,24 @@ except ImportError:
 
 
 # ============================================================
-# LOGGING — scrub tokens/passwords from all log lines
+# LOGGING — scrub tokens from all log lines
 # ============================================================
 
 class TokenScrubFilter(logging.Filter):
     PATTERNS = [
-        (re.compile(r'ghp_[A-Za-z0-9]{36}'),            '[GH_TOKEN_REDACTED]'),
-        (re.compile(r'github_pat_[A-Za-z0-9_]+'),       '[GH_TOKEN_REDACTED]'),
-        (re.compile(r'x-token:[^@\s]+'),                 'x-token:[REDACTED]'),
-        (re.compile(r'Bearer [A-Za-z0-9\-_\.]+'),       'Bearer [REDACTED]'),
+        (re.compile(r'ghp_[A-Za-z0-9]{36}'),       '[GH_TOKEN_REDACTED]'),
+        (re.compile(r'github_pat_[A-Za-z0-9_]+'),   '[GH_TOKEN_REDACTED]'),
+        (re.compile(r'x-token:[^@\s]+'),             'x-token:[REDACTED]'),
+        (re.compile(r'Bearer [A-Za-z0-9\-_\.]+'),   'Bearer [REDACTED]'),
         (re.compile(r'password["\s:=]+[^\s,}"]+',
-                    re.IGNORECASE),                      'password:[REDACTED]'),
+                    re.IGNORECASE),                  'password:[REDACTED]'),
+        (re.compile(r'postgresql://[^\s]+'),         'postgresql://[REDACTED]'),
     ]
     def filter(self, record):
         msg = str(record.getMessage())
         for pattern, replacement in self.PATTERNS:
             msg = pattern.sub(replacement, msg)
-        record.msg = msg
+        record.msg  = msg
         record.args = ()
         return True
 
@@ -87,14 +93,187 @@ logger.addFilter(TokenScrubFilter())
 # CONFIG
 # ============================================================
 
-API_KEY       = os.getenv("API_KEY", "quantumguard-secret-2026")
-MAX_ZIP_SIZE  = 10 * 1024 * 1024
+API_KEY      = os.getenv("API_KEY", "quantumguard-secret-2026")
+MAX_ZIP_SIZE = 10 * 1024 * 1024
+DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 # JWT
 SECRET_KEY                  = os.getenv("JWT_SECRET_KEY", "CHANGE_THIS_IN_PRODUCTION")
 ALGORITHM                   = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
 ENVIRONMENT                 = os.getenv("ENVIRONMENT", "production")
+
+
+# ============================================================
+# DATABASE — connection pool + auto table creation
+# ============================================================
+
+db_pool: Optional[ThreadedConnectionPool] = None
+
+
+def get_db():
+    """Get a connection from the pool."""
+    if db_pool is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    conn = db_pool.getconn()
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        db_pool.putconn(conn)
+
+
+def init_db():
+    """Create tables if they don't exist. Called on startup."""
+    global db_pool
+
+    if not DATABASE_URL:
+        logger.warning("DATABASE_URL not set — using in-memory fallback")
+        return
+
+    try:
+        # Render PostgreSQL URLs start with postgres:// — psycopg2 needs postgresql://
+        url = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+        db_pool = ThreadedConnectionPool(minconn=1, maxconn=10, dsn=url)
+
+        conn = db_pool.getconn()
+        try:
+            cur = conn.cursor()
+
+            # ── users table ──────────────────────────────────
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id            TEXT PRIMARY KEY,
+                    email         TEXT UNIQUE NOT NULL,
+                    name          TEXT,
+                    hashed_password TEXT NOT NULL,
+                    plan          TEXT DEFAULT 'free',
+                    scan_count    INTEGER DEFAULT 0,
+                    created_at    TIMESTAMP DEFAULT NOW()
+                );
+            """)
+
+            # ── scan_history table ────────────────────────────
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS scan_history (
+                    id          TEXT PRIMARY KEY,
+                    user_id     TEXT REFERENCES users(id) ON DELETE CASCADE,
+                    user_email  TEXT,
+                    target      TEXT,
+                    score       INTEGER,
+                    findings    INTEGER,
+                    scan_type   TEXT DEFAULT 'github',
+                    created_at  TIMESTAMP DEFAULT NOW()
+                );
+            """)
+
+            conn.commit()
+            cur.close()
+            logger.info("PostgreSQL connected — tables ready")
+        finally:
+            db_pool.putconn(conn)
+
+    except Exception as e:
+        logger.error(f"Database init failed: {type(e).__name__} — falling back to in-memory")
+        db_pool = None
+
+
+# ── In-memory fallback (used when DATABASE_URL not set) ──────
+USERS_MEMORY: dict[str, dict] = {}
+
+
+# ── User CRUD helpers ─────────────────────────────────────────
+
+def db_get_user(email: str) -> Optional[dict]:
+    if db_pool is None:
+        return USERS_MEMORY.get(email)
+    conn = db_pool.getconn()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+        row = cur.fetchone()
+        cur.close()
+        return dict(row) if row else None
+    finally:
+        db_pool.putconn(conn)
+
+
+def db_create_user(user: dict) -> dict:
+    if db_pool is None:
+        USERS_MEMORY[user["email"]] = user
+        return user
+    conn = db_pool.getconn()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO users (id, email, name, hashed_password, plan, scan_count, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (
+            user["id"], user["email"], user["name"],
+            user["hashed_password"], user["plan"],
+            user["scan_count"], user["created_at"],
+        ))
+        conn.commit()
+        cur.close()
+        return user
+    finally:
+        db_pool.putconn(conn)
+
+
+def db_increment_scan_count(email: str):
+    if db_pool is None:
+        if email in USERS_MEMORY:
+            USERS_MEMORY[email]["scan_count"] += 1
+        return
+    conn = db_pool.getconn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET scan_count = scan_count + 1 WHERE email = %s", (email,)
+        )
+        conn.commit()
+        cur.close()
+    finally:
+        db_pool.putconn(conn)
+
+
+def db_save_scan(user_id: str, user_email: str, target: str,
+                 score: int, findings: int, scan_type: str = "github"):
+    if db_pool is None:
+        return  # history not saved in memory mode
+    conn = db_pool.getconn()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO scan_history (id, user_id, user_email, target, score, findings, scan_type)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (str(uuid.uuid4()), user_id, user_email, target, score, findings, scan_type))
+        conn.commit()
+        cur.close()
+    finally:
+        db_pool.putconn(conn)
+
+
+def db_get_scan_history(user_id: str, limit: int = 50) -> list:
+    if db_pool is None:
+        return []
+    conn = db_pool.getconn()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT * FROM scan_history
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+            LIMIT %s
+        """, (user_id, limit))
+        rows = cur.fetchall()
+        cur.close()
+        return [dict(r) for r in rows]
+    finally:
+        db_pool.putconn(conn)
 
 
 # ============================================================
@@ -108,13 +287,6 @@ def hash_password(plain: str) -> str:
 
 def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
-
-
-# ============================================================
-# IN-MEMORY USER STORE  (swap for PostgreSQL later)
-# ============================================================
-
-USERS_DB: dict[str, dict] = {}
 
 
 # ============================================================
@@ -157,9 +329,12 @@ async def get_current_user(
         )
     payload = decode_token(credentials.credentials)
     email   = payload.get("sub")
-    if not email or email not in USERS_DB:
+    if not email:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    user = db_get_user(email)
+    if not user:
         raise HTTPException(status_code=401, detail="User not found")
-    return USERS_DB[email]
+    return user
 
 async def get_optional_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
@@ -168,7 +343,8 @@ async def get_optional_user(
         return None
     try:
         payload = decode_token(credentials.credentials)
-        return USERS_DB.get(payload.get("sub"))
+        email   = payload.get("sub")
+        return db_get_user(email) if email else None
     except HTTPException:
         return None
 
@@ -187,13 +363,27 @@ limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
     title="QuantumGuard API",
     description="Post-quantum cryptography vulnerability scanner — Mangsri QuantumGuard LLC",
-    version="2.5",
+    version="2.6",
     docs_url="/docs" if ENVIRONMENT == "development" else None,
     redoc_url=None,
 )
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.on_event("startup")
+async def startup():
+    init_db()
+    logger.info("QuantumGuard API v2.6 started")
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    global db_pool
+    if db_pool:
+        db_pool.closeall()
+        logger.info("Database pool closed")
 
 
 class CORSMiddlewareCustom(BaseHTTPMiddleware):
@@ -255,7 +445,7 @@ class UnifiedRiskRequest(BaseModel):
 
 
 # ============================================================
-# HELPERS  (unchanged from v2.4)
+# HELPERS
 # ============================================================
 
 def verify_key(key: str):
@@ -277,66 +467,50 @@ def _parse_github_url(github_url: str):
 def _download_github_zip(github_url: str, github_token: Optional[str] = None):
     if "github.com" not in github_url:
         raise HTTPException(status_code=400, detail="Only GitHub URLs allowed")
-
     owner, repo = _parse_github_url(github_url)
-    headers = {
-        "Accept":     "application/vnd.github+json",
-        "User-Agent": "QuantumGuard/2.5",
-    }
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "QuantumGuard/2.6"}
     if github_token:
         headers["Authorization"] = f"token {github_token}"
-
-    meta_url  = f"https://api.github.com/repos/{owner}/{repo}"
-    meta_resp = requests.get(meta_url, headers=headers, timeout=10)
+    meta_resp = requests.get(
+        f"https://api.github.com/repos/{owner}/{repo}", headers=headers, timeout=10
+    )
     if meta_resp.status_code == 200:
-        repo_size_kb = meta_resp.json().get("size", 0)
-        if repo_size_kb > 50000:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Repo is too large ({repo_size_kb // 1024}MB). Maximum 50MB.",
-            )
-
+        if meta_resp.json().get("size", 0) > 50000:
+            raise HTTPException(status_code=400, detail="Repo too large. Max 50MB.")
     for branch in ["main", "master"]:
-        zip_url  = f"https://api.github.com/repos/{owner}/{repo}/zipball/{branch}"
-        response = requests.get(zip_url, headers=headers, timeout=30, allow_redirects=True)
-        if response.status_code == 200:
-            if len(response.content) > 15 * 1024 * 1024:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Repo ZIP too large for free tier. Upload a ZIP of only src/.",
-                )
-            return response.content, owner, repo
-
+        resp = requests.get(
+            f"https://api.github.com/repos/{owner}/{repo}/zipball/{branch}",
+            headers=headers, timeout=30, allow_redirects=True,
+        )
+        if resp.status_code == 200:
+            if len(resp.content) > 15 * 1024 * 1024:
+                raise HTTPException(status_code=400, detail="Repo ZIP too large for free tier.")
+            return resp.content, owner, repo
     raise HTTPException(status_code=400, detail="Could not download repo. Make sure it is public.")
 
 
 def _summarize_findings(findings):
-    severity_summary   = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
-    confidence_summary = {"HIGH": 0, "MEDIUM": 0, "LOW": 0}
+    sev  = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
+    conf = {"HIGH": 0, "MEDIUM": 0, "LOW": 0}
     for f in findings:
-        sev  = f.get("severity",   "MEDIUM")
-        conf = f.get("confidence", "MEDIUM")
-        severity_summary[sev]     = severity_summary.get(sev, 0) + 1
-        confidence_summary[conf]  = confidence_summary.get(conf, 0) + 1
-    return severity_summary, confidence_summary
+        sev[f.get("severity","MEDIUM")]    = sev.get(f.get("severity","MEDIUM"), 0) + 1
+        conf[f.get("confidence","MEDIUM")] = conf.get(f.get("confidence","MEDIUM"), 0) + 1
+    return sev, conf
 
 
-def _build_priority_actions(findings, severity_summary, score):
-    priority_actions = []
-    critical = severity_summary.get("CRITICAL", 0)
-    high     = severity_summary.get("HIGH", 0)
-    medium   = severity_summary.get("MEDIUM", 0)
-    if critical > 0:
-        priority_actions.append({"priority":"P1","title":"Fix critical cryptographic vulnerabilities immediately","description":f"{critical} critical findings.","timeline":"Within 30 days"})
-    if high > 0:
-        priority_actions.append({"priority":"P2","title":"Remediate high-severity crypto risks","description":f"{high} high-severity findings.","timeline":"Within 90 days"})
-    if medium > 0:
-        priority_actions.append({"priority":"P3","title":"Plan migration for medium-severity findings","description":f"{medium} medium findings.","timeline":"Within 6 months"})
+def _build_priority_actions(findings, sev, score):
+    actions = []
+    if sev.get("CRITICAL", 0) > 0:
+        actions.append({"priority":"P1","title":"Fix critical vulnerabilities immediately","description":f"{sev['CRITICAL']} critical findings.","timeline":"Within 30 days"})
+    if sev.get("HIGH", 0) > 0:
+        actions.append({"priority":"P2","title":"Remediate high-severity risks","description":f"{sev['HIGH']} high findings.","timeline":"Within 90 days"})
+    if sev.get("MEDIUM", 0) > 0:
+        actions.append({"priority":"P3","title":"Plan medium-severity migration","description":f"{sev['MEDIUM']} medium findings.","timeline":"Within 6 months"})
     if score < 50:
-        priority_actions.append({"priority":"P1","title":"Begin NIST PQC migration planning","description":"Score below 50 — create a formal post-quantum migration plan.","timeline":"Within 60 days"})
-    if not priority_actions:
-        priority_actions.append({"priority":"P4","title":"Maintain monitoring","description":"No major issues. Run periodic scans.","timeline":"Ongoing"})
-    return priority_actions
+        actions.append({"priority":"P1","title":"Begin NIST PQC migration planning","description":"Score below 50.","timeline":"Within 60 days"})
+    if not actions:
+        actions.append({"priority":"P4","title":"Maintain monitoring","description":"No major issues.","timeline":"Ongoing"})
+    return actions
 
 
 def _build_top_findings(findings):
@@ -345,102 +519,93 @@ def _build_top_findings(findings):
          "vulnerability": f.get("vulnerability"), "severity": f.get("severity"),
          "confidence": f.get("confidence"),
          "recommended_fix": f.get("recommended_fix") or f.get("replacement")}
-        for f in findings[:10]
-        if f.get("confidence") != "LOW"
+        for f in findings[:10] if f.get("confidence") != "LOW"
     ]
 
 
 # ============================================================
-# TLS ANALYZER  (unchanged from v2.4)
+# TLS ANALYZER
 # ============================================================
 
-PQC_INDICATORS     = ["KYBER","MLKEM","ML_KEM","X25519KYBER768","X25519MLKEM768","P256KYBER768DRAFT00","NTRU","FRODO","SABER","BIKE","HQC"]
+PQC_INDICATORS     = ["KYBER","MLKEM","ML_KEM","X25519KYBER768","X25519MLKEM768","NTRU","FRODO","SABER","BIKE","HQC"]
 STRONG_CIPHERS     = ["AES_256","AES-256","CHACHA20"]
 ACCEPTABLE_CIPHERS = ["AES_128","AES-128"]
 FORWARD_SECRECY_KX = ["ECDHE","DHE","X25519","X448"]
 
 
 def _analyze_tls_score(tls_version, cipher_name, cipher_bits):
-    score = 0; issues = []; strengths = []; labels = []
-    cipher_upper = (cipher_name or "").upper()
+    score = 0; issues = []; strengths = []
+    cu = (cipher_name or "").upper()
     if tls_version == "TLSv1.3":
         score += 30; strengths.append("TLS 1.3 — modern and forward-secure")
     elif tls_version == "TLSv1.2":
-        score += 20; issues.append("TLS 1.2 detected — TLS 1.3 recommended")
+        score += 20; issues.append("TLS 1.2 — upgrade to TLS 1.3 recommended")
     else:
-        issues.append(f"{tls_version} is deprecated — upgrade to TLS 1.3")
-    if any(s in cipher_upper for s in STRONG_CIPHERS):
-        score += 35; strengths.append("Strong symmetric encryption detected")
-    elif any(s in cipher_upper for s in ACCEPTABLE_CIPHERS):
-        score += 20; issues.append("AES-128 detected — AES-256 preferred")
+        issues.append(f"{tls_version} is deprecated — upgrade to TLS 1.3 immediately")
+    if any(s in cu for s in STRONG_CIPHERS):
+        score += 35; strengths.append("Strong symmetric encryption")
+    elif any(s in cu for s in ACCEPTABLE_CIPHERS):
+        score += 20; issues.append("AES-128 — AES-256 preferred")
     elif cipher_bits and cipher_bits >= 256:
         score += 30
     elif cipher_bits and cipher_bits >= 128:
         score += 15; issues.append("AES-256 recommended")
     else:
-        issues.append("Weak or unknown cipher strength")
-    has_pqc_kx         = any(p in cipher_upper for p in PQC_INDICATORS)
-    has_forward_secrecy = tls_version == "TLSv1.3" or has_pqc_kx or any(kx in cipher_upper for kx in FORWARD_SECRECY_KX)
-    rsa_key_exchange   = "RSA" in cipher_upper and not has_forward_secrecy
-    if has_pqc_kx:
+        issues.append("Weak or unknown cipher")
+    has_pqc         = any(p in cu for p in PQC_INDICATORS)
+    has_fs          = tls_version == "TLSv1.3" or has_pqc or any(kx in cu for kx in FORWARD_SECRECY_KX)
+    rsa_kx          = "RSA" in cu and not has_fs
+    quantum_safe    = has_pqc
+    if has_pqc:
         score += 25; strengths.append("Hybrid post-quantum key exchange detected")
     elif tls_version == "TLSv1.3":
-        score += 10; issues.append("Not post-quantum safe yet — monitor hybrid PQC TLS adoption")
-    elif has_forward_secrecy:
-        score += 10; issues.append("Classical ECDHE/DHE — not post-quantum safe")
+        score += 10; issues.append("Not post-quantum safe yet")
+    elif has_fs:
+        score += 10; issues.append("Classical ECDHE — not post-quantum safe")
     else:
         issues.append("No forward secrecy detected")
-    quantum_safe = has_pqc_kx
     return {"tls_score": max(0, min(100, score)), "quantum_safe": quantum_safe,
-            "labels": labels, "strengths": strengths, "issues": issues,
-            "has_forward_secrecy": has_forward_secrecy, "has_pqc_kex": has_pqc_kx,
-            "rsa_key_exchange": rsa_key_exchange,
+            "strengths": strengths, "issues": issues,
+            "has_forward_secrecy": has_fs, "has_pqc_kex": has_pqc,
+            "rsa_key_exchange": rsa_kx, "labels": [],
             "quantum_explanation": "Hybrid PQC detected." if quantum_safe else "Not post-quantum safe yet."}
 
 
 def _calculate_tls_grade(score, quantum_safe, tls_version, issues):
-    critical_kw = ["expired","sslv","tlsv1.0","tlsv1.1","deprecated and insecure"]
-    has_critical = any(any(kw in i.lower() for kw in critical_kw) for i in issues)
-    if has_critical or score < 35:
-        grade, color, desc = "F","#dc2626","Failing — immediate action required"
-    elif score < 50:
-        grade, color, desc = "D","#dc2626","Poor — significant vulnerabilities"
-    elif score < 65:
-        grade, color, desc = "C","#d97706","Average — improvements recommended"
-    elif score < 80:
-        grade, color, desc = "B","#f59e0b","Good — some improvements recommended"
-    elif quantum_safe and tls_version == "TLSv1.3":
-        grade, color, desc = "A+","#16a34a","Excellent — post-quantum/hybrid TLS detected"
-    elif tls_version == "TLSv1.3":
-        grade, color, desc = "A","#16a34a","Strong — modern TLS configuration"
-    else:
-        grade, color, desc = "B","#f59e0b","Good — TLS 1.3 upgrade recommended"
-    return {"grade": grade, "grade_color": color, "grade_description": desc,
+    ck = ["expired","sslv","tlsv1.0","tlsv1.1","deprecated"]
+    hc = any(any(k in i.lower() for k in ck) for i in issues)
+    if hc or score < 35:  g,c,d = "F","#dc2626","Failing — immediate action required"
+    elif score < 50:      g,c,d = "D","#dc2626","Poor — significant vulnerabilities"
+    elif score < 65:      g,c,d = "C","#d97706","Average — improvements recommended"
+    elif score < 80:      g,c,d = "B","#f59e0b","Good — some improvements recommended"
+    elif quantum_safe and tls_version == "TLSv1.3": g,c,d = "A+","#16a34a","Excellent — hybrid PQC detected"
+    elif tls_version == "TLSv1.3": g,c,d = "A","#16a34a","Strong — modern TLS"
+    else:                 g,c,d = "B","#f59e0b","Good — TLS 1.3 upgrade recommended"
+    return {"grade":g,"grade_color":c,"grade_description":d,
             "pqc_note": None if quantum_safe else "Not post-quantum safe yet.",
-            "grade_breakdown": {"tls_version_score": 30 if tls_version=="TLSv1.3" else 20 if tls_version=="TLSv1.2" else 0,
-                                "quantum_ready": quantum_safe}}
+            "grade_breakdown":{"tls_version_score": 30 if tls_version=="TLSv1.3" else 20 if tls_version=="TLSv1.2" else 0,"quantum_ready":quantum_safe}}
 
 
 def _analyze_certificate(cert):
-    cert_info = {}; cert_issues = []
-    exp_str = cert.get("notAfter","")
-    cert_info["cert_expires"] = exp_str
-    if exp_str:
+    ci = {}; ci_issues = []
+    exp = cert.get("notAfter","")
+    ci["cert_expires"] = exp
+    if exp:
         try:
-            exp_date      = datetime.datetime.strptime(exp_str, "%b %d %H:%M:%S %Y %Z")
-            days_remaining = (exp_date - datetime.datetime.utcnow()).days
-            cert_info["days_until_expiry"] = days_remaining
-            if days_remaining < 0:   cert_issues.append("CRITICAL: Certificate has expired")
-            elif days_remaining < 14: cert_issues.append(f"URGENT: Expires in {days_remaining} days")
-            elif days_remaining < 30: cert_issues.append(f"WARNING: Expires in {days_remaining} days")
+            ed  = datetime.datetime.strptime(exp, "%b %d %H:%M:%S %Y %Z")
+            dr  = (ed - datetime.datetime.utcnow()).days
+            ci["days_until_expiry"] = dr
+            if dr < 0:    ci_issues.append("CRITICAL: Certificate expired")
+            elif dr < 14: ci_issues.append(f"URGENT: Expires in {dr} days")
+            elif dr < 30: ci_issues.append(f"WARNING: Expires in {dr} days")
         except ValueError:
-            cert_info["days_until_expiry"] = None
+            ci["days_until_expiry"] = None
     subject = dict(x[0] for x in cert.get("subject",[]))
     issuer  = dict(x[0] for x in cert.get("issuer",[]))
-    cert_info["subject_cn"] = subject.get("commonName","")
-    cert_info["issuer_cn"]  = issuer.get("commonName","")
-    cert_info["san_count"]  = len(cert.get("subjectAltName",[]))
-    return cert_info, cert_issues
+    ci["subject_cn"] = subject.get("commonName","")
+    ci["issuer_cn"]  = issuer.get("commonName","")
+    ci["san_count"]  = len(cert.get("subjectAltName",[]))
+    return ci, ci_issues
 
 
 def _analyze_tls_domain(domain: str) -> dict:
@@ -451,50 +616,39 @@ def _analyze_tls_domain(domain: str) -> dict:
         ctx = ssl.create_default_context()
         with socket.create_connection((clean, 443), timeout=10) as sock:
             with ctx.wrap_socket(sock, server_hostname=clean) as ssock:
-                tls_version = ssock.version()
-                cipher      = ssock.cipher()
-                cert        = ssock.getpeercert()
-        cipher_name = cipher[0] if cipher else "Unknown"
-        cipher_bits = cipher[2] if cipher else 0
-        analysis   = _analyze_tls_score(tls_version, cipher_name, cipher_bits)
-        cert_info, cert_issues = _analyze_certificate(cert)
-        grade_info = _calculate_tls_grade(analysis["tls_score"], analysis["quantum_safe"],
-                                          tls_version, analysis["issues"] + cert_issues)
-        nist_rec = (
-            "Hybrid PQC TLS detected. Continue monitoring NIST updates." if analysis["quantum_safe"]
-            else "TLS 1.3 is modern. Monitor hybrid PQC TLS using ML-KEM/FIPS 203." if tls_version == "TLSv1.3"
-            else "Upgrade to TLS 1.3 first, then plan hybrid PQC migration."
-        )
+                tv = ssock.version(); cipher = ssock.cipher(); cert = ssock.getpeercert()
+        cn = cipher[0] if cipher else "Unknown"
+        cb = cipher[2] if cipher else 0
+        a  = _analyze_tls_score(tv, cn, cb)
+        ci, ci_issues = _analyze_certificate(cert)
+        g  = _calculate_tls_grade(a["tls_score"], a["quantum_safe"], tv, a["issues"]+ci_issues)
+        nr = ("Hybrid PQC TLS detected." if a["quantum_safe"]
+              else "TLS 1.3 is modern. Monitor hybrid PQC ML-KEM adoption." if tv=="TLSv1.3"
+              else "Upgrade to TLS 1.3 first, then plan hybrid PQC migration.")
         return {
-            "domain": clean, "tls_version": tls_version,
-            "cipher_suite": cipher_name, "cipher_bits": cipher_bits,
-            "quantum_safe": analysis["quantum_safe"], "tls_score": analysis["tls_score"],
-            "grade": grade_info["grade"], "grade_color": grade_info["grade_color"],
-            "grade_description": grade_info["grade_description"],
-            "pqc_note": grade_info["pqc_note"],
-            "grade_breakdown": grade_info["grade_breakdown"],
-            "labels": analysis["labels"], "strengths": analysis["strengths"],
-            "issues": analysis["issues"] + cert_issues,
-            "certificate": cert_info,
-            "has_forward_secrecy": analysis["has_forward_secrecy"],
-            "has_pqc_key_exchange": analysis["has_pqc_kex"],
-            "rsa_key_exchange": analysis["rsa_key_exchange"],
-            "quantum_explanation": analysis["quantum_explanation"],
-            "nist_recommendation": nist_rec,
-            "nist_standard": "ML-KEM — NIST FIPS 203",
-            "key_exchange": "ECDHE / Forward Secrecy" if analysis["has_forward_secrecy"] else "Unknown",
-            "meta": {"tool":"QuantumGuard TLS Analyzer v2.5","company":"Mangsri QuantumGuard LLC"},
+            "domain":cn,"tls_version":tv,"cipher_suite":cn,"cipher_bits":cb,
+            "quantum_safe":a["quantum_safe"],"tls_score":a["tls_score"],
+            "grade":g["grade"],"grade_color":g["grade_color"],
+            "grade_description":g["grade_description"],"pqc_note":g["pqc_note"],
+            "grade_breakdown":g["grade_breakdown"],"labels":a["labels"],
+            "strengths":a["strengths"],"issues":a["issues"]+ci_issues,
+            "certificate":ci,"has_forward_secrecy":a["has_forward_secrecy"],
+            "has_pqc_key_exchange":a["has_pqc_kex"],"rsa_key_exchange":a["rsa_key_exchange"],
+            "quantum_explanation":a["quantum_explanation"],"nist_recommendation":nr,
+            "nist_standard":"ML-KEM — NIST FIPS 203",
+            "key_exchange":"ECDHE / Forward Secrecy" if a["has_forward_secrecy"] else "Unknown",
+            "domain":clean,
         }
     except ssl.SSLError as e:
         raise HTTPException(status_code=400, detail=f"SSL Error: {str(e)}")
     except socket.timeout:
         raise HTTPException(status_code=408, detail="Connection timed out")
     except socket.gaierror:
-        raise HTTPException(status_code=400, detail=f"Cannot resolve domain: {clean}")
+        raise HTTPException(status_code=400, detail=f"Cannot resolve: {clean}")
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"TLS analysis error: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"TLS error: {str(e)}")
 
 
 # ============================================================
@@ -504,9 +658,9 @@ def _analyze_tls_domain(domain: str) -> dict:
 @app.post("/auth/register", tags=["Auth"])
 @limiter.limit("10/hour")
 async def register(request: Request, body: RegisterRequest):
-    """Register a new account. Returns JWT immediately."""
+    """Register a new account. Persisted to PostgreSQL."""
     email = body.email.lower().strip()
-    if email in USERS_DB:
+    if db_get_user(email):
         raise HTTPException(status_code=409, detail="Email already registered")
     if len(body.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
@@ -519,23 +673,22 @@ async def register(request: Request, body: RegisterRequest):
         "scan_count":      0,
         "plan":            "free",
     }
-    USERS_DB[email] = user
+    db_create_user(user)
     token = create_access_token({"sub": email})
     logger.info(f"New user registered: {email}")
     return {
         "access_token": token, "token_type": "bearer",
         "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        "user": {"id": user["id"], "email": user["email"],
-                 "name": user["name"], "plan": user["plan"]},
+        "user": {"id":user["id"],"email":user["email"],"name":user["name"],"plan":user["plan"]},
     }
 
 
 @app.post("/auth/login", tags=["Auth"])
 @limiter.limit("20/hour")
 async def login(request: Request, body: LoginRequest):
-    """Login with email + password. Returns JWT."""
+    """Login with email + password."""
     email = body.email.lower().strip()
-    user  = USERS_DB.get(email)
+    user  = db_get_user(email)
     if not user or not verify_password(body.password, user["hashed_password"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     token = create_access_token({"sub": email})
@@ -543,14 +696,14 @@ async def login(request: Request, body: LoginRequest):
     return {
         "access_token": token, "token_type": "bearer",
         "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        "user": {"id": user["id"], "email": user["email"], "name": user["name"],
-                 "plan": user["plan"], "scan_count": user["scan_count"]},
+        "user": {"id":user["id"],"email":user["email"],"name":user["name"],
+                 "plan":user["plan"],"scan_count":user["scan_count"]},
     }
 
 
 @app.get("/auth/me", tags=["Auth"])
 async def get_me(current_user: dict = Depends(get_current_user)):
-    return {k: current_user[k] for k in ("id","email","name","plan","scan_count","created_at")}
+    return {k: current_user[k] for k in ("id","email","name","plan","scan_count","created_at") if k in current_user}
 
 
 @app.post("/auth/refresh", tags=["Auth"])
@@ -558,20 +711,29 @@ async def refresh_token(current_user: dict = Depends(get_current_user)):
     return {"access_token": create_access_token({"sub": current_user["email"]}), "token_type": "bearer"}
 
 
+@app.get("/auth/history", tags=["Auth"])
+async def get_history(current_user: dict = Depends(get_current_user)):
+    """Get scan history for the logged-in user."""
+    history = db_get_scan_history(current_user["id"])
+    return {"history": history, "total": len(history)}
+
+
 # ============================================================
-# ROUTES — unchanged logic from v2.4, enhanced rate limits
+# ROUTES
 # ============================================================
 
 @app.get("/")
 def root():
-    return {"message":"QuantumGuard API is running!","version":"2.5",
+    return {"message":"QuantumGuard API is running!","version":"2.6",
             "company":"Mangsri QuantumGuard LLC","website":"https://quantumguard.site",
-            "standards":["NIST FIPS 203","NIST FIPS 204","NIST FIPS 205"]}
+            "standards":["NIST FIPS 203","NIST FIPS 204","NIST FIPS 205"],
+            "db": "postgresql" if db_pool else "memory"}
 
 
 @app.get("/health")
 def health():
-    return {"status":"healthy","version":"2.5","tool":"QuantumGuard"}
+    return {"status":"healthy","version":"2.6","tool":"QuantumGuard",
+            "db": "postgresql" if db_pool else "memory (no DATABASE_URL set)"}
 
 
 @app.post("/scan")
@@ -580,19 +742,19 @@ def scan(request: Request, body: ScanRequest, x_api_key: str = Header(...)):
     verify_key(x_api_key)
     if not os.path.exists(body.directory):
         raise HTTPException(status_code=404, detail="Directory not found")
-    start    = time.time()
+    start = time.time()
     findings = scan_directory(body.directory)
     score    = calculate_score(findings)
-    severity_summary, confidence_summary = _summarize_findings(findings)
+    sev, conf = _summarize_findings(findings)
     return {
         "quantum_readiness_score": score,
         "score_explanation":       generate_score_explanation(findings, score),
         "scan_summary":            generate_scan_summary(body.directory, findings, start),
         "total_findings":          len(findings),
-        "severity_summary":        severity_summary,
-        "confidence_summary":      confidence_summary,
+        "severity_summary":        sev,
+        "confidence_summary":      conf,
         "top_findings":            _build_top_findings(findings),
-        "priority_actions":        _build_priority_actions(findings, severity_summary, score),
+        "priority_actions":        _build_priority_actions(findings, sev, score),
         "findings":                findings,
     }
 
@@ -613,17 +775,17 @@ async def public_scan_zip(request: Request, file: UploadFile = File(...)):
             z.extractall(temp_dir)
         findings = scan_directory(temp_dir)
         score    = calculate_score(findings)
-        severity_summary, confidence_summary = _summarize_findings(findings)
+        sev, conf = _summarize_findings(findings)
         return {
-            "filename":                file.filename,
+            "filename": file.filename,
             "quantum_readiness_score": score,
             "score_explanation":       generate_score_explanation(findings, score),
             "scan_summary":            generate_scan_summary(temp_dir, findings, start),
             "total_findings":          len(findings),
-            "severity_summary":        severity_summary,
-            "confidence_summary":      confidence_summary,
+            "severity_summary":        sev,
+            "confidence_summary":      conf,
             "top_findings":            _build_top_findings(findings),
-            "priority_actions":        _build_priority_actions(findings, severity_summary, score),
+            "priority_actions":        _build_priority_actions(findings, sev, score),
             "findings":                findings,
         }
     except zipfile.BadZipFile:
@@ -652,22 +814,26 @@ async def scan_github(
             z.extractall(temp_dir)
         findings = scan_directory(temp_dir)
         score    = calculate_score(findings)
-        severity_summary, confidence_summary = _summarize_findings(findings)
+        sev, conf = _summarize_findings(findings)
+
+        # Save to PostgreSQL if user is logged in
         if current_user:
-            USERS_DB[current_user["email"]]["scan_count"] += 1
+            db_increment_scan_count(current_user["email"])
+            db_save_scan(current_user["id"], current_user["email"],
+                         body.github_url, score, len(findings), "github")
+
         return {
-            "github_url":              body.github_url,
-            "repo":                    f"{owner}/{repo}",
+            "github_url": body.github_url, "repo": f"{owner}/{repo}",
             "quantum_readiness_score": score,
             "score_explanation":       generate_score_explanation(findings, score),
             "scan_summary":            generate_scan_summary(temp_dir, findings, start),
             "total_findings":          len(findings),
-            "severity_summary":        severity_summary,
-            "confidence_summary":      confidence_summary,
+            "severity_summary":        sev,
+            "confidence_summary":      conf,
             "top_findings":            _build_top_findings(findings),
-            "priority_actions":        _build_priority_actions(findings, severity_summary, score),
+            "priority_actions":        _build_priority_actions(findings, sev, score),
             "findings":                findings,
-            "meta": {"tool":"QuantumGuard v2.5","standards":["NIST FIPS 203","NIST FIPS 204","NIST FIPS 205"],
+            "meta": {"tool":"QuantumGuard v2.6","standards":["NIST FIPS 203","NIST FIPS 204","NIST FIPS 205"],
                      "company":"Mangsri QuantumGuard LLC","website":"https://quantumguard.site"},
         }
     except HTTPException:
@@ -733,9 +899,9 @@ async def unified_risk(
         os.makedirs(temp_dir, exist_ok=True)
         with zipfile.ZipFile(io.BytesIO(zip_content)) as z:
             z.extractall(temp_dir)
-        findings     = scan_directory(temp_dir)
-        code_score   = calculate_score(findings)
-        severity_summary, confidence_summary = _summarize_findings(findings)
+        findings       = scan_directory(temp_dir)
+        code_score     = calculate_score(findings)
+        sev, conf      = _summarize_findings(findings)
         agility_result = check_crypto_agility(temp_dir)
         tls_result = None; tls_error = None
         if body.domain:
@@ -746,6 +912,10 @@ async def unified_risk(
         unified_result = calculate_unified_quantum_risk(
             findings=findings, agility_result=agility_result, tls_result=tls_result,
         )
+        if current_user:
+            db_increment_scan_count(current_user["email"])
+            db_save_scan(current_user["id"], current_user["email"],
+                         body.github_url, code_score, len(findings), "unified")
         return {
             "repo": f"{owner}/{repo}", "github_url": body.github_url, "domain": body.domain,
             "unified_risk": unified_result,
@@ -754,10 +924,10 @@ async def unified_risk(
                 "score_explanation":       generate_score_explanation(findings, code_score),
                 "scan_summary":            generate_scan_summary(temp_dir, findings, start),
                 "total_findings":          len(findings),
-                "severity_summary":        severity_summary,
-                "confidence_summary":      confidence_summary,
+                "severity_summary":        sev,
+                "confidence_summary":      conf,
                 "top_findings":            _build_top_findings(findings),
-                "priority_actions":        _build_priority_actions(findings, severity_summary, code_score),
+                "priority_actions":        _build_priority_actions(findings, sev, code_score),
                 "findings":                findings[:100],
             },
             "agility_result": agility_result,
@@ -773,7 +943,7 @@ async def unified_risk(
                 },
             },
             "top_findings": _build_top_findings(findings),
-            "meta": {"tool":"QuantumGuard Unified Risk Engine v2.5","company":"Mangsri QuantumGuard LLC"},
+            "meta": {"tool":"QuantumGuard Unified Risk Engine v2.6","company":"Mangsri QuantumGuard LLC"},
         }
     except HTTPException:
         raise
@@ -794,42 +964,37 @@ async def ai_fix(
     finding = body.get("finding", {})
     if not finding:
         raise HTTPException(status_code=400, detail="Finding required")
-    vuln        = finding.get("vulnerability","")
-    code        = finding.get("code","")
-    replacement = finding.get("replacement","")
-    severity    = finding.get("severity","")
-    risk        = finding.get("risk_explanation","")
-    vu          = vuln.upper()
+    vuln = finding.get("vulnerability",""); code = finding.get("code","")
+    replacement = finding.get("replacement",""); severity = finding.get("severity","")
+    vu = vuln.upper()
     if "RSA" in vu:
-        fix = f"# BEFORE:\n{code}\n\n# MIGRATION: Replace with ML-KEM hybrid (FIPS 203) for key establishment or ML-DSA (FIPS 204) for signatures.\n"
+        fix = f"# BEFORE:\n{code}\n\n# MIGRATION: Replace with ML-KEM (FIPS 203) for key establishment or ML-DSA (FIPS 204) for signatures.\n"
     elif "ECC" in vu or "ECDSA" in vu or "ECDH" in vu:
-        fix = f"# BEFORE:\n{code}\n\n# MIGRATION:\n- ECDH/key exchange → ML-KEM/FIPS 203\n- ECDSA/signatures → ML-DSA/FIPS 204\n"
+        fix = f"# BEFORE:\n{code}\n\n# MIGRATION:\n- ECDH → ML-KEM/FIPS 203\n- ECDSA → ML-DSA/FIPS 204\n"
     elif "MD5" in vu:
-        fix = f"# BEFORE:\n{code}\n\n# AFTER:\nimport hashlib\nhash_value = hashlib.sha3_256(data).hexdigest()\n\n# Why: MD5 is cryptographically broken.\n"
+        fix = f"# BEFORE:\n{code}\n\n# AFTER:\nimport hashlib\nhash_value = hashlib.sha3_256(data).hexdigest()\n"
     elif "SHA1" in vu or "SHA-1" in vu:
-        fix = f"# BEFORE:\n{code}\n\n# AFTER:\nimport hashlib\nhash_value = hashlib.sha3_256(data).hexdigest()\n\n# Why: SHA-1 is deprecated and collision-broken.\n"
+        fix = f"# BEFORE:\n{code}\n\n# AFTER:\nimport hashlib\nhash_value = hashlib.sha3_256(data).hexdigest()\n"
     elif "DES" in vu:
-        fix = f"# BEFORE:\n{code}\n\n# AFTER:\nfrom cryptography.hazmat.primitives.ciphers.aead import AESGCM\nimport os\nkey = AESGCM.generate_key(bit_length=256)\nnonce = os.urandom(12)\naesgcm = AESGCM(key)\nciphertext = aesgcm.encrypt(nonce, plaintext, None)\n"
+        fix = f"# BEFORE:\n{code}\n\n# AFTER:\nfrom cryptography.hazmat.primitives.ciphers.aead import AESGCM\nimport os\nkey=AESGCM.generate_key(bit_length=256)\nnonce=os.urandom(12)\nct=AESGCM(key).encrypt(nonce,plaintext,None)\n"
     elif "RC4" in vu:
-        fix = f"# BEFORE:\n{code}\n\n# AFTER:\nfrom cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305\nimport os\nkey = ChaCha20Poly1305.generate_key()\nnonce = os.urandom(12)\nchacha = ChaCha20Poly1305(key)\nciphertext = chacha.encrypt(nonce, plaintext, None)\n"
+        fix = f"# BEFORE:\n{code}\n\n# AFTER:\nfrom cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305\nimport os\nkey=ChaCha20Poly1305.generate_key()\nnonce=os.urandom(12)\nct=ChaCha20Poly1305(key).encrypt(nonce,plaintext,None)\n"
     else:
-        fix = f"# BEFORE:\n{code}\n\n# RECOMMENDED FIX:\n{replacement}\n\n# RISK: {risk}\n# SEVERITY: {severity}\n"
+        fix = f"# BEFORE:\n{code}\n\n# RECOMMENDED FIX: {replacement}\n# SEVERITY: {severity}\n"
     return {"fix": fix, "vulnerability": vuln, "replacement": replacement}
 
 
 @app.get("/badge/{owner}/{repo}")
 async def get_badge(owner: str, repo: str):
     try:
-        zip_content, o, r = _download_github_zip(f"https://github.com/{owner}/{repo}")
-        temp_dir = f"/tmp/qg-badge-{uuid.uuid4().hex[:8]}"
-        os.makedirs(temp_dir, exist_ok=True)
+        zc, o, r = _download_github_zip(f"https://github.com/{owner}/{repo}")
+        td = f"/tmp/qg-badge-{uuid.uuid4().hex[:8]}"
+        os.makedirs(td, exist_ok=True)
         try:
-            with zipfile.ZipFile(io.BytesIO(zip_content)) as z:
-                z.extractall(temp_dir)
-            score = calculate_score(scan_directory(temp_dir))
+            with zipfile.ZipFile(io.BytesIO(zc)) as z: z.extractall(td)
+            score = calculate_score(scan_directory(td))
         finally:
-            if os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir)
+            shutil.rmtree(td, ignore_errors=True)
         if score >= 80:   color="#16a34a"; lc="#15803d"; rt=f"{score}/100 safe"
         elif score >= 50: color="#d97706"; lc="#b45309"; rt=f"{score}/100 at risk"
         else:             color="#dc2626"; lc="#b91c1c"; rt=f"{score}/100 vulnerable"
@@ -840,8 +1005,7 @@ async def get_badge(owner: str, repo: str):
          f'<g><rect width="{lw}" height="20" fill="{lc}"/>'
          f'<rect x="{lw}" width="{rw}" height="20" fill="{color}"/></g>'
          f'<g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-size="11">'
-         f'<text x="{lw//2}" y="14">{lt}</text>'
-         f'<text x="{lw+rw//2}" y="14">{rt}</text>'
+         f'<text x="{lw//2}" y="14">{lt}</text><text x="{lw+rw//2}" y="14">{rt}</text>'
          f'</g></svg>')
     return Response(content=svg, media_type="image/svg+xml",
                     headers={"Cache-Control":"no-cache,no-store,must-revalidate"})
@@ -856,21 +1020,16 @@ async def export_cbom(
 ):
     temp_dir = None
     try:
-        zip_content, owner, repo = _download_github_zip(body.github_url, body.github_token)
+        zc, owner, repo = _download_github_zip(body.github_url, body.github_token)
         temp_dir = f"/tmp/qg-cbom-{uuid.uuid4().hex[:8]}"
         os.makedirs(temp_dir, exist_ok=True)
-        with zipfile.ZipFile(io.BytesIO(zip_content)) as z:
-            z.extractall(temp_dir)
+        with zipfile.ZipFile(io.BytesIO(zc)) as z: z.extractall(temp_dir)
         findings = scan_directory(temp_dir)
-        score    = calculate_score(findings)
-        return generate_cbom(findings, repo=f"{owner}/{repo}", score=score)
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"CBOM export error: {str(e)}")
+        return generate_cbom(findings, repo=f"{owner}/{repo}", score=calculate_score(findings))
+    except HTTPException: raise
+    except Exception as e: raise HTTPException(status_code=500, detail=f"CBOM error: {str(e)}")
     finally:
-        if temp_dir and os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir)
+        if temp_dir and os.path.exists(temp_dir): shutil.rmtree(temp_dir)
 
 
 @app.post("/export-cbom-zip")
@@ -884,15 +1043,10 @@ async def export_cbom_zip(request: Request, file: UploadFile = File(...)):
     temp_dir = f"/tmp/qg-cbom-{uuid.uuid4().hex[:8]}"
     try:
         os.makedirs(temp_dir, exist_ok=True)
-        with zipfile.ZipFile(io.BytesIO(contents)) as z:
-            z.extractall(temp_dir)
+        with zipfile.ZipFile(io.BytesIO(contents)) as z: z.extractall(temp_dir)
         findings = scan_directory(temp_dir)
-        score    = calculate_score(findings)
-        return generate_cbom(findings, repo=file.filename, score=score)
-    except zipfile.BadZipFile:
-        raise HTTPException(status_code=400, detail="Invalid ZIP file")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"CBOM export error: {str(e)}")
+        return generate_cbom(findings, repo=file.filename, score=calculate_score(findings))
+    except zipfile.BadZipFile: raise HTTPException(status_code=400, detail="Invalid ZIP")
+    except Exception as e:     raise HTTPException(status_code=500, detail=f"CBOM error: {str(e)}")
     finally:
-        if os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir)
+        if os.path.exists(temp_dir): shutil.rmtree(temp_dir)
