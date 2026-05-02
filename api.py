@@ -4,8 +4,7 @@
 # Licensed under AGPL v3 — github.com/cybersupe/quantumguard
 # Standards: NIST FIPS 203, FIPS 204, FIPS 205
 # ============================================================
-# v2.6 adds: PostgreSQL persistent storage (users + scan history)
-#            Tables auto-created on startup — no migrations needed
+# v2.6 — PostgreSQL + JWT Auth + CORS fix for www.quantumguard.site
 # ============================================================
 
 import os
@@ -97,7 +96,6 @@ API_KEY      = os.getenv("API_KEY", "quantumguard-secret-2026")
 MAX_ZIP_SIZE = 10 * 1024 * 1024
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 
-# JWT
 SECRET_KEY                  = os.getenv("JWT_SECRET_KEY", "CHANGE_THIS_IN_PRODUCTION")
 ALGORITHM                   = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
@@ -105,87 +103,56 @@ ENVIRONMENT                 = os.getenv("ENVIRONMENT", "production")
 
 
 # ============================================================
-# DATABASE — connection pool + auto table creation
+# DATABASE
 # ============================================================
 
 db_pool: Optional[ThreadedConnectionPool] = None
-
-
-def get_db():
-    """Get a connection from the pool."""
-    if db_pool is None:
-        raise HTTPException(status_code=503, detail="Database not available")
-    conn = db_pool.getconn()
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        db_pool.putconn(conn)
+USERS_MEMORY: dict[str, dict] = {}
 
 
 def init_db():
-    """Create tables if they don't exist. Called on startup."""
     global db_pool
-
     if not DATABASE_URL:
         logger.warning("DATABASE_URL not set — using in-memory fallback")
         return
-
     try:
-        # Render PostgreSQL URLs start with postgres:// — psycopg2 needs postgresql://
         url = DATABASE_URL.replace("postgres://", "postgresql://", 1)
         db_pool = ThreadedConnectionPool(minconn=1, maxconn=10, dsn=url)
-
         conn = db_pool.getconn()
         try:
             cur = conn.cursor()
-
-            # ── users table ──────────────────────────────────
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
-                    id            TEXT PRIMARY KEY,
-                    email         TEXT UNIQUE NOT NULL,
-                    name          TEXT,
+                    id              TEXT PRIMARY KEY,
+                    email           TEXT UNIQUE NOT NULL,
+                    name            TEXT,
                     hashed_password TEXT NOT NULL,
-                    plan          TEXT DEFAULT 'free',
-                    scan_count    INTEGER DEFAULT 0,
-                    created_at    TIMESTAMP DEFAULT NOW()
+                    plan            TEXT DEFAULT 'free',
+                    scan_count      INTEGER DEFAULT 0,
+                    created_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
-
-            # ── scan_history table ────────────────────────────
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS scan_history (
-                    id          TEXT PRIMARY KEY,
-                    user_id     TEXT REFERENCES users(id) ON DELETE CASCADE,
-                    user_email  TEXT,
-                    target      TEXT,
-                    score       INTEGER,
-                    findings    INTEGER,
-                    scan_type   TEXT DEFAULT 'github',
-                    created_at  TIMESTAMP DEFAULT NOW()
+                    id         TEXT PRIMARY KEY,
+                    user_id    TEXT REFERENCES users(id) ON DELETE CASCADE,
+                    user_email TEXT,
+                    target     TEXT,
+                    score      INTEGER,
+                    findings   INTEGER,
+                    scan_type  TEXT DEFAULT 'github',
+                    created_at TIMESTAMP DEFAULT NOW()
                 );
             """)
-
             conn.commit()
             cur.close()
             logger.info("PostgreSQL connected — tables ready")
         finally:
             db_pool.putconn(conn)
-
     except Exception as e:
         logger.error(f"Database init failed: {type(e).__name__} — falling back to in-memory")
         db_pool = None
 
-
-# ── In-memory fallback (used when DATABASE_URL not set) ──────
-USERS_MEMORY: dict[str, dict] = {}
-
-
-# ── User CRUD helpers ─────────────────────────────────────────
 
 def db_get_user(email: str) -> Optional[dict]:
     if db_pool is None:
@@ -211,11 +178,8 @@ def db_create_user(user: dict) -> dict:
         cur.execute("""
             INSERT INTO users (id, email, name, hashed_password, plan, scan_count, created_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (
-            user["id"], user["email"], user["name"],
-            user["hashed_password"], user["plan"],
-            user["scan_count"], user["created_at"],
-        ))
+        """, (user["id"], user["email"], user["name"], user["hashed_password"],
+              user["plan"], user["scan_count"], user["created_at"]))
         conn.commit()
         cur.close()
         return user
@@ -231,9 +195,7 @@ def db_increment_scan_count(email: str):
     conn = db_pool.getconn()
     try:
         cur = conn.cursor()
-        cur.execute(
-            "UPDATE users SET scan_count = scan_count + 1 WHERE email = %s", (email,)
-        )
+        cur.execute("UPDATE users SET scan_count = scan_count + 1 WHERE email = %s", (email,))
         conn.commit()
         cur.close()
     finally:
@@ -243,7 +205,7 @@ def db_increment_scan_count(email: str):
 def db_save_scan(user_id: str, user_email: str, target: str,
                  score: int, findings: int, scan_type: str = "github"):
     if db_pool is None:
-        return  # history not saved in memory mode
+        return
     conn = db_pool.getconn()
     try:
         cur = conn.cursor()
@@ -264,10 +226,8 @@ def db_get_scan_history(user_id: str, limit: int = 50) -> list:
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("""
-            SELECT * FROM scan_history
-            WHERE user_id = %s
-            ORDER BY created_at DESC
-            LIMIT %s
+            SELECT * FROM scan_history WHERE user_id = %s
+            ORDER BY created_at DESC LIMIT %s
         """, (user_id, limit))
         rows = cur.fetchall()
         cur.close()
@@ -290,14 +250,12 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 # ============================================================
-# JWT HELPERS
+# JWT
 # ============================================================
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-    expire    = datetime.datetime.utcnow() + (
-        expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
+    expire = datetime.datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire, "iat": datetime.datetime.utcnow()})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -305,11 +263,9 @@ def decode_token(token: str) -> dict:
     try:
         return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Invalid or expired token",
+                            headers={"WWW-Authenticate": "Bearer"})
 
 
 # ============================================================
@@ -318,15 +274,11 @@ def decode_token(token: str) -> dict:
 
 security = HTTPBearer(auto_error=False)
 
-async def get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-) -> dict:
+async def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> dict:
     if not credentials:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required — include: Authorization: Bearer <token>",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Authentication required",
+                            headers={"WWW-Authenticate": "Bearer"})
     payload = decode_token(credentials.credentials)
     email   = payload.get("sub")
     if not email:
@@ -336,9 +288,7 @@ async def get_current_user(
         raise HTTPException(status_code=401, detail="User not found")
     return user
 
-async def get_optional_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-) -> Optional[dict]:
+async def get_optional_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Optional[dict]:
     if not credentials:
         return None
     try:
@@ -357,7 +307,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 # ============================================================
-# APP SETUP
+# APP
 # ============================================================
 
 app = FastAPI(
@@ -383,38 +333,28 @@ async def shutdown():
     global db_pool
     if db_pool:
         db_pool.closeall()
-        logger.info("Database pool closed")
 
 
-ALLOWED_ORIGINS = [
-    "https://quantumguard.site",
-    "https://www.quantumguard.site",
-    "http://quantumguard.site",
-    "http://www.quantumguard.site",
-    "http://localhost:3000",
-    "http://localhost:5173",
-]
+# ============================================================
+# CORS — pure wildcard, works for all origins including www
+# ============================================================
 
 class CORSMiddlewareCustom(BaseHTTPMiddleware):
     async def dispatch(self, request: StarletteRequest, call_next):
-        origin = request.headers.get("origin", "")
-        allow_origin = origin if origin in ALLOWED_ORIGINS else "*"
         if request.method == "OPTIONS":
             return Response(
                 status_code=200,
                 headers={
-                    "Access-Control-Allow-Origin":      allow_origin,
-                    "Access-Control-Allow-Methods":     "GET, POST, PUT, DELETE, OPTIONS",
-                    "Access-Control-Allow-Headers":     "Authorization, Content-Type, X-API-Key",
-                    "Access-Control-Allow-Credentials": "true",
-                    "Access-Control-Max-Age":           "86400",
+                    "Access-Control-Allow-Origin":  "*",
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+                    "Access-Control-Allow-Headers": "Authorization, Content-Type, X-API-Key, Accept, Origin",
+                    "Access-Control-Max-Age":       "86400",
                 },
             )
         response = await call_next(request)
-        response.headers["Access-Control-Allow-Origin"]      = allow_origin
-        response.headers["Access-Control-Allow-Methods"]     = "GET, POST, PUT, DELETE, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"]     = "Authorization, Content-Type, X-API-Key"
-        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Origin"]  = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, X-API-Key, Accept, Origin"
         return response
 
 
@@ -484,9 +424,7 @@ def _download_github_zip(github_url: str, github_token: Optional[str] = None):
     headers = {"Accept": "application/vnd.github+json", "User-Agent": "QuantumGuard/2.6"}
     if github_token:
         headers["Authorization"] = f"token {github_token}"
-    meta_resp = requests.get(
-        f"https://api.github.com/repos/{owner}/{repo}", headers=headers, timeout=10
-    )
+    meta_resp = requests.get(f"https://api.github.com/repos/{owner}/{repo}", headers=headers, timeout=10)
     if meta_resp.status_code == 200:
         if meta_resp.json().get("size", 0) > 50000:
             raise HTTPException(status_code=400, detail="Repo too large. Max 50MB.")
@@ -554,7 +492,7 @@ def _analyze_tls_score(tls_version, cipher_name, cipher_bits):
     elif tls_version == "TLSv1.2":
         score += 20; issues.append("TLS 1.2 — upgrade to TLS 1.3 recommended")
     else:
-        issues.append(f"{tls_version} is deprecated — upgrade to TLS 1.3 immediately")
+        issues.append(f"{tls_version} is deprecated — upgrade immediately")
     if any(s in cu for s in STRONG_CIPHERS):
         score += 35; strengths.append("Strong symmetric encryption")
     elif any(s in cu for s in ACCEPTABLE_CIPHERS):
@@ -565,10 +503,10 @@ def _analyze_tls_score(tls_version, cipher_name, cipher_bits):
         score += 15; issues.append("AES-256 recommended")
     else:
         issues.append("Weak or unknown cipher")
-    has_pqc         = any(p in cu for p in PQC_INDICATORS)
-    has_fs          = tls_version == "TLSv1.3" or has_pqc or any(kx in cu for kx in FORWARD_SECRECY_KX)
-    rsa_kx          = "RSA" in cu and not has_fs
-    quantum_safe    = has_pqc
+    has_pqc      = any(p in cu for p in PQC_INDICATORS)
+    has_fs       = tls_version == "TLSv1.3" or has_pqc or any(kx in cu for kx in FORWARD_SECRECY_KX)
+    rsa_kx       = "RSA" in cu and not has_fs
+    quantum_safe = has_pqc
     if has_pqc:
         score += 25; strengths.append("Hybrid post-quantum key exchange detected")
     elif tls_version == "TLSv1.3":
@@ -578,9 +516,8 @@ def _analyze_tls_score(tls_version, cipher_name, cipher_bits):
     else:
         issues.append("No forward secrecy detected")
     return {"tls_score": max(0, min(100, score)), "quantum_safe": quantum_safe,
-            "strengths": strengths, "issues": issues,
-            "has_forward_secrecy": has_fs, "has_pqc_kex": has_pqc,
-            "rsa_key_exchange": rsa_kx, "labels": [],
+            "strengths": strengths, "issues": issues, "has_forward_secrecy": has_fs,
+            "has_pqc_kex": has_pqc, "rsa_key_exchange": rsa_kx, "labels": [],
             "quantum_explanation": "Hybrid PQC detected." if quantum_safe else "Not post-quantum safe yet."}
 
 
@@ -591,7 +528,7 @@ def _calculate_tls_grade(score, quantum_safe, tls_version, issues):
     elif score < 50:      g,c,d = "D","#dc2626","Poor — significant vulnerabilities"
     elif score < 65:      g,c,d = "C","#d97706","Average — improvements recommended"
     elif score < 80:      g,c,d = "B","#f59e0b","Good — some improvements recommended"
-    elif quantum_safe and tls_version == "TLSv1.3": g,c,d = "A+","#16a34a","Excellent — hybrid PQC detected"
+    elif quantum_safe and tls_version == "TLSv1.3": g,c,d = "A+","#16a34a","Excellent — hybrid PQC"
     elif tls_version == "TLSv1.3": g,c,d = "A","#16a34a","Strong — modern TLS"
     else:                 g,c,d = "B","#f59e0b","Good — TLS 1.3 upgrade recommended"
     return {"grade":g,"grade_color":c,"grade_description":d,
@@ -605,8 +542,8 @@ def _analyze_certificate(cert):
     ci["cert_expires"] = exp
     if exp:
         try:
-            ed  = datetime.datetime.strptime(exp, "%b %d %H:%M:%S %Y %Z")
-            dr  = (ed - datetime.datetime.utcnow()).days
+            ed = datetime.datetime.strptime(exp, "%b %d %H:%M:%S %Y %Z")
+            dr = (ed - datetime.datetime.utcnow()).days
             ci["days_until_expiry"] = dr
             if dr < 0:    ci_issues.append("CRITICAL: Certificate expired")
             elif dr < 14: ci_issues.append(f"URGENT: Expires in {dr} days")
@@ -639,7 +576,7 @@ def _analyze_tls_domain(domain: str) -> dict:
               else "TLS 1.3 is modern. Monitor hybrid PQC ML-KEM adoption." if tv=="TLSv1.3"
               else "Upgrade to TLS 1.3 first, then plan hybrid PQC migration.")
         return {
-            "domain":cn,"tls_version":tv,"cipher_suite":cn,"cipher_bits":cb,
+            "domain":clean,"tls_version":tv,"cipher_suite":cn,"cipher_bits":cb,
             "quantum_safe":a["quantum_safe"],"tls_score":a["tls_score"],
             "grade":g["grade"],"grade_color":g["grade_color"],
             "grade_description":g["grade_description"],"pqc_note":g["pqc_note"],
@@ -650,7 +587,6 @@ def _analyze_tls_domain(domain: str) -> dict:
             "quantum_explanation":a["quantum_explanation"],"nist_recommendation":nr,
             "nist_standard":"ML-KEM — NIST FIPS 203",
             "key_exchange":"ECDHE / Forward Secrecy" if a["has_forward_secrecy"] else "Unknown",
-            "domain":clean,
         }
     except ssl.SSLError as e:
         raise HTTPException(status_code=400, detail=f"SSL Error: {str(e)}")
@@ -665,13 +601,12 @@ def _analyze_tls_domain(domain: str) -> dict:
 
 
 # ============================================================
-# ── AUTH ENDPOINTS ──────────────────────────────────────────
+# AUTH ENDPOINTS
 # ============================================================
 
 @app.post("/auth/register", tags=["Auth"])
 @limiter.limit("10/hour")
 async def register(request: Request, body: RegisterRequest):
-    """Register a new account. Persisted to PostgreSQL."""
     email = body.email.lower().strip()
     if db_get_user(email):
         raise HTTPException(status_code=409, detail="Email already registered")
@@ -699,7 +634,6 @@ async def register(request: Request, body: RegisterRequest):
 @app.post("/auth/login", tags=["Auth"])
 @limiter.limit("20/hour")
 async def login(request: Request, body: LoginRequest):
-    """Login with email + password."""
     email = body.email.lower().strip()
     user  = db_get_user(email)
     if not user or not verify_password(body.password, user["hashed_password"]):
@@ -726,7 +660,6 @@ async def refresh_token(current_user: dict = Depends(get_current_user)):
 
 @app.get("/auth/history", tags=["Auth"])
 async def get_history(current_user: dict = Depends(get_current_user)):
-    """Get scan history for the logged-in user."""
     history = db_get_scan_history(current_user["id"])
     return {"history": history, "total": len(history)}
 
@@ -764,8 +697,7 @@ def scan(request: Request, body: ScanRequest, x_api_key: str = Header(...)):
         "score_explanation":       generate_score_explanation(findings, score),
         "scan_summary":            generate_scan_summary(body.directory, findings, start),
         "total_findings":          len(findings),
-        "severity_summary":        sev,
-        "confidence_summary":      conf,
+        "severity_summary":        sev, "confidence_summary": conf,
         "top_findings":            _build_top_findings(findings),
         "priority_actions":        _build_priority_actions(findings, sev, score),
         "findings":                findings,
@@ -795,8 +727,7 @@ async def public_scan_zip(request: Request, file: UploadFile = File(...)):
             "score_explanation":       generate_score_explanation(findings, score),
             "scan_summary":            generate_scan_summary(temp_dir, findings, start),
             "total_findings":          len(findings),
-            "severity_summary":        sev,
-            "confidence_summary":      conf,
+            "severity_summary":        sev, "confidence_summary": conf,
             "top_findings":            _build_top_findings(findings),
             "priority_actions":        _build_priority_actions(findings, sev, score),
             "findings":                findings,
@@ -828,26 +759,24 @@ async def scan_github(
         findings = scan_directory(temp_dir)
         score    = calculate_score(findings)
         sev, conf = _summarize_findings(findings)
-
-        # Save to PostgreSQL if user is logged in
         if current_user:
             db_increment_scan_count(current_user["email"])
             db_save_scan(current_user["id"], current_user["email"],
                          body.github_url, score, len(findings), "github")
-
         return {
             "github_url": body.github_url, "repo": f"{owner}/{repo}",
             "quantum_readiness_score": score,
             "score_explanation":       generate_score_explanation(findings, score),
             "scan_summary":            generate_scan_summary(temp_dir, findings, start),
             "total_findings":          len(findings),
-            "severity_summary":        sev,
-            "confidence_summary":      conf,
+            "severity_summary":        sev, "confidence_summary": conf,
             "top_findings":            _build_top_findings(findings),
             "priority_actions":        _build_priority_actions(findings, sev, score),
             "findings":                findings,
-            "meta": {"tool":"QuantumGuard v2.6","standards":["NIST FIPS 203","NIST FIPS 204","NIST FIPS 205"],
-                     "company":"Mangsri QuantumGuard LLC","website":"https://quantumguard.site"},
+            "meta": {"tool":"QuantumGuard v2.6",
+                     "standards":["NIST FIPS 203","NIST FIPS 204","NIST FIPS 205"],
+                     "company":"Mangsri QuantumGuard LLC",
+                     "website":"https://quantumguard.site"},
         }
     except HTTPException:
         raise
@@ -873,7 +802,7 @@ async def check_agility(
         with zipfile.ZipFile(io.BytesIO(zip_content)) as z:
             z.extractall(temp_dir)
         result = check_crypto_agility(temp_dir)
-        result["repo"]       = f"{owner}/{repo}"
+        result["repo"] = f"{owner}/{repo}"
         result["github_url"] = body.github_url
         return result
     except HTTPException:
@@ -937,8 +866,7 @@ async def unified_risk(
                 "score_explanation":       generate_score_explanation(findings, code_score),
                 "scan_summary":            generate_scan_summary(temp_dir, findings, start),
                 "total_findings":          len(findings),
-                "severity_summary":        sev,
-                "confidence_summary":      conf,
+                "severity_summary":        sev, "confidence_summary": conf,
                 "top_findings":            _build_top_findings(findings),
                 "priority_actions":        _build_priority_actions(findings, sev, code_score),
                 "findings":                findings[:100],
@@ -981,19 +909,19 @@ async def ai_fix(
     replacement = finding.get("replacement",""); severity = finding.get("severity","")
     vu = vuln.upper()
     if "RSA" in vu:
-        fix = f"# BEFORE:\n{code}\n\n# MIGRATION: Replace with ML-KEM (FIPS 203) for key establishment or ML-DSA (FIPS 204) for signatures.\n"
+        fix = f"# BEFORE:\n{code}\n\n# MIGRATION: Replace with ML-KEM (FIPS 203) for key establishment\n# or ML-DSA (FIPS 204) for digital signatures.\n"
     elif "ECC" in vu or "ECDSA" in vu or "ECDH" in vu:
-        fix = f"# BEFORE:\n{code}\n\n# MIGRATION:\n- ECDH → ML-KEM/FIPS 203\n- ECDSA → ML-DSA/FIPS 204\n"
+        fix = f"# BEFORE:\n{code}\n\n# MIGRATION:\n# - ECDH key exchange → ML-KEM (NIST FIPS 203)\n# - ECDSA signatures → ML-DSA (NIST FIPS 204)\n"
     elif "MD5" in vu:
-        fix = f"# BEFORE:\n{code}\n\n# AFTER:\nimport hashlib\nhash_value = hashlib.sha3_256(data).hexdigest()\n"
+        fix = f"# BEFORE:\n{code}\n\n# AFTER:\nimport hashlib\nhash_value = hashlib.sha3_256(data).hexdigest()\n\n# Why: MD5 is broken. SHA-3 is quantum-resistant.\n"
     elif "SHA1" in vu or "SHA-1" in vu:
-        fix = f"# BEFORE:\n{code}\n\n# AFTER:\nimport hashlib\nhash_value = hashlib.sha3_256(data).hexdigest()\n"
+        fix = f"# BEFORE:\n{code}\n\n# AFTER:\nimport hashlib\nhash_value = hashlib.sha3_256(data).hexdigest()\n\n# Why: SHA-1 has known collisions. Use SHA-3 instead.\n"
     elif "DES" in vu:
-        fix = f"# BEFORE:\n{code}\n\n# AFTER:\nfrom cryptography.hazmat.primitives.ciphers.aead import AESGCM\nimport os\nkey=AESGCM.generate_key(bit_length=256)\nnonce=os.urandom(12)\nct=AESGCM(key).encrypt(nonce,plaintext,None)\n"
+        fix = f"# BEFORE:\n{code}\n\n# AFTER:\nfrom cryptography.hazmat.primitives.ciphers.aead import AESGCM\nimport os\nkey = AESGCM.generate_key(bit_length=256)\nnonce = os.urandom(12)\nct = AESGCM(key).encrypt(nonce, plaintext, None)\n"
     elif "RC4" in vu:
-        fix = f"# BEFORE:\n{code}\n\n# AFTER:\nfrom cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305\nimport os\nkey=ChaCha20Poly1305.generate_key()\nnonce=os.urandom(12)\nct=ChaCha20Poly1305(key).encrypt(nonce,plaintext,None)\n"
+        fix = f"# BEFORE:\n{code}\n\n# AFTER:\nfrom cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305\nimport os\nkey = ChaCha20Poly1305.generate_key()\nnonce = os.urandom(12)\nct = ChaCha20Poly1305(key).encrypt(nonce, plaintext, None)\n"
     else:
-        fix = f"# BEFORE:\n{code}\n\n# RECOMMENDED FIX: {replacement}\n# SEVERITY: {severity}\n"
+        fix = f"# BEFORE:\n{code}\n\n# RECOMMENDED FIX: {replacement}\n# SEVERITY: {severity}\n# See NIST FIPS 203/204/205 for migration guidance.\n"
     return {"fix": fix, "vulnerability": vuln, "replacement": replacement}
 
 
