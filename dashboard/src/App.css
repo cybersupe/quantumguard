@@ -18,14 +18,14 @@ body {
   font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* Layout */
+/* ── Layout ── */
 .main-content {
   margin-left: 240px;
   width: calc(100% - 240px);
   overflow-x: hidden;
 }
 
-/* Sidebar overlay */
+/* ── Sidebar overlay ── */
 .sidebar-overlay {
   position: fixed;
   inset: 0;
@@ -33,7 +33,7 @@ body {
   z-index: 900;
 }
 
-/* Hamburger */
+/* ── Dashboard hamburger (inside app) ── */
 .hamburger {
   display: none;
   position: fixed;
@@ -52,18 +52,12 @@ body {
   justify-content: center;
   box-shadow: 0 8px 20px rgba(34, 197, 94, 0.25);
 }
+.hamburger:hover { background: #16a34a; }
 
-.hamburger:hover {
-  background: #16a34a;
-}
+/* ── Brand ── */
+.highlight { color: #22c55e; font-weight: 800; }
 
-/* Brand green helper */
-.highlight {
-  color: #22c55e;
-  font-weight: 800;
-}
-
-/* Buttons */
+/* ── Buttons ── */
 .btn-primary {
   background: #22c55e;
   color: white;
@@ -74,10 +68,7 @@ body {
   cursor: pointer;
   box-shadow: 0 10px 24px rgba(34, 197, 94, 0.28);
 }
-
-.btn-primary:hover {
-  background: #16a34a;
-}
+.btn-primary:hover { background: #16a34a; }
 
 .btn-secondary {
   background: #ffffff;
@@ -88,13 +79,9 @@ body {
   font-weight: 700;
   cursor: pointer;
 }
+.btn-secondary:hover { border-color: #22c55e; color: #16a34a; }
 
-.btn-secondary:hover {
-  border-color: #22c55e;
-  color: #16a34a;
-}
-
-/* Badges */
+/* ── Badges / Cards ── */
 .badge {
   background: #dcfce7;
   color: #166534;
@@ -106,7 +93,6 @@ body {
   letter-spacing: 0.03em;
 }
 
-/* Cards */
 .card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
@@ -114,136 +100,94 @@ body {
   box-shadow: 0 14px 40px rgba(15, 23, 42, 0.06);
 }
 
-/* Mobile */
+/* ══════════════════════════════════════════
+   HOMEPAGE NAV — desktop show / mobile hide
+══════════════════════════════════════════ */
+.hp2-nav-center       { display: flex; }
+.hp2-nav-right-desktop{ display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
+#hp2-hamburger        { display: none; }
+
+/* ══════════════════════════════════════════
+   MOBILE  ≤ 768px
+══════════════════════════════════════════ */
 @media (max-width: 768px) {
-  .hamburger {
-    display: flex;
-  }
 
+  /* ── Dashboard hamburger ── */
+  .hamburger        { display: flex; }
   .hamburger-top,
-  .nav-hamburger {
-    display: flex !important;
-  }
-
+  .nav-hamburger    { display: flex !important; }
   .nav-right,
-  .nav-links {
-    display: none !important;
-  }
+  .nav-links        { display: none !important; }
 
-  .main-content {
-    margin-left: 0 !important;
-    width: 100% !important;
-  }
-
+  /* ── Dashboard layout ── */
+  .main-content     { margin-left: 0 !important; width: 100% !important; }
   .sidebar {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 260px !important;
-    height: 100vh !important;
+    position: fixed !important; top: 0 !important; left: 0 !important;
+    width: 260px !important; height: 100vh !important;
     z-index: 1000 !important;
     transform: translateX(-100%);
     transition: transform 0.25s ease;
   }
+  .sidebar.open { transform: translateX(0) !important; }
 
-  .sidebar.open {
-    transform: translateX(0) !important;
-  }
-
+  /* ── Dashboard grids ── */
   .stats-grid,
   .charts-grid,
   .analytics-grid,
   .docs-grid,
   .tls-grid,
   .how-grid,
-  .pricing-grid {
-    grid-template-columns: 1fr !important;
-  }
+  .pricing-grid     { grid-template-columns: 1fr !important; }
 
-  .hero-grid {
-    grid-template-columns: 1fr !important;
-    gap: 20px !important;
-    padding: 56px 20px 36px !important;
-  }
+  .hero-grid        { grid-template-columns: 1fr !important; gap: 20px !important; padding: 56px 20px 36px !important; }
+  .hero-preview     { display: none !important; }
+  .stats-bar-grid   { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; padding: 0 20px !important; }
 
-  .hero-preview {
-    display: none !important;
-  }
+  /* ── Homepage nav — hide desktop items, show hamburger ── */
+  .hp2-nav-center        { display: none !important; }
+  .hp2-nav-right-desktop { display: none !important; }
+  #hp2-hamburger         { display: block !important; margin-left: auto; background: transparent; border: none; font-size: 24px; cursor: pointer; color: #0f172a; padding: 0 4px; flex-shrink: 0; }
 
-  .stats-bar-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 12px !important;
-    padding: 0 20px !important;
-  }
+  /* ── Homepage section padding ── */
+  .hp2-hero-grid   { grid-template-columns: 1fr !important; }
+  .hp2-find-grid   { grid-template-columns: 1fr !important; }
+  .hp2-features-grid { grid-template-columns: 1fr !important; }
+  .hp2-how-grid    { grid-template-columns: 1fr !important; }
+  .hp2-who-grid    { grid-template-columns: 1fr !important; }
+  .hp2-get-grid    { grid-template-columns: 1fr !important; }
+  .hp2-matter-grid { grid-template-columns: 1fr !important; }
+  .hp2-trust-grid  { grid-template-columns: repeat(2, 1fr) !important; }
+  .hp2-stats-grid  { grid-template-columns: repeat(2, 1fr) !important; }
+  .hp2-pricing-grid{ grid-template-columns: 1fr !important; }
 
-  h1 {
-    font-size: 34px !important;
-    line-height: 1.08 !important;
-    letter-spacing: -0.04em !important;
-    margin-bottom: 22px !important;
-  }
-
-  h2 {
-    font-size: 26px !important;
-    line-height: 1.15 !important;
-  }
-
-  p {
-    font-size: 15px !important;
-    line-height: 1.65 !important;
-  }
-
-  input,
-  button {
-    font-size: 15px !important;
-  }
+  /* ── Typography ── */
+  h1 { font-size: 34px !important; line-height: 1.08 !important; letter-spacing: -0.04em !important; margin-bottom: 22px !important; }
+  h2 { font-size: 26px !important; line-height: 1.15 !important; }
+  p  { font-size: 15px !important; line-height: 1.65 !important; }
+  input, button { font-size: 15px !important; }
 
   div[id="howitworks"],
   div[id="pricing"],
   div[id="docs"],
-  div[id="features"] {
-    padding: 44px 20px !important;
-  }
+  div[id="features"] { padding: 44px 20px !important; }
 }
 
-/* Small mobile */
+/* ══════════════════════════════════════════
+   SMALL MOBILE  ≤ 430px
+══════════════════════════════════════════ */
 @media (max-width: 430px) {
-  h1 {
-    font-size: 31px !important;
-    line-height: 1.1 !important;
-  }
-
-  h2 {
-    font-size: 24px !important;
-  }
-
-  p {
-    font-size: 14.5px !important;
-  }
-
-  .hero-grid {
-    padding: 48px 18px 32px !important;
-  }
-
-  .stats-bar-grid {
-    grid-template-columns: 1fr !important;
-  }
+  h1 { font-size: 31px !important; line-height: 1.1 !important; }
+  h2 { font-size: 24px !important; }
+  p  { font-size: 14.5px !important; }
+  .hero-grid       { padding: 48px 18px 32px !important; }
+  .stats-bar-grid  { grid-template-columns: 1fr !important; }
+  .hp2-trust-grid  { grid-template-columns: 1fr !important; }
+  .hp2-pricing-grid{ grid-template-columns: 1fr !important; }
+  .hp2-stats-grid  { grid-template-columns: repeat(2, 1fr) !important; }
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f0fdf4;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #86efac;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #16a34a;
-}
+/* ── Scrollbar ── */
+::-webkit-scrollbar       { width: 6px; }
+::-webkit-scrollbar-track { background: #f0fdf4; }
+::-webkit-scrollbar-thumb { background: #86efac; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #16a34a; }
