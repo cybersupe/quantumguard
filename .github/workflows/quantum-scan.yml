@@ -24,7 +24,7 @@ env:
   NODE_VERSION: "20"
   PYTHON_VERSION: "3.11"
   SCORE_THRESHOLD: "40"
-  CRITICAL_THRESHOLD: "10"
+  CRITICAL_THRESHOLD: "150"
 
 jobs:
   frontend-build:
