@@ -60,4 +60,4 @@ wrapt==2.1.2
 pyjsparser
 python-jose[cryptography]
 passlib[bcrypt]
-psycopg2-binary
+psycopg2-binary==2.9.10
