@@ -1,10 +1,13 @@
 # ============================================================
-# QuantumGuard — FastAPI Backend v2.6
+# QuantumGuard — FastAPI Backend v2.6.1
 # Copyright (c) 2026 Pavansudheer Payyavula / MANGSRI
 # Licensed under AGPL v3 — github.com/cybersupe/quantumguard
 # Standards: NIST FIPS 203, FIPS 204, FIPS 205
 # ============================================================
-# v2.6 — PostgreSQL + JWT Auth + CORS fix for www.quantumguard.site
+# v2.6.1 patches applied May 2 2026:
+#   FIX-1  psycopg2-binary restored (asyncpg removed — wrong driver for sync pool)
+#   FIX-2  ZIP path traversal fixed at ALL 5 extractall() call sites
+#   FIX-3  SSRF guard added to _download_github_zip — private IP block
 # ============================================================
 
 import os
@@ -18,6 +21,7 @@ import shutil
 import zipfile
 import logging
 import datetime
+import ipaddress
 import requests
 
 from typing import Optional
@@ -100,6 +104,65 @@ SECRET_KEY                  = os.getenv("JWT_SECRET_KEY", "CHANGE_THIS_IN_PRODUC
 ALGORITHM                   = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
 ENVIRONMENT                 = os.getenv("ENVIRONMENT", "production")
+
+
+# ============================================================
+# FIX-2: Safe ZIP extraction
+# Validates every member path before extraction to prevent
+# path traversal attacks (e.g. '../../etc/crontab' in ZIP).
+# ============================================================
+
+def _safe_extractall(zf: zipfile.ZipFile, target_dir: str) -> None:
+    target_dir = os.path.realpath(target_dir)
+    for member in zf.namelist():
+        # Block absolute paths and null bytes immediately
+        if os.path.isabs(member) or "\x00" in member:
+            raise HTTPException(
+                status_code=400,
+                detail=f"ZIP contains unsafe path: {member!r}. Upload blocked."
+            )
+        # Resolve where this member would actually land
+        member_path = os.path.realpath(os.path.join(target_dir, member))
+        # It must stay inside target_dir
+        if not member_path.startswith(target_dir + os.sep) and member_path != target_dir:
+            raise HTTPException(
+                status_code=400,
+                detail=f"ZIP contains path traversal: {member!r}. Upload blocked."
+            )
+    zf.extractall(target_dir)
+
+
+# ============================================================
+# FIX-3: SSRF guard
+# Blocks private/internal IPs before any outbound request.
+# ============================================================
+
+_PRIVATE_NETWORKS = [
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("169.254.0.0/16"),   # AWS metadata endpoint
+    ipaddress.ip_network("100.64.0.0/10"),    # Render internal
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+]
+
+def _block_private_ip(hostname: str) -> None:
+    """Resolve hostname and raise 400 if it maps to a private/internal address."""
+    try:
+        resolved = socket.gethostbyname(hostname)
+        ip = ipaddress.ip_address(resolved)
+        for network in _PRIVATE_NETWORKS:
+            if ip in network:
+                raise HTTPException(
+                    status_code=400,
+                    detail="URL resolves to a private/internal address. Request blocked."
+                )
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=400, detail=f"Could not resolve host: {hostname}")
 
 
 # ============================================================
@@ -238,10 +301,9 @@ def db_get_scan_history(user_id: str, limit: int = 50) -> list:
 
 # ============================================================
 # PASSWORD HASHING
+# sha256_crypt — avoids bcrypt 72-byte truncation on Python 3.14
 # ============================================================
 
-# Use sha256_crypt — works on all Python versions including 3.14
-# bcrypt has a 72-byte limit bug on Python 3.14
 pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 
 def hash_password(plain: str) -> str:
@@ -315,7 +377,7 @@ limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
     title="QuantumGuard API",
     description="Post-quantum cryptography vulnerability scanner — Mangsri QuantumGuard LLC",
-    version="2.6",
+    version="2.6.1",
     docs_url="/docs" if ENVIRONMENT == "development" else None,
     redoc_url=None,
 )
@@ -327,7 +389,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 @app.on_event("startup")
 async def startup():
     init_db()
-    logger.info("QuantumGuard API v2.6 started")
+    logger.info("QuantumGuard API v2.6.1 started")
 
 
 @app.on_event("shutdown")
@@ -338,7 +400,7 @@ async def shutdown():
 
 
 # ============================================================
-# CORS — pure wildcard, works for all origins including www
+# CORS
 # ============================================================
 
 class CORSMiddlewareCustom(BaseHTTPMiddleware):
@@ -420,16 +482,25 @@ def _parse_github_url(github_url: str):
 
 
 def _download_github_zip(github_url: str, github_token: Optional[str] = None):
+    # FIX-3: only github.com allowed + private IP guard
     if "github.com" not in github_url:
         raise HTTPException(status_code=400, detail="Only GitHub URLs allowed")
+
+    _block_private_ip("github.com")  # FIX-3: confirm github.com resolves public
+
     owner, repo = _parse_github_url(github_url)
-    headers = {"Accept": "application/vnd.github+json", "User-Agent": "QuantumGuard/2.6"}
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "QuantumGuard/2.6.1"}
     if github_token:
         headers["Authorization"] = f"token {github_token}"
-    meta_resp = requests.get(f"https://api.github.com/repos/{owner}/{repo}", headers=headers, timeout=10)
+
+    meta_resp = requests.get(
+        f"https://api.github.com/repos/{owner}/{repo}",
+        headers=headers, timeout=10
+    )
     if meta_resp.status_code == 200:
         if meta_resp.json().get("size", 0) > 50000:
             raise HTTPException(status_code=400, detail="Repo too large. Max 50MB.")
+
     for branch in ["main", "master"]:
         resp = requests.get(
             f"https://api.github.com/repos/{owner}/{repo}/zipball/{branch}",
@@ -439,6 +510,7 @@ def _download_github_zip(github_url: str, github_token: Optional[str] = None):
             if len(resp.content) > 15 * 1024 * 1024:
                 raise HTTPException(status_code=400, detail="Repo ZIP too large for free tier.")
             return resp.content, owner, repo
+
     raise HTTPException(status_code=400, detail="Could not download repo. Make sure it is public.")
 
 
@@ -672,7 +744,7 @@ async def get_history(current_user: dict = Depends(get_current_user)):
 
 @app.get("/")
 def root():
-    return {"message":"QuantumGuard API is running!","version":"2.6",
+    return {"message":"QuantumGuard API is running!","version":"2.6.1",
             "company":"Mangsri QuantumGuard LLC","website":"https://quantumguard.site",
             "standards":["NIST FIPS 203","NIST FIPS 204","NIST FIPS 205"],
             "db": "postgresql" if db_pool else "memory"}
@@ -680,7 +752,7 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status":"healthy","version":"2.6","tool":"QuantumGuard",
+    return {"status":"healthy","version":"2.6.1","tool":"QuantumGuard",
             "db": "postgresql" if db_pool else "memory (no DATABASE_URL set)"}
 
 
@@ -690,7 +762,7 @@ def scan(request: Request, body: ScanRequest, x_api_key: str = Header(...)):
     verify_key(x_api_key)
     if not os.path.exists(body.directory):
         raise HTTPException(status_code=404, detail="Directory not found")
-    start = time.time()
+    start    = time.time()
     findings = scan_directory(body.directory)
     score    = calculate_score(findings)
     sev, conf = _summarize_findings(findings)
@@ -719,9 +791,9 @@ async def public_scan_zip(request: Request, file: UploadFile = File(...)):
     try:
         os.makedirs(temp_dir, exist_ok=True)
         with zipfile.ZipFile(io.BytesIO(contents)) as z:
-            z.extractall(temp_dir)
-        findings = scan_directory(temp_dir)
-        score    = calculate_score(findings)
+            _safe_extractall(z, temp_dir)              # FIX-2
+        findings  = scan_directory(temp_dir)
+        score     = calculate_score(findings)
         sev, conf = _summarize_findings(findings)
         return {
             "filename": file.filename,
@@ -736,6 +808,8 @@ async def public_scan_zip(request: Request, file: UploadFile = File(...)):
         }
     except zipfile.BadZipFile:
         raise HTTPException(status_code=400, detail="Invalid ZIP file")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Scan error: {str(e)}")
     finally:
@@ -757,9 +831,9 @@ async def scan_github(
         temp_dir = f"/tmp/qg-{uuid.uuid4().hex[:8]}"
         os.makedirs(temp_dir, exist_ok=True)
         with zipfile.ZipFile(io.BytesIO(zip_content)) as z:
-            z.extractall(temp_dir)
-        findings = scan_directory(temp_dir)
-        score    = calculate_score(findings)
+            _safe_extractall(z, temp_dir)              # FIX-2
+        findings  = scan_directory(temp_dir)
+        score     = calculate_score(findings)
         sev, conf = _summarize_findings(findings)
         if current_user:
             db_increment_scan_count(current_user["email"])
@@ -775,7 +849,7 @@ async def scan_github(
             "top_findings":            _build_top_findings(findings),
             "priority_actions":        _build_priority_actions(findings, sev, score),
             "findings":                findings,
-            "meta": {"tool":"QuantumGuard v2.6",
+            "meta": {"tool":"QuantumGuard v2.6.1",
                      "standards":["NIST FIPS 203","NIST FIPS 204","NIST FIPS 205"],
                      "company":"Mangsri QuantumGuard LLC",
                      "website":"https://quantumguard.site"},
@@ -802,9 +876,9 @@ async def check_agility(
         temp_dir = f"/tmp/qg-{uuid.uuid4().hex[:8]}"
         os.makedirs(temp_dir, exist_ok=True)
         with zipfile.ZipFile(io.BytesIO(zip_content)) as z:
-            z.extractall(temp_dir)
+            _safe_extractall(z, temp_dir)              # FIX-2
         result = check_crypto_agility(temp_dir)
-        result["repo"] = f"{owner}/{repo}"
+        result["repo"]       = f"{owner}/{repo}"
         result["github_url"] = body.github_url
         return result
     except HTTPException:
@@ -842,7 +916,7 @@ async def unified_risk(
         temp_dir = f"/tmp/qg-unified-{uuid.uuid4().hex[:8]}"
         os.makedirs(temp_dir, exist_ok=True)
         with zipfile.ZipFile(io.BytesIO(zip_content)) as z:
-            z.extractall(temp_dir)
+            _safe_extractall(z, temp_dir)              # FIX-2
         findings       = scan_directory(temp_dir)
         code_score     = calculate_score(findings)
         sev, conf      = _summarize_findings(findings)
@@ -886,7 +960,7 @@ async def unified_risk(
                 },
             },
             "top_findings": _build_top_findings(findings),
-            "meta": {"tool":"QuantumGuard Unified Risk Engine v2.6","company":"Mangsri QuantumGuard LLC"},
+            "meta": {"tool":"QuantumGuard Unified Risk Engine v2.6.1","company":"Mangsri QuantumGuard LLC"},
         }
     except HTTPException:
         raise
@@ -907,8 +981,10 @@ async def ai_fix(
     finding = body.get("finding", {})
     if not finding:
         raise HTTPException(status_code=400, detail="Finding required")
-    vuln = finding.get("vulnerability",""); code = finding.get("code","")
-    replacement = finding.get("replacement",""); severity = finding.get("severity","")
+    vuln        = finding.get("vulnerability","")
+    code        = finding.get("code","")
+    replacement = finding.get("replacement","")
+    severity    = finding.get("severity","")
     vu = vuln.upper()
     if "RSA" in vu:
         fix = f"# BEFORE:\n{code}\n\n# MIGRATION: Replace with ML-KEM (FIPS 203) for key establishment\n# or ML-DSA (FIPS 204) for digital signatures.\n"
@@ -934,7 +1010,8 @@ async def get_badge(owner: str, repo: str):
         td = f"/tmp/qg-badge-{uuid.uuid4().hex[:8]}"
         os.makedirs(td, exist_ok=True)
         try:
-            with zipfile.ZipFile(io.BytesIO(zc)) as z: z.extractall(td)
+            with zipfile.ZipFile(io.BytesIO(zc)) as z:
+                _safe_extractall(z, td)                # FIX-2
             score = calculate_score(scan_directory(td))
         finally:
             shutil.rmtree(td, ignore_errors=True)
@@ -966,13 +1043,17 @@ async def export_cbom(
         zc, owner, repo = _download_github_zip(body.github_url, body.github_token)
         temp_dir = f"/tmp/qg-cbom-{uuid.uuid4().hex[:8]}"
         os.makedirs(temp_dir, exist_ok=True)
-        with zipfile.ZipFile(io.BytesIO(zc)) as z: z.extractall(temp_dir)
+        with zipfile.ZipFile(io.BytesIO(zc)) as z:
+            _safe_extractall(z, temp_dir)              # FIX-2
         findings = scan_directory(temp_dir)
         return generate_cbom(findings, repo=f"{owner}/{repo}", score=calculate_score(findings))
-    except HTTPException: raise
-    except Exception as e: raise HTTPException(status_code=500, detail=f"CBOM error: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"CBOM error: {str(e)}")
     finally:
-        if temp_dir and os.path.exists(temp_dir): shutil.rmtree(temp_dir)
+        if temp_dir and os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
 
 
 @app.post("/export-cbom-zip")
@@ -986,10 +1067,16 @@ async def export_cbom_zip(request: Request, file: UploadFile = File(...)):
     temp_dir = f"/tmp/qg-cbom-{uuid.uuid4().hex[:8]}"
     try:
         os.makedirs(temp_dir, exist_ok=True)
-        with zipfile.ZipFile(io.BytesIO(contents)) as z: z.extractall(temp_dir)
+        with zipfile.ZipFile(io.BytesIO(contents)) as z:
+            _safe_extractall(z, temp_dir)              # FIX-2
         findings = scan_directory(temp_dir)
         return generate_cbom(findings, repo=file.filename, score=calculate_score(findings))
-    except zipfile.BadZipFile: raise HTTPException(status_code=400, detail="Invalid ZIP")
-    except Exception as e:     raise HTTPException(status_code=500, detail=f"CBOM error: {str(e)}")
+    except zipfile.BadZipFile:
+        raise HTTPException(status_code=400, detail="Invalid ZIP")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"CBOM error: {str(e)}")
     finally:
-        if os.path.exists(temp_dir): shutil.rmtree(temp_dir)
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
