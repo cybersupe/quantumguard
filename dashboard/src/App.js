@@ -4,6 +4,7 @@ import emailjs from "@emailjs/browser";
 import { auth, db, signInWithGoogle, canUserScan, incrementScanCount } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, addDoc, getDocs, query, where, orderBy } from "firebase/firestore";
+import { AuthProvider, useAuth } from "./AuthContext";
 
 const API = "https://quantumguard-api.onrender.com";
 
@@ -92,6 +93,8 @@ const SCAN_LOG_PHASES = [
 
 // ── Sidebar ──────────────────────────────────────────────────
 function Sidebar({ active, setActive, user, onLogin, onLogout, open, onClose }) {
+  const { jwtUser } = useAuth();
+  const displayUser = jwtUser || user;
   const navItems = [
     { id: "scan",      icon: "⚡", label: "Scanner" },
     { id: "agility",   icon: "🔬", label: "Agility Checker" },
@@ -146,19 +149,29 @@ function Sidebar({ active, setActive, user, onLogin, onLogout, open, onClose }) 
           <div style={{ fontSize: 9, color: C.muted, marginTop: 2 }}>quantumguard-api.onrender.com</div>
         </div>
         <div style={{ padding: "14px 16px", borderTop: `1px solid ${C.sidebarBorder}` }}>
-          {user ? (
+          {displayUser ? (
             <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <img src={user.photoURL} alt="avatar" style={{ width: 30, height: 30, borderRadius: "50%", border: `2px solid ${C.green}` }} />
+              <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:8 }}>
+                {displayUser.photoURL ? (
+                  <img src={displayUser.photoURL} alt="avatar" style={{ width:30,height:30,borderRadius:"50%",border:`2px solid ${C.green}` }} />
+                ) : (
+                  <div style={{ width:30,height:30,borderRadius:"50%",background:"linear-gradient(135deg,#22c55e,#15803d)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:"#fff",border:`2px solid ${C.green}` }}>
+                    {(displayUser.name||displayUser.displayName||displayUser.email||"U")[0].toUpperCase()}
+                  </div>
+                )}
                 <div>
-                  <div style={{ fontSize: 12, color: C.text, fontWeight: 600 }}>{user.displayName?.split(" ")[0]}</div>
-                  <div style={{ fontSize: 10, color: C.muted }}>Free Plan</div>
+                  <div style={{ fontSize:12,color:C.text,fontWeight:600 }}>
+                    {(displayUser.name||displayUser.displayName||displayUser.email||"User").split(" ")[0]}
+                  </div>
+                  <div style={{ fontSize:10,color:C.green }}>{displayUser.plan||"Free Plan"}</div>
                 </div>
               </div>
-              <button onClick={onLogout} style={{ width: "100%", padding: "6px", borderRadius: 8, background: "transparent", border: `1px solid ${C.sidebarBorder}`, color: C.muted, cursor: "pointer", fontSize: 11 }}>Sign Out</button>
+              <button onClick={onLogout} style={{ width:"100%",padding:"6px",borderRadius:8,background:"transparent",border:`1px solid ${C.sidebarBorder}`,color:C.muted,cursor:"pointer",fontSize:11 }}>Sign Out</button>
             </div>
           ) : (
-            <button onClick={onLogin} style={{ width: "100%", padding: "9px", borderRadius: 8, background: "linear-gradient(135deg,#22c55e,#16a34a)", border: "none", color: C.white, cursor: "pointer", fontSize: 12, fontWeight: 700, boxShadow: "0 4px 12px rgba(34,197,94,0.3)" }}>Sign in with Google</button>
+            <div style={{ display:"flex",flexDirection:"column",gap:6 }}>
+              <button onClick={onLogin} style={{ width:"100%",padding:"8px",borderRadius:8,background:"linear-gradient(135deg,#22c55e,#16a34a)",border:"none",color:C.white,cursor:"pointer",fontSize:12,fontWeight:700,boxShadow:"0 4px 12px rgba(34,197,94,0.3)" }}>Sign In / Register</button>
+            </div>
           )}
         </div>
       </div>
@@ -498,6 +511,7 @@ function TeamPage() {
 // SCANNER PAGE
 // ══════════════════════════════════════════════════════════════
 function ScannerPage({ user }) {
+  const { jwtToken } = useAuth();
   const [mode, setMode] = useState("github");
   const [input, setInput] = useState("");
   const [githubToken, setGithubToken] = useState("");
@@ -569,16 +583,17 @@ function ScannerPage({ user }) {
     startProgress();
     try {
       let res;
+      const authHeader = jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {};
       if (mode === "zip") {
         if (!file) throw new Error("Please select a ZIP file");
         const fd = new FormData(); fd.append("file", file);
-        res = await fetch(`${API}/public-scan-zip`, { method:"POST", body:fd });
+        res = await fetch(`${API}/public-scan-zip`, { method:"POST", headers:authHeader, body:fd });
       } else if (mode === "github") {
         if (!input) throw new Error("Please enter a GitHub URL");
-        res = await fetch(`${API}/scan-github`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ github_url:input, ...(githubToken?{github_token:githubToken}:{}) }) });
+        res = await fetch(`${API}/scan-github`, { method:"POST", headers:{...authHeader,"Content-Type":"application/json"}, body:JSON.stringify({ github_url:input, ...(githubToken?{github_token:githubToken}:{}) }) });
       } else {
         if (!input) throw new Error("Please enter a path");
-        res = await fetch(`${API}/scan`, { method:"POST", headers:{"Content-Type":"application/json","x-api-key":"quantumguard-secret-2026"}, body:JSON.stringify({ directory:input }) });
+        res = await fetch(`${API}/scan`, { method:"POST", headers:{...authHeader,"Content-Type":"application/json","x-api-key":"quantumguard-secret-2026"}, body:JSON.stringify({ directory:input }) });
       }
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Scan failed");
@@ -1015,43 +1030,103 @@ function TLSPage() {
 // HISTORY PAGE
 // ══════════════════════════════════════════════════════════════
 function HistoryPage({ user }) {
-  const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { jwtToken } = useAuth();
+  const [history, setHistory]   = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [source, setSource]     = useState("none"); // "jwt" | "firebase" | "none"
+
   useEffect(() => {
-    if (!user) return;
-    const fetch_ = async () => {
-      try {
-        const q = query(collection(db,"scans"),where("userId","==",user.uid),orderBy("createdAt","desc"));
-        const snap = await getDocs(q);
-        setHistory(snap.docs.map(d=>({id:d.id,...d.data()})));
-      } catch(e) { console.error(e); setLoading(false); return; }
-      setLoading(false);
-    };
-    fetch_();
-  },[user]);
-  if (!user) return (
+    // Try JWT history first (PostgreSQL)
+    if (jwtToken) {
+      fetch(`${API}/auth/history`, {
+        headers: { Authorization: `Bearer ${jwtToken}` }
+      })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && data.history) {
+          setHistory(data.history);
+          setSource("jwt");
+          setLoading(false);
+        } else {
+          loadFirebase();
+        }
+      })
+      .catch(() => loadFirebase());
+      return;
+    }
+    // Fall back to Firebase history
+    loadFirebase();
+
+    function loadFirebase() {
+      if (!user?.uid) { setLoading(false); return; }
+      const q = query(collection(db,"scans"),where("userId","==",user.uid),orderBy("createdAt","desc"));
+      getDocs(q)
+        .then(snap => {
+          setHistory(snap.docs.map(d=>({id:d.id,...d.data()})));
+          setSource("firebase");
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }
+  }, [jwtToken, user]);
+
+  if (!user && !jwtToken) return (
     <div style={{ padding:20 }}>
       <div style={{ textAlign:"center", padding:48, background:C.panel, borderRadius:12, border:`1px solid ${C.panelBorder}` }}>
         <div style={{ fontSize:48, marginBottom:16 }}>🔒</div>
-        <div style={{ fontSize:16, color:C.text, fontWeight:600 }}>Sign in to view history</div>
+        <div style={{ fontSize:16, color:C.text, fontWeight:600, marginBottom:8 }}>Sign in to view history</div>
+        <div style={{ fontSize:13, color:C.muted }}>Your scan history is saved automatically when logged in.</div>
       </div>
     </div>
   );
+
+  const formatDate = (scan) => {
+    if (scan.created_at) return new Date(scan.created_at).toLocaleDateString();
+    if (scan.createdAt?.toDate) return scan.createdAt.toDate().toLocaleDateString();
+    return "—";
+  };
+
+  const getTarget = (scan) => scan.target || scan.filename || scan.github_url || "scan";
+  const getScore  = (scan) => scan.score ?? scan.quantum_readiness_score ?? "—";
+  const getFindings = (scan) => scan.findings ?? "—";
+
   return (
     <div style={{ padding:20 }}>
+      {source==="jwt" && (
+        <div style={{ background:"rgba(34,197,94,.08)",border:"1px solid rgba(34,197,94,.2)",borderRadius:8,padding:"8px 14px",marginBottom:12,fontSize:12,color:C.green,display:"flex",alignItems:"center",gap:6 }}>
+          <span>🗄</span> Showing history from PostgreSQL database — persists across sessions
+        </div>
+      )}
       <Panel title={`Scan History — ${history.length} records`} accent>
-        {loading?<div style={{ color:C.muted, fontSize:13 }}>Loading...</div>:
-          history.length===0?<div style={{ color:C.muted, fontSize:13 }}>No scans yet!</div>:(
-            history.map((scan,i)=>(
-              <div key={i} style={{ display:"grid", gridTemplateColumns:"1fr 160px 80px 80px", gap:12, padding:"12px", borderBottom:i<history.length-1?`1px solid ${C.panelBorder}`:"none", alignItems:"center", transition:"background 0.2s", borderRadius:6 }}
-                onMouseEnter={e=>e.currentTarget.style.background="rgba(34,197,94,0.04)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                <div style={{ fontSize:12, color:C.text, fontWeight:500, wordBreak:"break-all" }}>{scan.filename||"scan"}</div>
-                <div style={{ fontSize:11, color:C.muted }}>{scan.createdAt?.toDate?.()?.toLocaleDateString()||"—"}</div>
-                <div style={{ fontSize:20, fontWeight:700, color:scan.score>=70?C.green:scan.score>=40?C.amber:C.red }}>{scan.score}</div>
-                <div style={{ fontSize:16, fontWeight:600, color:C.red }}>{scan.findings}</div>
-              </div>
-            ))
-          )}
+        {loading ? (
+          <div style={{ color:C.muted, fontSize:13, padding:12 }}>Loading history...</div>
+        ) : history.length === 0 ? (
+          <div style={{ color:C.muted, fontSize:13, padding:12 }}>No scans yet — run your first scan!</div>
+        ) : (
+          <>
+            <div style={{ display:"grid",gridTemplateColumns:"1fr 130px 70px 70px",gap:8,padding:"6px 8px",marginBottom:6 }}>
+              {["Target","Date","Score","Findings"].map(h=>(
+                <div key={h} style={{ fontSize:10,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".06em" }}>{h}</div>
+              ))}
+            </div>
+            {history.map((scan,i)=>{
+              const score = getScore(scan);
+              const scoreColor = typeof score==="number"?(score>=70?C.green:score>=40?C.amber:C.red):C.muted;
+              return (
+                <div key={i} style={{ display:"grid",gridTemplateColumns:"1fr 130px 70px 70px",gap:8,padding:"10px 8px",borderBottom:i<history.length-1?`1px solid ${C.panelBorder}`:"none",alignItems:"center",borderRadius:6,transition:"background .15s",cursor:"pointer" }}
+                  onMouseEnter={e=>e.currentTarget.style.background="rgba(34,197,94,.04)"}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <div style={{ fontSize:12,color:C.text,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }} title={getTarget(scan)}>
+                    {getTarget(scan).replace("https://github.com/","github: ")}
+                  </div>
+                  <div style={{ fontSize:11,color:C.muted }}>{formatDate(scan)}</div>
+                  <div style={{ fontSize:18,fontWeight:800,color:scoreColor }}>{score}</div>
+                  <div style={{ fontSize:14,fontWeight:600,color:C.red }}>{getFindings(scan)}</div>
+                </div>
+              );
+            })}
+          </>
+        )}
       </Panel>
     </div>
   );
@@ -1463,7 +1538,7 @@ function HpNavDropdown({ item, isOpen, onToggle, onItemClick }) {
   );
 }
 
-function Homepage({ onGetStarted }) {
+function Homepage({ onGetStarted, onOpenAuth }) {
   const [demoOpen, setDemoOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openNav, setOpenNav] = useState(null);
@@ -1559,6 +1634,7 @@ function Homepage({ onGetStarted }) {
             GitHub
           </a>
           <button className="hp2-btn-primary" style={{ padding:"8px 18px",fontSize:13 }} onClick={()=>onGetStarted("scan")}>Start Free Scan</button>
+          <button onClick={()=>onOpenAuth&&onOpenAuth("login")} style={{ background:"transparent",border:"1.5px solid rgba(34,197,94,.3)",color:"#22c55e",padding:"7px 14px",borderRadius:9,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit" }}>Sign In</button>
         </div>
 
         {/* Hamburger — mobile only, shown via App.css */}
@@ -2028,19 +2104,153 @@ function Homepage({ onGetStarted }) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// AUTH MODAL — email/password login + register
+// ══════════════════════════════════════════════════════════════
+function AuthModal({ mode: initialMode, onClose, onSuccess }) {
+  const { jwtLogin, jwtRegister } = useAuth();
+  const [mode, setMode]       = useState(initialMode || "login");
+  const [email, setEmail]     = useState("");
+  const [password, setPass]   = useState("");
+  const [name, setName]       = useState("");
+  const [error, setError]     = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const inputStyle = {
+    width:"100%", padding:"11px 14px", borderRadius:9,
+    border:`1.5px solid ${C.panelBorder}`, background:C.input,
+    color:C.text, fontSize:14, outline:"none",
+    boxSizing:"border-box", marginBottom:12, fontFamily:"inherit",
+  };
+
+  const handle = async () => {
+    if (!email || !password) { setError("Email and password are required"); return; }
+    if (password.length < 8) { setError("Password must be at least 8 characters"); return; }
+    setLoading(true); setError("");
+    try {
+      if (mode === "login")    await jwtLogin(email, password);
+      if (mode === "register") await jwtRegister(email, password, name);
+      onSuccess && onSuccess();
+      onClose();
+    } catch(e) {
+      setError(e.message || "Something went wrong");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,.65)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)" }}>
+      <div style={{ background:C.panel,border:`1px solid ${C.panelBorder}`,borderRadius:18,width:"100%",maxWidth:380,boxShadow:"0 24px 80px rgba(0,0,0,.6)",overflow:"hidden" }}>
+        {/* Header */}
+        <div style={{ padding:"18px 22px",borderBottom:`1px solid ${C.panelBorder}`,display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+          <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+            <div style={{ width:30,height:30,borderRadius:8,background:"linear-gradient(135deg,#22c55e,#15803d)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14 }}>⚛</div>
+            <span style={{ fontWeight:800,fontSize:15,color:C.text }}>{mode==="login"?"Sign In":"Create Account"}</span>
+          </div>
+          <button onClick={onClose} style={{ background:"transparent",border:"none",color:C.muted,cursor:"pointer",fontSize:20,lineHeight:1 }}>✕</button>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display:"flex",borderBottom:`1px solid ${C.panelBorder}` }}>
+          {[["login","Sign In"],["register","Register"]].map(([m,label])=>(
+            <button key={m} onClick={()=>{setMode(m);setError("");}}
+              style={{ flex:1,padding:"11px",background:"transparent",border:"none",cursor:"pointer",fontSize:13,fontWeight:mode===m?700:400,color:mode===m?C.green:C.muted,borderBottom:mode===m?`2px solid ${C.green}`:"2px solid transparent",transition:"all .2s",fontFamily:"inherit" }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Form */}
+        <div style={{ padding:"22px 22px 18px" }}>
+          {mode==="register"&&(
+            <input value={name} onChange={e=>setName(e.target.value)}
+              placeholder="Your name (optional)" style={inputStyle} />
+          )}
+          <input value={email} onChange={e=>setEmail(e.target.value)}
+            placeholder="Email address" type="email" style={inputStyle}
+            onKeyDown={e=>e.key==="Enter"&&handle()} />
+          <input value={password} onChange={e=>setPass(e.target.value)}
+            placeholder="Password (min 8 characters)" type="password" style={inputStyle}
+            onKeyDown={e=>e.key==="Enter"&&handle()} />
+
+          {error&&(
+            <div style={{ background:"rgba(239,68,68,.1)",border:"1px solid rgba(239,68,68,.3)",borderRadius:8,padding:"8px 12px",color:C.red,fontSize:12,marginBottom:12 }}>
+              ⚠ {error}
+            </div>
+          )}
+
+          <button onClick={handle} disabled={loading}
+            style={{ width:"100%",padding:"12px",background:loading?"#166534":"linear-gradient(135deg,#22c55e,#16a34a)",color:"#fff",border:"none",borderRadius:10,fontWeight:700,fontSize:14,cursor:loading?"not-allowed":"pointer",transition:"all .2s",fontFamily:"inherit",marginBottom:10 }}>
+            {loading?"Please wait...":(mode==="login"?"Sign In →":"Create Account →")}
+          </button>
+
+          <div style={{ textAlign:"center",fontSize:12,color:C.muted }}>
+            {mode==="login"?"Don't have an account? ":"Already have an account? "}
+            <span onClick={()=>{setMode(mode==="login"?"register":"login");setError("");}}
+              style={{ color:C.green,cursor:"pointer",fontWeight:600 }}>
+              {mode==="login"?"Register free":"Sign in"}
+            </span>
+          </div>
+
+          <div style={{ display:"flex",alignItems:"center",gap:10,margin:"14px 0 10px" }}>
+            <div style={{ flex:1,height:1,background:C.panelBorder }} />
+            <span style={{ fontSize:11,color:C.muted }}>or continue with</span>
+            <div style={{ flex:1,height:1,background:C.panelBorder }} />
+          </div>
+
+          <button onClick={async()=>{try{await signInWithGoogle();onClose();}catch(e){setError(e.message);}}}
+            style={{ width:"100%",padding:"10px",background:"transparent",border:`1.5px solid ${C.panelBorder}`,borderRadius:10,color:C.text,cursor:"pointer",fontSize:13,fontWeight:500,display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontFamily:"inherit",transition:"border-color .2s" }}
+            onMouseEnter={e=>e.currentTarget.style.borderColor="#22c55e"}
+            onMouseLeave={e=>e.currentTarget.style.borderColor=C.panelBorder}>
+            <svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+            Google
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ══════════════════════════════════════════════════════════════
 // APP ROOT
 // ══════════════════════════════════════════════════════════════
-export default function App() {
-  const [user, setUser] = useState(null);
-  const [active, setActive] = useState("home");
+function AppInner() {
+  const { jwtUser, jwtToken, jwtLoading, jwtLogout } = useAuth();
+
+  // Google / Firebase auth
+  const [googleUser, setGoogleUser] = useState(null);
+  useEffect(() => { onAuthStateChanged(auth, u => setGoogleUser(u)); }, []);
+
+  // Merged user: JWT takes priority, fall back to Google
+  const user = jwtUser || googleUser;
+
+  const [active, setActive]         = useState("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [authModal, setAuthModal]   = useState(null); // "login" | "register" | null
 
-  useEffect(() => { onAuthStateChanged(auth, u => setUser(u)); }, []);
+  const handleGoogleLogin  = async () => { try { await signInWithGoogle(); } catch(e) { console.error(e); } };
+  const handleLogout = async () => {
+    jwtLogout();
+    try { await signOut(auth); setGoogleUser(null); } catch(e) {}
+  };
 
-  const handleLogin  = async () => { try { await signInWithGoogle(); } catch(e) { console.error(e); } };
-  const handleLogout = async () => { try { await signOut(auth); setUser(null); } catch(e) { console.error(e); } };
+  const handleLogin = () => setAuthModal("login");
 
-  if (active === "home") return <Homepage onGetStarted={(tab) => setActive(tab || "scan")} />;
+  if (jwtLoading) return (
+    <div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg }}>
+      <div style={{ textAlign:"center" }}>
+        <div style={{ width:40,height:40,borderRadius:10,background:"linear-gradient(135deg,#22c55e,#15803d)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,margin:"0 auto 12px" }}>⚛</div>
+        <div style={{ color:C.green,fontSize:13,fontWeight:600 }}>Loading QuantumGuard...</div>
+      </div>
+    </div>
+  );
+
+  if (active === "home") return (
+    <>
+      <Homepage onGetStarted={(tab) => setActive(tab || "scan")} onOpenAuth={setAuthModal} />
+      {authModal && <AuthModal mode={authModal} onClose={()=>setAuthModal(null)} onSuccess={()=>setActive("scan")} />}
+    </>
+  );
 
   const pageTitle = {
     scan:"Threat Scanner", agility:"Agility Checker", tls:"TLS Analyzer",
@@ -2077,6 +2287,15 @@ export default function App() {
           </div>
         </div>
       </div>
+      {authModal && <AuthModal mode={authModal} onClose={()=>setAuthModal(null)} onSuccess={()=>setAuthModal(null)} />}
     </>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
   );
 }
