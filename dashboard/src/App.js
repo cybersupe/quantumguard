@@ -1546,34 +1546,55 @@ function Homepage({ onGetStarted }) {
             <HpNavDropdown key={g.label} item={g} isOpen={openNav===g.label} onToggle={setOpenNav} onItemClick={handleNavItem} />
           ))}
         </div>
-        <div style={{ display:"flex",alignItems:"center",gap:8,marginLeft:"auto",flexShrink:0 }}>
+        {/* Desktop right — hidden on mobile via App.css */}
+        <div className="hp2-nav-right-desktop">
           <div style={{ display:"flex",alignItems:"center",gap:6,fontSize:11,fontWeight:600,color:"#15803d",letterSpacing:".04em",marginRight:4 }}>
             <span style={{ width:7,height:7,borderRadius:"50%",background:"#22c55e",boxShadow:"0 0 0 3px rgba(34,197,94,.2)",display:"inline-block",animation:"hp-pulse 2s infinite" }} />API ONLINE
           </div>
           <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer"
-            style={{ display:"flex",alignItems:"center",gap:6,background:"transparent",color:"#374151",border:"1.5px solid #d1d5db",borderRadius:9,padding:"7px 14px",fontSize:13,fontWeight:500,cursor:"pointer",textDecoration:"none",transition:"all .2s" }}
+            style={{ display:"flex",alignItems:"center",gap:6,color:"#374151",border:"1.5px solid #d1d5db",borderRadius:9,padding:"7px 14px",fontSize:13,fontWeight:500,textDecoration:"none",transition:"all .2s" }}
             onMouseEnter={e=>{e.currentTarget.style.borderColor="#22c55e";e.currentTarget.style.color="#22c55e";}}
             onMouseLeave={e=>{e.currentTarget.style.borderColor="#d1d5db";e.currentTarget.style.color="#374151";}}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
             GitHub
           </a>
           <button className="hp2-btn-primary" style={{ padding:"8px 18px",fontSize:13 }} onClick={()=>onGetStarted("scan")}>Start Free Scan</button>
-          <button onClick={()=>setMobileMenuOpen(m=>!m)} style={{ display:"none",background:"transparent",border:"none",fontSize:22,cursor:"pointer",color:"#0f172a",padding:"0 4px" }} id="hp2-hamburger">
-            {mobileMenuOpen?"✕":"☰"}
-          </button>
         </div>
+
+        {/* Hamburger — mobile only, shown via App.css */}
+        <button id="hp2-hamburger" onClick={()=>setMobileMenuOpen(m=>!m)}>
+          {mobileMenuOpen ? "✕" : "☰"}
+        </button>
       </nav>
 
-      {mobileMenuOpen&&(
-        <div style={{ background:"#fff",borderBottom:"1px solid #e2e8f0",position:"relative",zIndex:99 }}>
+      {/* Mobile menu — full nav groups with items */}
+      {mobileMenuOpen && (
+        <div style={{ background:"#fff",borderBottom:"1px solid #e2e8f0",position:"fixed",top:62,left:0,right:0,zIndex:498,maxHeight:"80vh",overflowY:"auto",boxShadow:"0 8px 32px rgba(0,0,0,.12)" }}>
           {NAV_GROUPS_HP.map(g=>(
-            <div key={g.label} style={{ padding:"14px 24px",fontSize:15,fontWeight:600,color:"#0f172a",borderBottom:"1px solid #f1f5f9",cursor:"pointer" }}
-              onClick={()=>{setMobileMenuOpen(false);}}>
-              {g.label}
+            <div key={g.label}>
+              <div style={{ padding:"10px 20px",fontSize:11,fontWeight:700,color:"#9ca3af",background:"#f8fafc",borderBottom:"1px solid #f1f5f9",textTransform:"uppercase",letterSpacing:".06em" }}>
+                {g.label}
+              </div>
+              {g.items.map(item=>(
+                <div key={item.title}
+                  style={{ padding:"11px 20px",fontSize:14,color:"#0f172a",borderBottom:"1px solid #f9fafb",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"background .15s" }}
+                  onClick={()=>{ handleNavItem(item.title); setMobileMenuOpen(false); }}
+                  onMouseEnter={e=>e.currentTarget.style.background="#f0fdf4"}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <span style={{ color:"#22c55e",fontSize:16,flexShrink:0 }}>{item.icon}</span>
+                  <div>
+                    <div style={{ fontWeight:600,fontSize:13 }}>{item.title}</div>
+                    <div style={{ fontSize:11,color:"#6b7280",marginTop:1 }}>{item.desc}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           ))}
-          <div style={{ padding:"14px 24px" }}>
-            <button className="hp2-btn-primary" style={{ width:"100%" }} onClick={()=>{onGetStarted("scan");setMobileMenuOpen(false);}}>Start Free Scan</button>
+          <div style={{ padding:"16px 20px",borderTop:"2px solid #e2e8f0",background:"#fff" }}>
+            <button className="hp2-btn-primary" style={{ width:"100%",justifyContent:"center",fontSize:15,padding:"13px" }}
+              onClick={()=>{ onGetStarted("scan"); setMobileMenuOpen(false); }}>
+              🛡 Start Free Scan
+            </button>
           </div>
         </div>
       )}
