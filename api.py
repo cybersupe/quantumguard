@@ -240,7 +240,9 @@ def db_get_scan_history(user_id: str, limit: int = 50) -> list:
 # PASSWORD HASHING
 # ============================================================
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Use sha256_crypt — works on all Python versions including 3.14
+# bcrypt has a 72-byte limit bug on Python 3.14
+pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 
 def hash_password(plain: str) -> str:
     return pwd_context.hash(plain)
