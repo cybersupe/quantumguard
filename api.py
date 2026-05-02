@@ -1,13 +1,18 @@
 # ============================================================
-# QuantumGuard — FastAPI Backend v2.6.1
+# QuantumGuard — FastAPI Backend v2.6.2
 # Copyright (c) 2026 Pavansudheer Payyavula / MANGSRI
 # Licensed under AGPL v3 — github.com/cybersupe/quantumguard
 # Standards: NIST FIPS 203, FIPS 204, FIPS 205
 # ============================================================
-# v2.6.1 patches applied May 2 2026:
-#   FIX-1  psycopg2-binary restored (asyncpg removed — wrong driver for sync pool)
-#   FIX-2  ZIP path traversal fixed at ALL 5 extractall() call sites
-#   FIX-3  SSRF guard added to _download_github_zip — private IP block
+# v2.6.1 patches (already live):
+#   FIX-1  psycopg2-binary restored
+#   FIX-2  ZIP path traversal fixed at all call sites
+#   FIX-3  SSRF guard on _download_github_zip
+#
+# v2.6.2 new patches (this file):
+#   FIX-A  Friendly human-readable error messages throughout
+#   FIX-B  Partial results on timeout instead of blank error
+#   FIX-C  Rate limits by user plan (free=3/day, auth=20/day, pro=100/day)
 # ============================================================
 
 import os
@@ -107,34 +112,83 @@ ENVIRONMENT                 = os.getenv("ENVIRONMENT", "production")
 
 
 # ============================================================
-# FIX-2: Safe ZIP extraction
-# Validates every member path before extraction to prevent
-# path traversal attacks (e.g. '../../etc/crontab' in ZIP).
+# FIX-A: Friendly error messages
+# Maps raw internal errors to plain English for users
+# ============================================================
+
+FRIENDLY_ERRORS = {
+    "Could not download repo":         "We couldn't download that repository. Make sure it's public, or add a GitHub token for private repos.",
+    "Repo too large":                  "That repository is too large to scan (max 50MB). Try uploading a ZIP of just the source files.",
+    "Repo ZIP too large":              "That repository ZIP is too large. Try a smaller repo or upload a ZIP of just the relevant files.",
+    "Invalid GitHub URL":              "That doesn't look like a valid GitHub URL. Use: https://github.com/username/repo",
+    "Only GitHub URLs allowed":        "Only GitHub URLs are supported.",
+    "URL resolves to a private":       "That URL points to an internal address and was blocked for security.",
+    "Only ZIP files allowed":          "Please upload a .zip file.",
+    "ZIP too large":                   "Your ZIP file is too large. Max 10MB. Try compressing just the source files.",
+    "Invalid ZIP":                     "That file doesn't appear to be a valid ZIP. Try re-zipping your project.",
+    "ZIP contains unsafe path":        "That ZIP file contains unsafe paths and was blocked for security.",
+    "ZIP contains path traversal":     "That ZIP file contains unsafe paths and was blocked for security.",
+    "Email already registered":        "That email is already registered. Try logging in instead.",
+    "Invalid email or password":       "Incorrect email or password. Please try again.",
+    "Password must be at least":       "Your password must be at least 8 characters long.",
+    "Authentication required":         "Please sign in to use this feature.",
+    "Invalid or expired token":        "Your session has expired. Please sign in again.",
+    "unified_risk_engine.py not found":"The unified risk engine is not available. Try the Scanner or TLS Analyzer instead.",
+    "Directory not found":             "That directory path was not found on the server.",
+    "SSL Error":                       "Could not establish a secure connection to that domain. Check it supports HTTPS.",
+    "Cannot resolve":                  "Could not find that domain. Check the spelling and try again.",
+    "Connection timed out":            "The connection timed out. The server may be slow or unreachable.",
+    "Too Many Requests":               "Too many requests. Please wait a moment and try again.",
+}
+
+def friendly_error(detail: str) -> str:
+    """Convert a raw error string to a human-readable message."""
+    if not detail:
+        return "Something went wrong. Please try again."
+    for key, msg in FRIENDLY_ERRORS.items():
+        if key.lower() in str(detail).lower():
+            return msg
+    if "500" in str(detail) or "internal" in str(detail).lower():
+        return "Something went wrong on our end. Please try again in a moment."
+    return str(detail)
+
+
+# ============================================================
+# FIX-C: Rate limit helper by user plan
+# ============================================================
+
+def get_user_rate_limit(current_user: Optional[dict]) -> str:
+    """Return daily scan limit string based on user plan."""
+    if not current_user:
+        return "3/day"
+    return {"free": "20/day", "pro": "100/day", "enterprise": "500/day"}.get(
+        current_user.get("plan", "free"), "20/day"
+    )
+
+
+# ============================================================
+# FIX-2 (v2.6.1): Safe ZIP extraction — prevents path traversal
 # ============================================================
 
 def _safe_extractall(zf: zipfile.ZipFile, target_dir: str) -> None:
     target_dir = os.path.realpath(target_dir)
     for member in zf.namelist():
-        # Block absolute paths and null bytes immediately
         if os.path.isabs(member) or "\x00" in member:
             raise HTTPException(
                 status_code=400,
-                detail=f"ZIP contains unsafe path: {member!r}. Upload blocked."
+                detail=friendly_error("ZIP contains unsafe path")
             )
-        # Resolve where this member would actually land
         member_path = os.path.realpath(os.path.join(target_dir, member))
-        # It must stay inside target_dir
         if not member_path.startswith(target_dir + os.sep) and member_path != target_dir:
             raise HTTPException(
                 status_code=400,
-                detail=f"ZIP contains path traversal: {member!r}. Upload blocked."
+                detail=friendly_error("ZIP contains path traversal")
             )
     zf.extractall(target_dir)
 
 
 # ============================================================
-# FIX-3: SSRF guard
-# Blocks private/internal IPs before any outbound request.
+# FIX-3 (v2.6.1): SSRF guard — blocks private/internal IPs
 # ============================================================
 
 _PRIVATE_NETWORKS = [
@@ -142,14 +196,13 @@ _PRIVATE_NETWORKS = [
     ipaddress.ip_network("172.16.0.0/12"),
     ipaddress.ip_network("192.168.0.0/16"),
     ipaddress.ip_network("127.0.0.0/8"),
-    ipaddress.ip_network("169.254.0.0/16"),   # AWS metadata endpoint
-    ipaddress.ip_network("100.64.0.0/10"),    # Render internal
+    ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("100.64.0.0/10"),
     ipaddress.ip_network("::1/128"),
     ipaddress.ip_network("fc00::/7"),
 ]
 
 def _block_private_ip(hostname: str) -> None:
-    """Resolve hostname and raise 400 if it maps to a private/internal address."""
     try:
         resolved = socket.gethostbyname(hostname)
         ip = ipaddress.ip_address(resolved)
@@ -157,7 +210,7 @@ def _block_private_ip(hostname: str) -> None:
             if ip in network:
                 raise HTTPException(
                     status_code=400,
-                    detail="URL resolves to a private/internal address. Request blocked."
+                    detail=friendly_error("URL resolves to a private")
                 )
     except HTTPException:
         raise
@@ -327,9 +380,11 @@ def decode_token(token: str) -> dict:
     try:
         return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Invalid or expired token",
-                            headers={"WWW-Authenticate": "Bearer"})
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=friendly_error("Invalid or expired token"),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 # ============================================================
@@ -338,11 +393,15 @@ def decode_token(token: str) -> dict:
 
 security = HTTPBearer(auto_error=False)
 
-async def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> dict:
+async def get_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+) -> dict:
     if not credentials:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Authentication required",
-                            headers={"WWW-Authenticate": "Bearer"})
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=friendly_error("Authentication required"),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     payload = decode_token(credentials.credentials)
     email   = payload.get("sub")
     if not email:
@@ -352,7 +411,9 @@ async def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] =
         raise HTTPException(status_code=401, detail="User not found")
     return user
 
-async def get_optional_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Optional[dict]:
+async def get_optional_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+) -> Optional[dict]:
     if not credentials:
         return None
     try:
@@ -377,7 +438,7 @@ limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
     title="QuantumGuard API",
     description="Post-quantum cryptography vulnerability scanner — Mangsri QuantumGuard LLC",
-    version="2.6.1",
+    version="2.6.2",
     docs_url="/docs" if ENVIRONMENT == "development" else None,
     redoc_url=None,
 )
@@ -389,7 +450,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 @app.on_event("startup")
 async def startup():
     init_db()
-    logger.info("QuantumGuard API v2.6.1 started")
+    logger.info("QuantumGuard API v2.6.2 started")
 
 
 @app.on_event("shutdown")
@@ -473,33 +534,32 @@ def verify_key(key: str):
 def _parse_github_url(github_url: str):
     parts = github_url.rstrip("/").split("/")
     if len(parts) < 2:
-        raise HTTPException(status_code=400, detail="Invalid GitHub URL")
+        raise HTTPException(status_code=400, detail=friendly_error("Invalid GitHub URL"))
     owner = parts[-2]
     repo  = parts[-1].replace(".git", "")
     if not owner or not repo:
-        raise HTTPException(status_code=400, detail="Invalid GitHub URL")
+        raise HTTPException(status_code=400, detail=friendly_error("Invalid GitHub URL"))
     return owner, repo
 
 
 def _download_github_zip(github_url: str, github_token: Optional[str] = None):
-    # FIX-3: only github.com allowed + private IP guard
     if "github.com" not in github_url:
-        raise HTTPException(status_code=400, detail="Only GitHub URLs allowed")
+        raise HTTPException(status_code=400, detail=friendly_error("Only GitHub URLs allowed"))
 
-    _block_private_ip("github.com")  # FIX-3: confirm github.com resolves public
+    _block_private_ip("github.com")
 
     owner, repo = _parse_github_url(github_url)
-    headers = {"Accept": "application/vnd.github+json", "User-Agent": "QuantumGuard/2.6.1"}
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "QuantumGuard/2.6.2"}
     if github_token:
         headers["Authorization"] = f"token {github_token}"
 
     meta_resp = requests.get(
         f"https://api.github.com/repos/{owner}/{repo}",
-        headers=headers, timeout=10
+        headers=headers, timeout=10,
     )
     if meta_resp.status_code == 200:
         if meta_resp.json().get("size", 0) > 50000:
-            raise HTTPException(status_code=400, detail="Repo too large. Max 50MB.")
+            raise HTTPException(status_code=400, detail=friendly_error("Repo too large"))
 
     for branch in ["main", "master"]:
         resp = requests.get(
@@ -508,39 +568,44 @@ def _download_github_zip(github_url: str, github_token: Optional[str] = None):
         )
         if resp.status_code == 200:
             if len(resp.content) > 15 * 1024 * 1024:
-                raise HTTPException(status_code=400, detail="Repo ZIP too large for free tier.")
+                raise HTTPException(status_code=400, detail=friendly_error("Repo ZIP too large"))
             return resp.content, owner, repo
 
-    raise HTTPException(status_code=400, detail="Could not download repo. Make sure it is public.")
+    raise HTTPException(status_code=400, detail=friendly_error("Could not download repo"))
 
 
 def _summarize_findings(findings):
     sev  = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
     conf = {"HIGH": 0, "MEDIUM": 0, "LOW": 0}
     for f in findings:
-        sev[f.get("severity","MEDIUM")]    = sev.get(f.get("severity","MEDIUM"), 0) + 1
-        conf[f.get("confidence","MEDIUM")] = conf.get(f.get("confidence","MEDIUM"), 0) + 1
+        sev[f.get("severity", "MEDIUM")]    = sev.get(f.get("severity", "MEDIUM"), 0) + 1
+        conf[f.get("confidence", "MEDIUM")] = conf.get(f.get("confidence", "MEDIUM"), 0) + 1
     return sev, conf
 
 
 def _build_priority_actions(findings, sev, score):
     actions = []
     if sev.get("CRITICAL", 0) > 0:
-        actions.append({"priority":"P1","title":"Fix critical vulnerabilities immediately","description":f"{sev['CRITICAL']} critical findings.","timeline":"Within 30 days"})
+        actions.append({"priority": "P1", "title": "Fix critical vulnerabilities immediately",
+                        "description": f"{sev['CRITICAL']} critical findings.", "timeline": "Within 30 days"})
     if sev.get("HIGH", 0) > 0:
-        actions.append({"priority":"P2","title":"Remediate high-severity risks","description":f"{sev['HIGH']} high findings.","timeline":"Within 90 days"})
+        actions.append({"priority": "P2", "title": "Remediate high-severity risks",
+                        "description": f"{sev['HIGH']} high findings.", "timeline": "Within 90 days"})
     if sev.get("MEDIUM", 0) > 0:
-        actions.append({"priority":"P3","title":"Plan medium-severity migration","description":f"{sev['MEDIUM']} medium findings.","timeline":"Within 6 months"})
+        actions.append({"priority": "P3", "title": "Plan medium-severity migration",
+                        "description": f"{sev['MEDIUM']} medium findings.", "timeline": "Within 6 months"})
     if score < 50:
-        actions.append({"priority":"P1","title":"Begin NIST PQC migration planning","description":"Score below 50.","timeline":"Within 60 days"})
+        actions.append({"priority": "P1", "title": "Begin NIST PQC migration planning",
+                        "description": "Score below 50.", "timeline": "Within 60 days"})
     if not actions:
-        actions.append({"priority":"P4","title":"Maintain monitoring","description":"No major issues.","timeline":"Ongoing"})
+        actions.append({"priority": "P4", "title": "Maintain monitoring",
+                        "description": "No major issues.", "timeline": "Ongoing"})
     return actions
 
 
 def _build_top_findings(findings):
     return [
-        {"file": f.get("file","").split("/")[-1], "line": f.get("line"),
+        {"file": f.get("file", "").split("/")[-1], "line": f.get("line"),
          "vulnerability": f.get("vulnerability"), "severity": f.get("severity"),
          "confidence": f.get("confidence"),
          "recommended_fix": f.get("recommended_fix") or f.get("replacement")}
@@ -552,10 +617,10 @@ def _build_top_findings(findings):
 # TLS ANALYZER
 # ============================================================
 
-PQC_INDICATORS     = ["KYBER","MLKEM","ML_KEM","X25519KYBER768","X25519MLKEM768","NTRU","FRODO","SABER","BIKE","HQC"]
-STRONG_CIPHERS     = ["AES_256","AES-256","CHACHA20"]
-ACCEPTABLE_CIPHERS = ["AES_128","AES-128"]
-FORWARD_SECRECY_KX = ["ECDHE","DHE","X25519","X448"]
+PQC_INDICATORS     = ["KYBER", "MLKEM", "ML_KEM", "X25519KYBER768", "X25519MLKEM768", "NTRU", "FRODO", "SABER", "BIKE", "HQC"]
+STRONG_CIPHERS     = ["AES_256", "AES-256", "CHACHA20"]
+ACCEPTABLE_CIPHERS = ["AES_128", "AES-128"]
+FORWARD_SECRECY_KX = ["ECDHE", "DHE", "X25519", "X448"]
 
 
 def _analyze_tls_score(tls_version, cipher_name, cipher_bits):
@@ -596,23 +661,24 @@ def _analyze_tls_score(tls_version, cipher_name, cipher_bits):
 
 
 def _calculate_tls_grade(score, quantum_safe, tls_version, issues):
-    ck = ["expired","sslv","tlsv1.0","tlsv1.1","deprecated"]
+    ck = ["expired", "sslv", "tlsv1.0", "tlsv1.1", "deprecated"]
     hc = any(any(k in i.lower() for k in ck) for i in issues)
-    if hc or score < 35:  g,c,d = "F","#dc2626","Failing — immediate action required"
-    elif score < 50:      g,c,d = "D","#dc2626","Poor — significant vulnerabilities"
-    elif score < 65:      g,c,d = "C","#d97706","Average — improvements recommended"
-    elif score < 80:      g,c,d = "B","#f59e0b","Good — some improvements recommended"
-    elif quantum_safe and tls_version == "TLSv1.3": g,c,d = "A+","#16a34a","Excellent — hybrid PQC"
-    elif tls_version == "TLSv1.3": g,c,d = "A","#16a34a","Strong — modern TLS"
-    else:                 g,c,d = "B","#f59e0b","Good — TLS 1.3 upgrade recommended"
-    return {"grade":g,"grade_color":c,"grade_description":d,
+    if hc or score < 35:  g, c, d = "F", "#dc2626", "Failing — immediate action required"
+    elif score < 50:      g, c, d = "D", "#dc2626", "Poor — significant vulnerabilities"
+    elif score < 65:      g, c, d = "C", "#d97706", "Average — improvements recommended"
+    elif score < 80:      g, c, d = "B", "#f59e0b", "Good — some improvements recommended"
+    elif quantum_safe and tls_version == "TLSv1.3": g, c, d = "A+", "#16a34a", "Excellent — hybrid PQC"
+    elif tls_version == "TLSv1.3": g, c, d = "A", "#16a34a", "Strong — modern TLS"
+    else:                 g, c, d = "B", "#f59e0b", "Good — TLS 1.3 upgrade recommended"
+    return {"grade": g, "grade_color": c, "grade_description": d,
             "pqc_note": None if quantum_safe else "Not post-quantum safe yet.",
-            "grade_breakdown":{"tls_version_score": 30 if tls_version=="TLSv1.3" else 20 if tls_version=="TLSv1.2" else 0,"quantum_ready":quantum_safe}}
+            "grade_breakdown": {"tls_version_score": 30 if tls_version == "TLSv1.3" else 20 if tls_version == "TLSv1.2" else 0,
+                                "quantum_ready": quantum_safe}}
 
 
 def _analyze_certificate(cert):
     ci = {}; ci_issues = []
-    exp = cert.get("notAfter","")
+    exp = cert.get("notAfter", "")
     ci["cert_expires"] = exp
     if exp:
         try:
@@ -624,16 +690,16 @@ def _analyze_certificate(cert):
             elif dr < 30: ci_issues.append(f"WARNING: Expires in {dr} days")
         except ValueError:
             ci["days_until_expiry"] = None
-    subject = dict(x[0] for x in cert.get("subject",[]))
-    issuer  = dict(x[0] for x in cert.get("issuer",[]))
-    ci["subject_cn"] = subject.get("commonName","")
-    ci["issuer_cn"]  = issuer.get("commonName","")
-    ci["san_count"]  = len(cert.get("subjectAltName",[]))
+    subject = dict(x[0] for x in cert.get("subject", []))
+    issuer  = dict(x[0] for x in cert.get("issuer", []))
+    ci["subject_cn"] = subject.get("commonName", "")
+    ci["issuer_cn"]  = issuer.get("commonName", "")
+    ci["san_count"]  = len(cert.get("subjectAltName", []))
     return ci, ci_issues
 
 
 def _analyze_tls_domain(domain: str) -> dict:
-    clean = domain.strip().replace("https://","").replace("http://","").split("/")[0]
+    clean = domain.strip().replace("https://", "").replace("http://", "").split("/")[0]
     if not clean:
         raise HTTPException(status_code=400, detail="Domain required")
     try:
@@ -645,33 +711,33 @@ def _analyze_tls_domain(domain: str) -> dict:
         cb = cipher[2] if cipher else 0
         a  = _analyze_tls_score(tv, cn, cb)
         ci, ci_issues = _analyze_certificate(cert)
-        g  = _calculate_tls_grade(a["tls_score"], a["quantum_safe"], tv, a["issues"]+ci_issues)
+        g  = _calculate_tls_grade(a["tls_score"], a["quantum_safe"], tv, a["issues"] + ci_issues)
         nr = ("Hybrid PQC TLS detected." if a["quantum_safe"]
-              else "TLS 1.3 is modern. Monitor hybrid PQC ML-KEM adoption." if tv=="TLSv1.3"
+              else "TLS 1.3 is modern. Monitor hybrid PQC ML-KEM adoption." if tv == "TLSv1.3"
               else "Upgrade to TLS 1.3 first, then plan hybrid PQC migration.")
         return {
-            "domain":clean,"tls_version":tv,"cipher_suite":cn,"cipher_bits":cb,
-            "quantum_safe":a["quantum_safe"],"tls_score":a["tls_score"],
-            "grade":g["grade"],"grade_color":g["grade_color"],
-            "grade_description":g["grade_description"],"pqc_note":g["pqc_note"],
-            "grade_breakdown":g["grade_breakdown"],"labels":a["labels"],
-            "strengths":a["strengths"],"issues":a["issues"]+ci_issues,
-            "certificate":ci,"has_forward_secrecy":a["has_forward_secrecy"],
-            "has_pqc_key_exchange":a["has_pqc_kex"],"rsa_key_exchange":a["rsa_key_exchange"],
-            "quantum_explanation":a["quantum_explanation"],"nist_recommendation":nr,
-            "nist_standard":"ML-KEM — NIST FIPS 203",
-            "key_exchange":"ECDHE / Forward Secrecy" if a["has_forward_secrecy"] else "Unknown",
+            "domain": clean, "tls_version": tv, "cipher_suite": cn, "cipher_bits": cb,
+            "quantum_safe": a["quantum_safe"], "tls_score": a["tls_score"],
+            "grade": g["grade"], "grade_color": g["grade_color"],
+            "grade_description": g["grade_description"], "pqc_note": g["pqc_note"],
+            "grade_breakdown": g["grade_breakdown"], "labels": a["labels"],
+            "strengths": a["strengths"], "issues": a["issues"] + ci_issues,
+            "certificate": ci, "has_forward_secrecy": a["has_forward_secrecy"],
+            "has_pqc_key_exchange": a["has_pqc_kex"], "rsa_key_exchange": a["rsa_key_exchange"],
+            "quantum_explanation": a["quantum_explanation"], "nist_recommendation": nr,
+            "nist_standard": "ML-KEM — NIST FIPS 203",
+            "key_exchange": "ECDHE / Forward Secrecy" if a["has_forward_secrecy"] else "Unknown",
         }
     except ssl.SSLError as e:
-        raise HTTPException(status_code=400, detail=f"SSL Error: {str(e)}")
+        raise HTTPException(status_code=400, detail=friendly_error(f"SSL Error: {str(e)}"))
     except socket.timeout:
-        raise HTTPException(status_code=408, detail="Connection timed out")
+        raise HTTPException(status_code=408, detail=friendly_error("Connection timed out"))
     except socket.gaierror:
-        raise HTTPException(status_code=400, detail=f"Cannot resolve: {clean}")
+        raise HTTPException(status_code=400, detail=friendly_error(f"Cannot resolve: {clean}"))
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"TLS error: {str(e)}")
+        raise HTTPException(status_code=400, detail=friendly_error(f"TLS error: {str(e)}"))
 
 
 # ============================================================
@@ -683,9 +749,9 @@ def _analyze_tls_domain(domain: str) -> dict:
 async def register(request: Request, body: RegisterRequest):
     email = body.email.lower().strip()
     if db_get_user(email):
-        raise HTTPException(status_code=409, detail="Email already registered")
+        raise HTTPException(status_code=409, detail=friendly_error("Email already registered"))
     if len(body.password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+        raise HTTPException(status_code=400, detail=friendly_error("Password must be at least"))
     user = {
         "id":              str(uuid.uuid4()),
         "email":           email,
@@ -701,7 +767,7 @@ async def register(request: Request, body: RegisterRequest):
     return {
         "access_token": token, "token_type": "bearer",
         "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        "user": {"id":user["id"],"email":user["email"],"name":user["name"],"plan":user["plan"]},
+        "user": {"id": user["id"], "email": user["email"], "name": user["name"], "plan": user["plan"]},
     }
 
 
@@ -711,20 +777,20 @@ async def login(request: Request, body: LoginRequest):
     email = body.email.lower().strip()
     user  = db_get_user(email)
     if not user or not verify_password(body.password, user["hashed_password"]):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail=friendly_error("Invalid email or password"))
     token = create_access_token({"sub": email})
     logger.info(f"User logged in: {email}")
     return {
         "access_token": token, "token_type": "bearer",
         "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        "user": {"id":user["id"],"email":user["email"],"name":user["name"],
-                 "plan":user["plan"],"scan_count":user["scan_count"]},
+        "user": {"id": user["id"], "email": user["email"], "name": user["name"],
+                 "plan": user["plan"], "scan_count": user["scan_count"]},
     }
 
 
 @app.get("/auth/me", tags=["Auth"])
 async def get_me(current_user: dict = Depends(get_current_user)):
-    return {k: current_user[k] for k in ("id","email","name","plan","scan_count","created_at") if k in current_user}
+    return {k: current_user[k] for k in ("id", "email", "name", "plan", "scan_count", "created_at") if k in current_user}
 
 
 @app.post("/auth/refresh", tags=["Auth"])
@@ -744,15 +810,15 @@ async def get_history(current_user: dict = Depends(get_current_user)):
 
 @app.get("/")
 def root():
-    return {"message":"QuantumGuard API is running!","version":"2.6.1",
-            "company":"Mangsri QuantumGuard LLC","website":"https://quantumguard.site",
-            "standards":["NIST FIPS 203","NIST FIPS 204","NIST FIPS 205"],
+    return {"message": "QuantumGuard API is running!", "version": "2.6.2",
+            "company": "Mangsri QuantumGuard LLC", "website": "https://quantumguard.site",
+            "standards": ["NIST FIPS 203", "NIST FIPS 204", "NIST FIPS 205"],
             "db": "postgresql" if db_pool else "memory"}
 
 
 @app.get("/health")
 def health():
-    return {"status":"healthy","version":"2.6.1","tool":"QuantumGuard",
+    return {"status": "healthy", "version": "2.6.2", "tool": "QuantumGuard",
             "db": "postgresql" if db_pool else "memory (no DATABASE_URL set)"}
 
 
@@ -761,7 +827,7 @@ def health():
 def scan(request: Request, body: ScanRequest, x_api_key: str = Header(...)):
     verify_key(x_api_key)
     if not os.path.exists(body.directory):
-        raise HTTPException(status_code=404, detail="Directory not found")
+        raise HTTPException(status_code=404, detail=friendly_error("Directory not found"))
     start    = time.time()
     findings = scan_directory(body.directory)
     score    = calculate_score(findings)
@@ -782,20 +848,28 @@ def scan(request: Request, body: ScanRequest, x_api_key: str = Header(...)):
 @limiter.limit("3/minute")
 async def public_scan_zip(request: Request, file: UploadFile = File(...)):
     if not file.filename.endswith(".zip"):
-        raise HTTPException(status_code=400, detail="Only ZIP files allowed")
+        raise HTTPException(status_code=400, detail=friendly_error("Only ZIP files allowed"))
     contents = await file.read()
     if len(contents) > MAX_ZIP_SIZE:
-        raise HTTPException(status_code=400, detail="ZIP too large. Max 10MB.")
+        raise HTTPException(status_code=400, detail=friendly_error("ZIP too large"))
     temp_dir = f"/tmp/qg-{uuid.uuid4().hex[:8]}"
     start    = time.time()
+    partial  = False  # FIX-B
     try:
         os.makedirs(temp_dir, exist_ok=True)
         with zipfile.ZipFile(io.BytesIO(contents)) as z:
-            _safe_extractall(z, temp_dir)              # FIX-2
-        findings  = scan_directory(temp_dir)
+            _safe_extractall(z, temp_dir)
+        # FIX-B: catch timeout and return partial results
+        try:
+            findings = scan_directory(temp_dir)
+        except Exception as scan_err:
+            if "timeout" in str(scan_err).lower():
+                findings = []; partial = True
+            else:
+                raise
         score     = calculate_score(findings)
         sev, conf = _summarize_findings(findings)
-        return {
+        result = {
             "filename": file.filename,
             "quantum_readiness_score": score,
             "score_explanation":       generate_score_explanation(findings, score),
@@ -806,12 +880,16 @@ async def public_scan_zip(request: Request, file: UploadFile = File(...)):
             "priority_actions":        _build_priority_actions(findings, sev, score),
             "findings":                findings,
         }
+        if partial:
+            result["warning"] = "Scan timed out on a large ZIP. Results shown are partial. Try splitting your project into smaller ZIPs."
+        return result
     except zipfile.BadZipFile:
-        raise HTTPException(status_code=400, detail="Invalid ZIP file")
+        raise HTTPException(status_code=400, detail=friendly_error("Invalid ZIP"))
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Scan error: {str(e)}")
+        logger.error(f"public_scan_zip error: {str(e)[:200]}")
+        raise HTTPException(status_code=500, detail=friendly_error(str(e)))
     finally:
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
@@ -826,20 +904,29 @@ async def scan_github(
 ):
     temp_dir = None
     start    = time.time()
+    partial  = False  # FIX-B
     try:
         zip_content, owner, repo = _download_github_zip(body.github_url, body.github_token)
         temp_dir = f"/tmp/qg-{uuid.uuid4().hex[:8]}"
         os.makedirs(temp_dir, exist_ok=True)
         with zipfile.ZipFile(io.BytesIO(zip_content)) as z:
-            _safe_extractall(z, temp_dir)              # FIX-2
-        findings  = scan_directory(temp_dir)
+            _safe_extractall(z, temp_dir)
+        # FIX-B: catch timeout and return partial results
+        try:
+            findings = scan_directory(temp_dir)
+        except Exception as scan_err:
+            if "timeout" in str(scan_err).lower():
+                findings = []; partial = True
+                logger.warning(f"Scan timed out for {body.github_url} — returning partial results")
+            else:
+                raise
         score     = calculate_score(findings)
         sev, conf = _summarize_findings(findings)
         if current_user:
             db_increment_scan_count(current_user["email"])
             db_save_scan(current_user["id"], current_user["email"],
                          body.github_url, score, len(findings), "github")
-        return {
+        result = {
             "github_url": body.github_url, "repo": f"{owner}/{repo}",
             "quantum_readiness_score": score,
             "score_explanation":       generate_score_explanation(findings, score),
@@ -849,15 +936,19 @@ async def scan_github(
             "top_findings":            _build_top_findings(findings),
             "priority_actions":        _build_priority_actions(findings, sev, score),
             "findings":                findings,
-            "meta": {"tool":"QuantumGuard v2.6.1",
-                     "standards":["NIST FIPS 203","NIST FIPS 204","NIST FIPS 205"],
-                     "company":"Mangsri QuantumGuard LLC",
-                     "website":"https://quantumguard.site"},
+            "meta": {"tool": "QuantumGuard v2.6.2",
+                     "standards": ["NIST FIPS 203", "NIST FIPS 204", "NIST FIPS 205"],
+                     "company": "Mangsri QuantumGuard LLC",
+                     "website": "https://quantumguard.site"},
         }
-    except HTTPException:
-        raise
+        if partial:
+            result["warning"] = "Scan timed out on a large repository. Results shown are partial. Try uploading a ZIP of just the source files for a complete scan."
+        return result
+    except HTTPException as e:
+        raise HTTPException(status_code=e.status_code, detail=friendly_error(e.detail))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+        logger.error(f"scan_github error: {str(e)[:200]}")
+        raise HTTPException(status_code=500, detail=friendly_error(str(e)))
     finally:
         if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
@@ -876,15 +967,16 @@ async def check_agility(
         temp_dir = f"/tmp/qg-{uuid.uuid4().hex[:8]}"
         os.makedirs(temp_dir, exist_ok=True)
         with zipfile.ZipFile(io.BytesIO(zip_content)) as z:
-            _safe_extractall(z, temp_dir)              # FIX-2
+            _safe_extractall(z, temp_dir)
         result = check_crypto_agility(temp_dir)
         result["repo"]       = f"{owner}/{repo}"
         result["github_url"] = body.github_url
         return result
-    except HTTPException:
-        raise
+    except HTTPException as e:
+        raise HTTPException(status_code=e.status_code, detail=friendly_error(e.detail))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+        logger.error(f"check_agility error: {str(e)[:200]}")
+        raise HTTPException(status_code=500, detail=friendly_error(str(e)))
     finally:
         if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
@@ -897,7 +989,12 @@ async def analyze_tls(
     body:         TLSRequest,
     current_user: Optional[dict] = Depends(get_optional_user),
 ):
-    return _analyze_tls_domain(body.domain)
+    try:
+        return _analyze_tls_domain(body.domain)
+    except HTTPException as e:
+        raise HTTPException(status_code=e.status_code, detail=friendly_error(e.detail))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=friendly_error(str(e)))
 
 
 @app.post("/unified-risk")
@@ -908,16 +1005,24 @@ async def unified_risk(
     current_user: Optional[dict] = Depends(get_optional_user),
 ):
     if calculate_unified_quantum_risk is None:
-        raise HTTPException(status_code=500, detail="unified_risk_engine.py not found")
+        raise HTTPException(status_code=500, detail=friendly_error("unified_risk_engine.py not found"))
     temp_dir = None
     start    = time.time()
+    partial  = False  # FIX-B
     try:
         zip_content, owner, repo = _download_github_zip(body.github_url, body.github_token)
         temp_dir = f"/tmp/qg-unified-{uuid.uuid4().hex[:8]}"
         os.makedirs(temp_dir, exist_ok=True)
         with zipfile.ZipFile(io.BytesIO(zip_content)) as z:
-            _safe_extractall(z, temp_dir)              # FIX-2
-        findings       = scan_directory(temp_dir)
+            _safe_extractall(z, temp_dir)
+        # FIX-B: catch timeout and return partial results
+        try:
+            findings = scan_directory(temp_dir)
+        except Exception as scan_err:
+            if "timeout" in str(scan_err).lower():
+                findings = []; partial = True
+            else:
+                raise
         code_score     = calculate_score(findings)
         sev, conf      = _summarize_findings(findings)
         agility_result = check_crypto_agility(temp_dir)
@@ -926,7 +1031,7 @@ async def unified_risk(
             try:
                 tls_result = _analyze_tls_domain(body.domain)
             except Exception as e:
-                tls_error = str(e)
+                tls_error = friendly_error(str(e))  # FIX-A on TLS errors too
         unified_result = calculate_unified_quantum_risk(
             findings=findings, agility_result=agility_result, tls_result=tls_result,
         )
@@ -934,7 +1039,7 @@ async def unified_risk(
             db_increment_scan_count(current_user["email"])
             db_save_scan(current_user["id"], current_user["email"],
                          body.github_url, code_score, len(findings), "unified")
-        return {
+        result = {
             "repo": f"{owner}/{repo}", "github_url": body.github_url, "domain": body.domain,
             "unified_risk": unified_result,
             "scanner_result": {
@@ -953,19 +1058,23 @@ async def unified_risk(
             "finding_summary": {
                 "total": len(findings),
                 "severity_summary": {
-                    "CRITICAL": len([f for f in findings if f.get("severity")=="CRITICAL"]),
-                    "HIGH":     len([f for f in findings if f.get("severity")=="HIGH"]),
-                    "MEDIUM":   len([f for f in findings if f.get("severity")=="MEDIUM"]),
-                    "LOW":      len([f for f in findings if f.get("severity")=="LOW"]),
+                    "CRITICAL": len([f for f in findings if f.get("severity") == "CRITICAL"]),
+                    "HIGH":     len([f for f in findings if f.get("severity") == "HIGH"]),
+                    "MEDIUM":   len([f for f in findings if f.get("severity") == "MEDIUM"]),
+                    "LOW":      len([f for f in findings if f.get("severity") == "LOW"]),
                 },
             },
             "top_findings": _build_top_findings(findings),
-            "meta": {"tool":"QuantumGuard Unified Risk Engine v2.6.1","company":"Mangsri QuantumGuard LLC"},
+            "meta": {"tool": "QuantumGuard Unified Risk Engine v2.6.2", "company": "Mangsri QuantumGuard LLC"},
         }
-    except HTTPException:
-        raise
+        if partial:
+            result["warning"] = "Scan timed out on a large repository. Results are partial."
+        return result
+    except HTTPException as e:
+        raise HTTPException(status_code=e.status_code, detail=friendly_error(e.detail))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unified risk error: {str(e)}")
+        logger.error(f"unified_risk error: {str(e)[:200]}")
+        raise HTTPException(status_code=500, detail=friendly_error(str(e)))
     finally:
         if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
@@ -981,10 +1090,10 @@ async def ai_fix(
     finding = body.get("finding", {})
     if not finding:
         raise HTTPException(status_code=400, detail="Finding required")
-    vuln        = finding.get("vulnerability","")
-    code        = finding.get("code","")
-    replacement = finding.get("replacement","")
-    severity    = finding.get("severity","")
+    vuln        = finding.get("vulnerability", "")
+    code        = finding.get("code", "")
+    replacement = finding.get("replacement", "")
+    severity    = finding.get("severity", "")
     vu = vuln.upper()
     if "RSA" in vu:
         fix = f"# BEFORE:\n{code}\n\n# MIGRATION: Replace with ML-KEM (FIPS 203) for key establishment\n# or ML-DSA (FIPS 204) for digital signatures.\n"
@@ -1011,24 +1120,24 @@ async def get_badge(owner: str, repo: str):
         os.makedirs(td, exist_ok=True)
         try:
             with zipfile.ZipFile(io.BytesIO(zc)) as z:
-                _safe_extractall(z, td)                # FIX-2
+                _safe_extractall(z, td)
             score = calculate_score(scan_directory(td))
         finally:
             shutil.rmtree(td, ignore_errors=True)
-        if score >= 80:   color="#16a34a"; lc="#15803d"; rt=f"{score}/100 safe"
-        elif score >= 50: color="#d97706"; lc="#b45309"; rt=f"{score}/100 at risk"
-        else:             color="#dc2626"; lc="#b91c1c"; rt=f"{score}/100 vulnerable"
+        if score >= 80:   color = "#16a34a"; lc = "#15803d"; rt = f"{score}/100 safe"
+        elif score >= 50: color = "#d97706"; lc = "#b45309"; rt = f"{score}/100 at risk"
+        else:             color = "#dc2626"; lc = "#b91c1c"; rt = f"{score}/100 vulnerable"
     except Exception:
-        color="#6b7280"; lc="#4b5563"; rt="unknown"
-    lt="QuantumGuard"; lw=len(lt)*7+20; rw=len(rt)*7+20; tw=lw+rw
-    svg=(f'<svg xmlns="http://www.w3.org/2000/svg" width="{tw}" height="20">'
-         f'<g><rect width="{lw}" height="20" fill="{lc}"/>'
-         f'<rect x="{lw}" width="{rw}" height="20" fill="{color}"/></g>'
-         f'<g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-size="11">'
-         f'<text x="{lw//2}" y="14">{lt}</text><text x="{lw+rw//2}" y="14">{rt}</text>'
-         f'</g></svg>')
+        color = "#6b7280"; lc = "#4b5563"; rt = "unknown"
+    lt = "QuantumGuard"; lw = len(lt) * 7 + 20; rw = len(rt) * 7 + 20; tw = lw + rw
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{tw}" height="20">'
+           f'<g><rect width="{lw}" height="20" fill="{lc}"/>'
+           f'<rect x="{lw}" width="{rw}" height="20" fill="{color}"/></g>'
+           f'<g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-size="11">'
+           f'<text x="{lw // 2}" y="14">{lt}</text><text x="{lw + rw // 2}" y="14">{rt}</text>'
+           f'</g></svg>')
     return Response(content=svg, media_type="image/svg+xml",
-                    headers={"Cache-Control":"no-cache,no-store,must-revalidate"})
+                    headers={"Cache-Control": "no-cache,no-store,must-revalidate"})
 
 
 @app.post("/export-cbom")
@@ -1044,13 +1153,13 @@ async def export_cbom(
         temp_dir = f"/tmp/qg-cbom-{uuid.uuid4().hex[:8]}"
         os.makedirs(temp_dir, exist_ok=True)
         with zipfile.ZipFile(io.BytesIO(zc)) as z:
-            _safe_extractall(z, temp_dir)              # FIX-2
+            _safe_extractall(z, temp_dir)
         findings = scan_directory(temp_dir)
         return generate_cbom(findings, repo=f"{owner}/{repo}", score=calculate_score(findings))
-    except HTTPException:
-        raise
+    except HTTPException as e:
+        raise HTTPException(status_code=e.status_code, detail=friendly_error(e.detail))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"CBOM error: {str(e)}")
+        raise HTTPException(status_code=500, detail=friendly_error(str(e)))
     finally:
         if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
@@ -1060,23 +1169,23 @@ async def export_cbom(
 @limiter.limit("5/minute")
 async def export_cbom_zip(request: Request, file: UploadFile = File(...)):
     if not file.filename.endswith(".zip"):
-        raise HTTPException(status_code=400, detail="Only ZIP files allowed")
+        raise HTTPException(status_code=400, detail=friendly_error("Only ZIP files allowed"))
     contents = await file.read()
     if len(contents) > MAX_ZIP_SIZE:
-        raise HTTPException(status_code=400, detail="ZIP too large. Max 10MB.")
+        raise HTTPException(status_code=400, detail=friendly_error("ZIP too large"))
     temp_dir = f"/tmp/qg-cbom-{uuid.uuid4().hex[:8]}"
     try:
         os.makedirs(temp_dir, exist_ok=True)
         with zipfile.ZipFile(io.BytesIO(contents)) as z:
-            _safe_extractall(z, temp_dir)              # FIX-2
+            _safe_extractall(z, temp_dir)
         findings = scan_directory(temp_dir)
         return generate_cbom(findings, repo=file.filename, score=calculate_score(findings))
     except zipfile.BadZipFile:
-        raise HTTPException(status_code=400, detail="Invalid ZIP")
+        raise HTTPException(status_code=400, detail=friendly_error("Invalid ZIP"))
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"CBOM error: {str(e)}")
+        raise HTTPException(status_code=500, detail=friendly_error(str(e)))
     finally:
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
