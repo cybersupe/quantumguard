@@ -386,22 +386,35 @@ async def shutdown():
         logger.info("Database pool closed")
 
 
+ALLOWED_ORIGINS = [
+    "https://quantumguard.site",
+    "https://www.quantumguard.site",
+    "http://quantumguard.site",
+    "http://www.quantumguard.site",
+    "http://localhost:3000",
+    "http://localhost:5173",
+]
+
 class CORSMiddlewareCustom(BaseHTTPMiddleware):
     async def dispatch(self, request: StarletteRequest, call_next):
+        origin = request.headers.get("origin", "")
+        allow_origin = origin if origin in ALLOWED_ORIGINS else "*"
         if request.method == "OPTIONS":
             return Response(
                 status_code=200,
                 headers={
-                    "Access-Control-Allow-Origin":  "*",
-                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-                    "Access-Control-Allow-Headers": "*",
-                    "Access-Control-Max-Age":       "86400",
+                    "Access-Control-Allow-Origin":      allow_origin,
+                    "Access-Control-Allow-Methods":     "GET, POST, PUT, DELETE, OPTIONS",
+                    "Access-Control-Allow-Headers":     "Authorization, Content-Type, X-API-Key",
+                    "Access-Control-Allow-Credentials": "true",
+                    "Access-Control-Max-Age":           "86400",
                 },
             )
         response = await call_next(request)
-        response.headers["Access-Control-Allow-Origin"]  = "*"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Allow-Origin"]      = allow_origin
+        response.headers["Access-Control-Allow-Methods"]     = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"]     = "Authorization, Content-Type, X-API-Key"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
         return response
 
 
