@@ -23,8 +23,8 @@ concurrency:
 env:
   NODE_VERSION: "20"
   PYTHON_VERSION: "3.11"
-  SCORE_THRESHOLD: "40"
-  CRITICAL_THRESHOLD: "150"
+  SCORE_THRESHOLD: "60"
+  CRITICAL_THRESHOLD: "10"
 
 jobs:
   frontend-build:
@@ -135,17 +135,17 @@ jobs:
               score = calculate_score(findings)
 
               critical = sum(1 for f in findings if f.get("severity") == "CRITICAL" and f.get("confidence") != "LOW")
-              high = sum(1 for f in findings if f.get("severity") == "HIGH" and f.get("confidence") != "LOW")
-              medium = sum(1 for f in findings if f.get("severity") == "MEDIUM" and f.get("confidence") != "LOW")
-              low = sum(1 for f in findings if f.get("confidence") == "LOW")
+              high     = sum(1 for f in findings if f.get("severity") == "HIGH"     and f.get("confidence") != "LOW")
+              medium   = sum(1 for f in findings if f.get("severity") == "MEDIUM"   and f.get("confidence") != "LOW")
+              low      = sum(1 for f in findings if f.get("confidence") == "LOW")
 
               result = {
-                  "score": score,
+                  "score":    score,
                   "critical": critical,
-                  "high": high,
-                  "medium": medium,
-                  "low": low,
-                  "total": len(findings),
+                  "high":     high,
+                  "medium":   medium,
+                  "low":      low,
+                  "total":    len(findings),
                   "findings": findings[:25]
               }
 
@@ -158,16 +158,26 @@ jobs:
               json.dump(result, f, indent=2)
 
           print("")
-          print("======================================")
-          print(" QuantumGuard Security Scan Result")
-          print("======================================")
-          print(f"Score: {result['score']}/100")
-          print(f"Critical: {result['critical']}")
-          print(f"High: {result['high']}")
-          print(f"Medium: {result['medium']}")
-          print(f"Low confidence / ignored: {result['low']}")
-          print(f"Total findings: {result['total']}")
-          print("======================================")
+          print("=" * 50)
+          print("  QuantumGuard Security Scan Result")
+          print("=" * 50)
+          print(f"  Score    : {result['score']}/100")
+          print(f"  Critical : {result['critical']}")
+          print(f"  High     : {result['high']}")
+          print(f"  Medium   : {result['medium']}")
+          print(f"  Low / ignored : {result['low']}")
+          print(f"  Total    : {result['total']}")
+          print("=" * 50)
+
+          crit_findings = [
+              f for f in result["findings"]
+              if f.get("severity") == "CRITICAL" and f.get("confidence") != "LOW"
+          ]
+          if crit_findings:
+              print("\n  🔴 Critical findings (top 10):")
+              for f in crit_findings[:10]:
+                  print(f"     {f.get('vulnerability','?'):20s}  {f.get('file','?')}:{f.get('line','?')}")
+                  print(f"     Fix → {f.get('replacement','?')}")
 
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
               out.write(f"score={result['score']}\n")
@@ -176,6 +186,60 @@ jobs:
               out.write(f"medium={result['medium']}\n")
               out.write(f"low={result['low']}\n")
               out.write(f"total={result['total']}\n")
+
+          # Write GitHub step summary
+          summary = [
+              "## ⚛ QuantumGuard Security Scan",
+              "",
+              "| Metric | Value |",
+              "|--------|-------|",
+              f"| Quantum Readiness Score | **{result['score']}/100** |",
+              f"| 🔴 Critical | {result['critical']} |",
+              f"| 🟡 High | {result['high']} |",
+              f"| 🟠 Medium | {result['medium']} |",
+              f"| Total Findings | {result['total']} |",
+              "",
+          ]
+
+          if crit_findings:
+              summary += [
+                  "### 🔴 Critical Findings",
+                  "",
+                  "| Vulnerability | File | Line | NIST Fix |",
+                  "|--------------|------|------|----------|",
+              ]
+              seen = set()
+              for f in crit_findings[:15]:
+                  key = f"{f.get('vulnerability')}:{f.get('file')}"
+                  if key in seen:
+                      continue
+                  seen.add(key)
+                  summary.append(
+                      f"| {f.get('vulnerability','?')} | `{f.get('file','?')}` | {f.get('line','?')} | {f.get('replacement','?')} |"
+                  )
+              summary.append("")
+
+          score_val = result['score']
+          crit_val  = result['critical']
+
+          if crit_val == 0 and score_val >= 60:
+              summary.append("✅ **Security Gate PASSED** — No critical findings, score above threshold.")
+          elif crit_val > 10:
+              summary.append(f"❌ **Security Gate FAILED** — {crit_val} critical findings exceed threshold of 10.")
+          elif score_val < 60:
+              summary.append(f"❌ **Security Gate FAILED** — Score {score_val}/100 is below threshold of 60.")
+          else:
+              summary.append("⚠️ **Security Gate PASSED with warnings** — Review findings before next release.")
+
+          summary += [
+              "",
+              "---",
+              "🔗 [Full report at quantumguard.site](https://quantumguard.site) · [NIST PQC Standards](https://csrc.nist.gov/projects/post-quantum-cryptography)",
+          ]
+
+          step_summary_path = os.environ.get("GITHUB_STEP_SUMMARY", "/dev/null")
+          with open(step_summary_path, "w") as f:
+              f.write("\n".join(summary))
           PY
 
       - name: Upload security report
@@ -197,64 +261,102 @@ jobs:
           HIGH=${HIGH:-0}
           MEDIUM=${MEDIUM:-0}
 
-          echo "Score: $SCORE"
-          echo "Critical findings: $CRITICAL"
-          echo "High findings: $HIGH"
-          echo "Medium findings: $MEDIUM"
+          echo ""
+          echo "======================================="
+          echo "  QuantumGuard Security Gate"
+          echo "======================================="
+          echo "  Score threshold    : ${{ env.SCORE_THRESHOLD }}"
+          echo "  Critical threshold : ${{ env.CRITICAL_THRESHOLD }}"
+          echo "  Actual score       : $SCORE"
+          echo "  Critical findings  : $CRITICAL"
+          echo "  High findings      : $HIGH"
+          echo "  Medium findings    : $MEDIUM"
+          echo "======================================="
+
+          FAILED=0
 
           if [ "$CRITICAL" -gt "${{ env.CRITICAL_THRESHOLD }}" ]; then
-            echo "❌ Security Gate Failed: too many critical crypto findings"
-            echo "Allowed critical threshold: ${{ env.CRITICAL_THRESHOLD }}"
-            exit 1
+            echo ""
+            echo "❌ GATE FAILED: $CRITICAL critical findings exceed threshold of ${{ env.CRITICAL_THRESHOLD }}"
+            echo "   These algorithms are broken by quantum computers (Shor's algorithm)."
+            echo "   Replace them with NIST-approved post-quantum alternatives:"
+            echo "   • RSA / ECC / DH → CRYSTALS-Kyber (FIPS 203)"
+            echo "   • DSA / ECDSA    → CRYSTALS-Dilithium (FIPS 204)"
+            echo "   • MD5 / SHA-1    → SHA-3 / SPHINCS+ (FIPS 205)"
+            FAILED=1
           fi
 
           if [ "$SCORE" -lt "${{ env.SCORE_THRESHOLD }}" ]; then
-            echo "❌ Security Gate Failed: score below threshold"
-            echo "Required score: ${{ env.SCORE_THRESHOLD }}"
+            echo ""
+            echo "❌ GATE FAILED: Score $SCORE is below threshold of ${{ env.SCORE_THRESHOLD }}"
+            FAILED=1
+          fi
+
+          if [ "$FAILED" -eq "1" ]; then
+            echo ""
+            echo "  Fix guide: https://quantumguard.site"
             exit 1
           fi
 
-          echo "✅ Security Gate Passed"
+          echo ""
+          echo "✅ Security Gate PASSED — Score $SCORE/100, $CRITICAL critical findings."
 
       - name: Comment scan result on PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
-            const score = '${{ steps.scan.outputs.score }}' || '100';
-            const critical = '${{ steps.scan.outputs.critical }}' || '0';
-            const high = '${{ steps.scan.outputs.high }}' || '0';
-            const medium = '${{ steps.scan.outputs.medium }}' || '0';
-            const total = '${{ steps.scan.outputs.total }}' || '0';
+            const score    = parseInt('${{ steps.scan.outputs.score }}'    || '100');
+            const critical = parseInt('${{ steps.scan.outputs.critical }}' || '0');
+            const high     = parseInt('${{ steps.scan.outputs.high }}'     || '0');
+            const medium   = parseInt('${{ steps.scan.outputs.medium }}'   || '0');
+            const total    = parseInt('${{ steps.scan.outputs.total }}'    || '0');
 
-            const status =
-              Number(score) >= 80 ? '✅ Strong' :
-              Number(score) >= 60 ? '⚠️ Moderate Risk' :
-              Number(score) >= 40 ? '🚨 High Risk' :
-              '❌ Critical Risk';
+            const passed = critical <= 10 && score >= 60;
 
-            const body = `
-            ## 🛡️ QuantumGuard Security Scan
+            const scoreEmoji =
+              score >= 80 ? '🟢' :
+              score >= 60 ? '🟡' :
+              score >= 40 ? '🟠' : '🔴';
 
-            | Metric | Result |
-            |---|---|
-            | Quantum Readiness Score | **${score}/100** |
-            | Status | **${status}** |
-            | Critical Findings | **${critical}** |
-            | High Findings | **${high}** |
-            | Medium Findings | **${medium}** |
-            | Total Findings | **${total}** |
+            const statusLabel =
+              score >= 80 ? '✅ Strong'        :
+              score >= 60 ? '⚠️ Moderate Risk' :
+              score >= 40 ? '🚨 High Risk'     :
+                            '❌ Critical Risk';
 
-            **Security Gate:** Critical findings must be ≤ 10 and score must be ≥ 40.
+            const gateResult = passed
+              ? '✅ **PASSED** — Safe to merge.'
+              : critical > 10
+                ? `❌ **FAILED** — ${critical} critical findings exceed the threshold of 10. Fix before merging.`
+                : `❌ **FAILED** — Score ${score}/100 is below the threshold of 60.`;
 
-            Powered by **QuantumGuard**.
+            const fixGuide = passed ? '' : `
+            **NIST-approved fixes:**
+            - RSA / ECC / DH → \`CRYSTALS-Kyber\` (FIPS 203)
+            - DSA / ECDSA → \`CRYSTALS-Dilithium\` (FIPS 204)
+            - MD5 / SHA-1 → \`SHA-3\` or \`SPHINCS+\` (FIPS 205)
             `;
 
-            github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
+            const body = [
+              `## ⚛ QuantumGuard Security Gate — ${passed ? '✅ PASSED' : '❌ FAILED'}`,
+              '',
+              `| ${scoreEmoji} Quantum Score | Status | Critical | High | Medium | Total |`,
+              `|---|---|---|---|---|---|`,
+              `| **${score}/100** | ${statusLabel} | **${critical}** | ${high} | ${medium} | ${total} |`,
+              '',
+              gateResult,
+              fixGuide,
+              '**Thresholds:** Critical ≤ 10 · Score ≥ 60',
+              '',
+              '> 🔗 [Full report at quantumguard.site](https://quantumguard.site) · [NIST PQC Standards](https://csrc.nist.gov/projects/post-quantum-cryptography)',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
-              body
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              body,
             });
 
   deployment-ready:
@@ -267,6 +369,6 @@ jobs:
       - name: Deployment status
         run: |
           echo "✅ Frontend build passed"
-          echo "✅ Backend check passed"
-          echo "✅ QuantumGuard scan passed"
-          echo "🚀 Ready for deployment"
+          echo "✅ Backend syntax check passed"
+          echo "✅ QuantumGuard security gate passed"
+          echo "🚀 Ready for deployment to Render + Vercel"
