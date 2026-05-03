@@ -1684,6 +1684,25 @@ function HpNavDropdown({ item, isOpen, onToggle, onItemClick }) {
 //  13. Footer
 // ══════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════
+// QuantumGuard Homepage v3.0 — High-Converting Landing Page
+// Drop-in replacement for the Homepage function in App.js
+// Sections:
+//   1. Nav
+//   2. Hero — headline, subheadline, CTA, trust badges
+//   3. What Is QuantumGuard — plain English
+//   4. Why This Matters — quantum threat, harvest now decrypt later
+//   5. The Problem — user feels the pain
+//   6. How It Works — 4 steps
+//   7. Features — 6 feature cards
+//   8. Example Output — real scan preview (trust builder)
+//   9. Differentiation — vs Snyk
+//  10. Trust Section — company, disclaimer, tested on real repos
+//  11. Pricing
+//  12. Final CTA
+//  13. Footer
+// ══════════════════════════════════════════════════════════════
+
 function Homepage({ onGetStarted, onOpenAuth }) {
   const [demoOpen, setDemoOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -1763,7 +1782,10 @@ function Homepage({ onGetStarted, onOpenAuth }) {
       <nav style={{ position:"sticky",top:0,zIndex:500,background:"rgba(248,250,252,.94)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(0,0,0,.07)",padding:"0 32px",height:64,display:"flex",alignItems:"center",gap:8 }}>
         <div style={{ display:"flex",alignItems:"center",gap:9,marginRight:24,flexShrink:0,cursor:"pointer" }} onClick={() => onGetStarted("home")}>
           <div style={{ width:34,height:34,background:"linear-gradient(135deg,#22c55e,#15803d)",borderRadius:9,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,boxShadow:"0 4px 12px rgba(34,197,94,.3)" }}>⚛</div>
-          <span style={{ fontSize:17,fontWeight:800,letterSpacing:"-.03em" }}><span style={{ color:"#22c55e" }}>Quantum</span>Guard</span>
+          <div>
+            <div style={{ fontSize:17,fontWeight:800,letterSpacing:"-.03em",lineHeight:1.1 }}><span style={{ color:"#22c55e" }}>Quantum</span>Guard</div>
+            <div style={{ fontSize:9,color:"#9ca3af",fontWeight:500,letterSpacing:".01em",lineHeight:1 }}>by Mangsri QuantumGuard LLC</div>
+          </div>
           <span style={{ background:"#dcfce7",color:"#16a34a",fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:20,border:"1px solid #bbf7d0" }}>BETA</span>
         </div>
 
@@ -1824,7 +1846,7 @@ function Homepage({ onGetStarted, onOpenAuth }) {
           {/* Live badge */}
           <div style={{ display:"inline-flex",alignItems:"center",gap:8,background:"rgba(34,197,94,.1)",border:"1px solid rgba(34,197,94,.25)",borderRadius:100,padding:"6px 18px",marginBottom:28 }}>
             <span style={{ width:7,height:7,borderRadius:"50%",background:"#22c55e",animation:"qg-pulse 2s infinite",display:"inline-block" }} />
-            <span style={{ fontSize:12,fontWeight:700,color:"#15803d",letterSpacing:".05em" }}>● LIVE SCAN READY · INSTANT RESULTS · NO SIGNUP REQUIRED</span>
+            <span style={{ fontSize:12,fontWeight:700,color:"#15803d",letterSpacing:".05em" }}>QUANTUMGUARD BY MANGSRI QUANTUMGUARD LLC · PQC SCANNER FOR CODEBASES & TLS · NO SIGNUP REQUIRED</span>
           </div>
 
           {/* Headline */}
@@ -1834,7 +1856,7 @@ function Homepage({ onGetStarted, onOpenAuth }) {
 
           {/* Subheadline */}
           <p style={{ fontSize:"clamp(16px,1.7vw,20px)",color:"#475569",maxWidth:640,margin:"0 auto 16px",lineHeight:1.7,fontWeight:400 }}>
-            QuantumGuard scans your code and TLS configurations for RSA, ECC, SHA-1, weak crypto, and legacy encryption. Get a <strong style={{ color:"#0f172a" }}>Quantum Readiness Score</strong> with NIST-aligned migration guidance instantly.
+            <strong style={{ color:"#0f172a" }}>QuantumGuard by Mangsri QuantumGuard LLC</strong> is a post-quantum cryptography scanner for codebases and TLS configurations. It detects RSA, ECC, SHA-1, weak crypto, and legacy encryption — and delivers a <strong style={{ color:"#0f172a" }}>Quantum Readiness Score</strong> with NIST-aligned migration guidance, instantly.
           </p>
 
           {/* NIST badge */}
