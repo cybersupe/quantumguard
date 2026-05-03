@@ -1,18 +1,27 @@
 # ============================================================
-# QuantumGuard — FastAPI Backend v2.6.2
+# QuantumGuard — FastAPI Backend v2.7.0
 # Copyright (c) 2026 Pavansudheer Payyavula / MANGSRI
 # Licensed under AGPL v3 — github.com/cybersupe/quantumguard
 # Standards: NIST FIPS 203, FIPS 204, FIPS 205
 # ============================================================
-# v2.6.1 patches (already live):
+# v2.6.1 patches:
 #   FIX-1  psycopg2-binary restored
 #   FIX-2  ZIP path traversal fixed at all call sites
 #   FIX-3  SSRF guard on _download_github_zip
 #
-# v2.6.2 new patches (this file):
+# v2.6.2 patches:
 #   FIX-A  Friendly human-readable error messages throughout
 #   FIX-B  Partial results on timeout instead of blank error
 #   FIX-C  Rate limits by user plan (free=3/day, auth=20/day, pro=100/day)
+#
+# v2.7.0 new — Org / Team Multi-Tenancy:
+#   ORG-1  organizations table + org_members table (auto-created on startup)
+#   ORG-2  POST /org/create      — create an org (JWT required)
+#   ORG-3  POST /org/invite      — invite a member by email
+#   ORG-4  GET  /org/me          — get your org + member list
+#   ORG-5  DELETE /org/member/{email} — remove a member (owner only)
+#   ORG-6  GET  /org/scans       — org-wide scan history
+#   ORG-7  scan_history gets org_id column — scans tagged automatically
 # ============================================================
 
 import os
@@ -113,7 +122,6 @@ ENVIRONMENT                 = os.getenv("ENVIRONMENT", "production")
 
 # ============================================================
 # FIX-A: Friendly error messages
-# Maps raw internal errors to plain English for users
 # ============================================================
 
 FRIENDLY_ERRORS = {
@@ -139,10 +147,17 @@ FRIENDLY_ERRORS = {
     "Cannot resolve":                  "Could not find that domain. Check the spelling and try again.",
     "Connection timed out":            "The connection timed out. The server may be slow or unreachable.",
     "Too Many Requests":               "Too many requests. Please wait a moment and try again.",
+    # ORG errors
+    "already in an org":               "You already belong to an organisation. Leave it first before creating or joining another.",
+    "org not found":                   "Organisation not found.",
+    "not org owner":                   "Only the organisation owner can perform this action.",
+    "member not found":                "That member was not found in your organisation.",
+    "already a member":                "That user is already a member of your organisation.",
+    "user not found":                  "No account found with that email address.",
+    "cannot remove owner":             "The organisation owner cannot be removed. Transfer ownership first.",
 }
 
 def friendly_error(detail: str) -> str:
-    """Convert a raw error string to a human-readable message."""
     if not detail:
         return "Something went wrong. Please try again."
     for key, msg in FRIENDLY_ERRORS.items():
@@ -154,11 +169,10 @@ def friendly_error(detail: str) -> str:
 
 
 # ============================================================
-# FIX-C: Rate limit helper by user plan
+# FIX-C: Rate limit helper
 # ============================================================
 
 def get_user_rate_limit(current_user: Optional[dict]) -> str:
-    """Return daily scan limit string based on user plan."""
     if not current_user:
         return "3/day"
     return {"free": "20/day", "pro": "100/day", "enterprise": "500/day"}.get(
@@ -167,28 +181,22 @@ def get_user_rate_limit(current_user: Optional[dict]) -> str:
 
 
 # ============================================================
-# FIX-2 (v2.6.1): Safe ZIP extraction — prevents path traversal
+# FIX-2: Safe ZIP extraction
 # ============================================================
 
 def _safe_extractall(zf: zipfile.ZipFile, target_dir: str) -> None:
     target_dir = os.path.realpath(target_dir)
     for member in zf.namelist():
         if os.path.isabs(member) or "\x00" in member:
-            raise HTTPException(
-                status_code=400,
-                detail=friendly_error("ZIP contains unsafe path")
-            )
+            raise HTTPException(status_code=400, detail=friendly_error("ZIP contains unsafe path"))
         member_path = os.path.realpath(os.path.join(target_dir, member))
         if not member_path.startswith(target_dir + os.sep) and member_path != target_dir:
-            raise HTTPException(
-                status_code=400,
-                detail=friendly_error("ZIP contains path traversal")
-            )
+            raise HTTPException(status_code=400, detail=friendly_error("ZIP contains path traversal"))
     zf.extractall(target_dir)
 
 
 # ============================================================
-# FIX-3 (v2.6.1): SSRF guard — blocks private/internal IPs
+# FIX-3: SSRF guard
 # ============================================================
 
 _PRIVATE_NETWORKS = [
@@ -208,10 +216,7 @@ def _block_private_ip(hostname: str) -> None:
         ip = ipaddress.ip_address(resolved)
         for network in _PRIVATE_NETWORKS:
             if ip in network:
-                raise HTTPException(
-                    status_code=400,
-                    detail=friendly_error("URL resolves to a private")
-                )
+                raise HTTPException(status_code=400, detail=friendly_error("URL resolves to a private"))
     except HTTPException:
         raise
     except Exception:
@@ -237,6 +242,8 @@ def init_db():
         conn = db_pool.getconn()
         try:
             cur = conn.cursor()
+
+            # ── existing tables ──────────────────────────────
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id              TEXT PRIMARY KEY,
@@ -248,6 +255,7 @@ def init_db():
                     created_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
+
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS scan_history (
                     id         TEXT PRIMARY KEY,
@@ -257,18 +265,60 @@ def init_db():
                     score      INTEGER,
                     findings   INTEGER,
                     scan_type  TEXT DEFAULT 'github',
+                    org_id     TEXT,
                     created_at TIMESTAMP DEFAULT NOW()
                 );
             """)
+
+            # ── ORG-1: new org tables ────────────────────────
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS organizations (
+                    id         TEXT PRIMARY KEY,
+                    name       TEXT NOT NULL,
+                    slug       TEXT UNIQUE NOT NULL,
+                    owner_id   TEXT REFERENCES users(id) ON DELETE CASCADE,
+                    plan       TEXT DEFAULT 'free',
+                    created_at TIMESTAMP DEFAULT NOW()
+                );
+            """)
+
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS org_members (
+                    id         TEXT PRIMARY KEY,
+                    org_id     TEXT REFERENCES organizations(id) ON DELETE CASCADE,
+                    user_id    TEXT REFERENCES users(id) ON DELETE CASCADE,
+                    user_email TEXT NOT NULL,
+                    role       TEXT DEFAULT 'member',
+                    joined_at  TIMESTAMP DEFAULT NOW(),
+                    UNIQUE(org_id, user_id)
+                );
+            """)
+
+            # Add org_id column to scan_history if it doesn't exist yet
+            # (safe to run on existing DB — ALTER TABLE IF NOT EXISTS column)
+            cur.execute("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='scan_history' AND column_name='org_id'
+                    ) THEN
+                        ALTER TABLE scan_history ADD COLUMN org_id TEXT;
+                    END IF;
+                END $$;
+            """)
+
             conn.commit()
             cur.close()
-            logger.info("PostgreSQL connected — tables ready")
+            logger.info("PostgreSQL connected — v2.7.0 tables ready (orgs, members)")
         finally:
             db_pool.putconn(conn)
     except Exception as e:
         logger.error(f"Database init failed: {type(e).__name__} — falling back to in-memory")
         db_pool = None
 
+
+# ── User helpers ─────────────────────────────────────────────
 
 def db_get_user(email: str) -> Optional[dict]:
     if db_pool is None:
@@ -277,6 +327,23 @@ def db_get_user(email: str) -> Optional[dict]:
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+        row = cur.fetchone()
+        cur.close()
+        return dict(row) if row else None
+    finally:
+        db_pool.putconn(conn)
+
+
+def db_get_user_by_id(user_id: str) -> Optional[dict]:
+    if db_pool is None:
+        for u in USERS_MEMORY.values():
+            if u.get("id") == user_id:
+                return u
+        return None
+    conn = db_pool.getconn()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
         row = cur.fetchone()
         cur.close()
         return dict(row) if row else None
@@ -319,16 +386,17 @@ def db_increment_scan_count(email: str):
 
 
 def db_save_scan(user_id: str, user_email: str, target: str,
-                 score: int, findings: int, scan_type: str = "github"):
+                 score: int, findings: int, scan_type: str = "github",
+                 org_id: Optional[str] = None):
     if db_pool is None:
         return
     conn = db_pool.getconn()
     try:
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO scan_history (id, user_id, user_email, target, score, findings, scan_type)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (str(uuid.uuid4()), user_id, user_email, target, score, findings, scan_type))
+            INSERT INTO scan_history (id, user_id, user_email, target, score, findings, scan_type, org_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (str(uuid.uuid4()), user_id, user_email, target, score, findings, scan_type, org_id))
         conn.commit()
         cur.close()
     finally:
@@ -352,9 +420,98 @@ def db_get_scan_history(user_id: str, limit: int = 50) -> list:
         db_pool.putconn(conn)
 
 
+# ── ORG-1: Org DB helpers ────────────────────────────────────
+
+def db_get_org_by_owner(user_id: str) -> Optional[dict]:
+    if db_pool is None:
+        return None
+    conn = db_pool.getconn()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT * FROM organizations WHERE owner_id = %s", (user_id,))
+        row = cur.fetchone()
+        cur.close()
+        return dict(row) if row else None
+    finally:
+        db_pool.putconn(conn)
+
+
+def db_get_org_by_member(user_id: str) -> Optional[dict]:
+    """Return the org a user belongs to (either as owner or member)."""
+    if db_pool is None:
+        return None
+    conn = db_pool.getconn()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT o.* FROM organizations o
+            JOIN org_members m ON o.id = m.org_id
+            WHERE m.user_id = %s
+            LIMIT 1
+        """, (user_id,))
+        row = cur.fetchone()
+        cur.close()
+        return dict(row) if row else None
+    finally:
+        db_pool.putconn(conn)
+
+
+def db_get_org_members(org_id: str) -> list:
+    if db_pool is None:
+        return []
+    conn = db_pool.getconn()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT m.*, u.name, u.plan, u.scan_count
+            FROM org_members m
+            JOIN users u ON u.id = m.user_id
+            WHERE m.org_id = %s
+            ORDER BY m.joined_at ASC
+        """, (org_id,))
+        rows = cur.fetchall()
+        cur.close()
+        return [dict(r) for r in rows]
+    finally:
+        db_pool.putconn(conn)
+
+
+def db_get_org_scans(org_id: str, limit: int = 100) -> list:
+    if db_pool is None:
+        return []
+    conn = db_pool.getconn()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT s.*, u.name as user_name
+            FROM scan_history s
+            LEFT JOIN users u ON u.id = s.user_id
+            WHERE s.org_id = %s
+            ORDER BY s.created_at DESC LIMIT %s
+        """, (org_id, limit))
+        rows = cur.fetchall()
+        cur.close()
+        return [dict(r) for r in rows]
+    finally:
+        db_pool.putconn(conn)
+
+
+def _make_slug(name: str) -> str:
+    """Turn org name into a URL-safe slug."""
+    slug = re.sub(r"[^a-z0-9]+", "-", name.lower().strip()).strip("-")
+    return f"{slug}-{uuid.uuid4().hex[:6]}"
+
+
+def _get_user_org(user: dict) -> Optional[dict]:
+    """Return the org the user belongs to, whether as owner or member."""
+    org = db_get_org_by_owner(user["id"])
+    if org:
+        return org
+    return db_get_org_by_member(user["id"])
+
+
 # ============================================================
 # PASSWORD HASHING
-# sha256_crypt — avoids bcrypt 72-byte truncation on Python 3.14
 # ============================================================
 
 pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
@@ -438,7 +595,7 @@ limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
     title="QuantumGuard API",
     description="Post-quantum cryptography vulnerability scanner — Mangsri QuantumGuard LLC",
-    version="2.6.2",
+    version="2.7.0",
     docs_url="/docs" if ENVIRONMENT == "development" else None,
     redoc_url=None,
 )
@@ -450,7 +607,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 @app.on_event("startup")
 async def startup():
     init_db()
-    logger.info("QuantumGuard API v2.6.2 started")
+    logger.info("QuantumGuard API v2.7.0 started")
 
 
 @app.on_event("shutdown")
@@ -521,6 +678,15 @@ class UnifiedRiskRequest(BaseModel):
     domain:       Optional[str] = None
     github_token: Optional[str] = None
 
+# ── ORG models ───────────────────────────────────────────────
+
+class OrgCreateRequest(BaseModel):
+    name: str
+
+class OrgInviteRequest(BaseModel):
+    email: str
+    role:  Optional[str] = "member"  # "member" | "admin"
+
 
 # ============================================================
 # HELPERS
@@ -549,7 +715,7 @@ def _download_github_zip(github_url: str, github_token: Optional[str] = None):
     _block_private_ip("github.com")
 
     owner, repo = _parse_github_url(github_url)
-    headers = {"Accept": "application/vnd.github+json", "User-Agent": "QuantumGuard/2.6.2"}
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "QuantumGuard/2.7.0"}
     if github_token:
         headers["Authorization"] = f"token {github_token}"
 
@@ -642,9 +808,9 @@ def _analyze_tls_score(tls_version, cipher_name, cipher_bits):
         score += 15; issues.append("AES-256 recommended")
     else:
         issues.append("Weak or unknown cipher")
-    has_pqc      = any(p in cu for p in PQC_INDICATORS)
-    has_fs       = tls_version == "TLSv1.3" or has_pqc or any(kx in cu for kx in FORWARD_SECRECY_KX)
-    rsa_kx       = "RSA" in cu and not has_fs
+    has_pqc = any(p in cu for p in PQC_INDICATORS)
+    has_fs  = tls_version == "TLSv1.3" or has_pqc or any(kx in cu for kx in FORWARD_SECRECY_KX)
+    rsa_kx  = "RSA" in cu and not has_fs
     quantum_safe = has_pqc
     if has_pqc:
         score += 25; strengths.append("Hybrid post-quantum key exchange detected")
@@ -672,8 +838,10 @@ def _calculate_tls_grade(score, quantum_safe, tls_version, issues):
     else:                 g, c, d = "B", "#f59e0b", "Good — TLS 1.3 upgrade recommended"
     return {"grade": g, "grade_color": c, "grade_description": d,
             "pqc_note": None if quantum_safe else "Not post-quantum safe yet.",
-            "grade_breakdown": {"tls_version_score": 30 if tls_version == "TLSv1.3" else 20 if tls_version == "TLSv1.2" else 0,
-                                "quantum_ready": quantum_safe}}
+            "grade_breakdown": {
+                "tls_version_score": 30 if tls_version == "TLSv1.3" else 20 if tls_version == "TLSv1.2" else 0,
+                "quantum_ready": quantum_safe,
+            }}
 
 
 def _analyze_certificate(cert):
@@ -790,7 +958,14 @@ async def login(request: Request, body: LoginRequest):
 
 @app.get("/auth/me", tags=["Auth"])
 async def get_me(current_user: dict = Depends(get_current_user)):
-    return {k: current_user[k] for k in ("id", "email", "name", "plan", "scan_count", "created_at") if k in current_user}
+    user_data = {k: current_user[k] for k in
+                 ("id", "email", "name", "plan", "scan_count", "created_at")
+                 if k in current_user}
+    # Include org info if user belongs to one
+    org = _get_user_org(current_user)
+    if org:
+        user_data["org"] = {"id": org["id"], "name": org["name"], "slug": org["slug"]}
+    return user_data
 
 
 @app.post("/auth/refresh", tags=["Auth"])
@@ -805,12 +980,227 @@ async def get_history(current_user: dict = Depends(get_current_user)):
 
 
 # ============================================================
-# ROUTES
+# ORG ENDPOINTS — v2.7.0
+# ============================================================
+
+@app.post("/org/create", tags=["Org"])
+@limiter.limit("5/hour")
+async def org_create(
+    request:      Request,
+    body:         OrgCreateRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """ORG-2: Create a new organisation. User becomes the owner."""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database required for org features.")
+
+    # Check user isn't already in an org
+    existing = _get_user_org(current_user)
+    if existing:
+        raise HTTPException(status_code=409, detail=friendly_error("already in an org"))
+
+    org_id   = str(uuid.uuid4())
+    slug     = _make_slug(body.name)
+    member_id = str(uuid.uuid4())
+
+    conn = db_pool.getconn()
+    try:
+        cur = conn.cursor()
+        # Create org
+        cur.execute("""
+            INSERT INTO organizations (id, name, slug, owner_id, plan, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (org_id, body.name.strip(), slug, current_user["id"], "free",
+              datetime.datetime.utcnow()))
+        # Add owner as member with role=owner
+        cur.execute("""
+            INSERT INTO org_members (id, org_id, user_id, user_email, role, joined_at)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (member_id, org_id, current_user["id"], current_user["email"], "owner",
+              datetime.datetime.utcnow()))
+        conn.commit()
+        cur.close()
+    finally:
+        db_pool.putconn(conn)
+
+    logger.info(f"Org created: {body.name} by {current_user['email']}")
+    return {
+        "org": {"id": org_id, "name": body.name.strip(), "slug": slug,
+                "owner_id": current_user["id"], "plan": "free"},
+        "message": f"Organisation '{body.name}' created successfully.",
+    }
+
+
+@app.post("/org/invite", tags=["Org"])
+@limiter.limit("20/hour")
+async def org_invite(
+    request:      Request,
+    body:         OrgInviteRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """ORG-3: Invite a user to your org by email. Owner or admin only."""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database required for org features.")
+
+    org = _get_user_org(current_user)
+    if not org:
+        raise HTTPException(status_code=404, detail="You don't belong to an organisation yet. Create one first.")
+
+    # Only owner or admin can invite
+    conn = db_pool.getconn()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT role FROM org_members WHERE org_id = %s AND user_id = %s
+        """, (org["id"], current_user["id"]))
+        my_membership = cur.fetchone()
+        cur.close()
+    finally:
+        db_pool.putconn(conn)
+
+    if not my_membership or my_membership["role"] not in ("owner", "admin"):
+        raise HTTPException(status_code=403, detail=friendly_error("not org owner"))
+
+    # Find invitee
+    invite_email = body.email.lower().strip()
+    invitee = db_get_user(invite_email)
+    if not invitee:
+        raise HTTPException(status_code=404, detail=friendly_error("user not found"))
+
+    # Check invitee not already in an org
+    existing = _get_user_org(invitee)
+    if existing:
+        if existing["id"] == org["id"]:
+            raise HTTPException(status_code=409, detail=friendly_error("already a member"))
+        raise HTTPException(status_code=409, detail="That user already belongs to another organisation.")
+
+    # Add member
+    member_id = str(uuid.uuid4())
+    role = body.role if body.role in ("member", "admin") else "member"
+    conn = db_pool.getconn()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO org_members (id, org_id, user_id, user_email, role, joined_at)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (member_id, org["id"], invitee["id"], invite_email, role,
+              datetime.datetime.utcnow()))
+        conn.commit()
+        cur.close()
+    finally:
+        db_pool.putconn(conn)
+
+    logger.info(f"Invited {invite_email} to org {org['name']} as {role}")
+    return {
+        "message": f"{invite_email} added to '{org['name']}' as {role}.",
+        "member": {"email": invite_email, "name": invitee.get("name"), "role": role},
+    }
+
+
+@app.get("/org/me", tags=["Org"])
+async def org_me(current_user: dict = Depends(get_current_user)):
+    """ORG-4: Get your org info + member list."""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database required for org features.")
+
+    org = _get_user_org(current_user)
+    if not org:
+        raise HTTPException(status_code=404, detail="You don't belong to any organisation.")
+
+    members = db_get_org_members(org["id"])
+    owner   = db_get_user_by_id(org["owner_id"])
+
+    return {
+        "org": {
+            "id":         org["id"],
+            "name":       org["name"],
+            "slug":       org["slug"],
+            "plan":       org["plan"],
+            "created_at": str(org["created_at"]),
+            "owner": {
+                "id":    owner["id"] if owner else org["owner_id"],
+                "email": owner["email"] if owner else "",
+                "name":  owner.get("name", "") if owner else "",
+            },
+        },
+        "members":      members,
+        "member_count": len(members),
+    }
+
+
+@app.delete("/org/member/{email}", tags=["Org"])
+async def org_remove_member(
+    email:        str,
+    current_user: dict = Depends(get_current_user),
+):
+    """ORG-5: Remove a member from your org. Owner only."""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database required for org features.")
+
+    org = _get_user_org(current_user)
+    if not org:
+        raise HTTPException(status_code=404, detail="You don't belong to any organisation.")
+
+    if org["owner_id"] != current_user["id"]:
+        raise HTTPException(status_code=403, detail=friendly_error("not org owner"))
+
+    target_email = email.lower().strip()
+    target_user  = db_get_user(target_email)
+    if not target_user:
+        raise HTTPException(status_code=404, detail=friendly_error("user not found"))
+
+    # Cannot remove owner
+    if target_user["id"] == org["owner_id"]:
+        raise HTTPException(status_code=400, detail=friendly_error("cannot remove owner"))
+
+    conn = db_pool.getconn()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            DELETE FROM org_members WHERE org_id = %s AND user_id = %s
+        """, (org["id"], target_user["id"]))
+        deleted = cur.rowcount
+        conn.commit()
+        cur.close()
+    finally:
+        db_pool.putconn(conn)
+
+    if deleted == 0:
+        raise HTTPException(status_code=404, detail=friendly_error("member not found"))
+
+    logger.info(f"Removed {target_email} from org {org['name']}")
+    return {"message": f"{target_email} removed from '{org['name']}'."}
+
+
+@app.get("/org/scans", tags=["Org"])
+async def org_scans(
+    current_user: dict = Depends(get_current_user),
+    limit: int = 100,
+):
+    """ORG-6: Get org-wide scan history. Any member can view."""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database required for org features.")
+
+    org = _get_user_org(current_user)
+    if not org:
+        raise HTTPException(status_code=404, detail="You don't belong to any organisation.")
+
+    scans = db_get_org_scans(org["id"], limit=min(limit, 200))
+    return {
+        "org_id":   org["id"],
+        "org_name": org["name"],
+        "scans":    scans,
+        "total":    len(scans),
+    }
+
+
+# ============================================================
+# CORE SCAN ROUTES — unchanged from v2.6.2, org_id wired in
 # ============================================================
 
 @app.get("/")
 def root():
-    return {"message": "QuantumGuard API is running!", "version": "2.6.2",
+    return {"message": "QuantumGuard API is running!", "version": "2.7.0",
             "company": "Mangsri QuantumGuard LLC", "website": "https://quantumguard.site",
             "standards": ["NIST FIPS 203", "NIST FIPS 204", "NIST FIPS 205"],
             "db": "postgresql" if db_pool else "memory"}
@@ -818,7 +1208,7 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "version": "2.6.2", "tool": "QuantumGuard",
+    return {"status": "healthy", "version": "2.7.0", "tool": "QuantumGuard",
             "db": "postgresql" if db_pool else "memory (no DATABASE_URL set)"}
 
 
@@ -854,12 +1244,11 @@ async def public_scan_zip(request: Request, file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=friendly_error("ZIP too large"))
     temp_dir = f"/tmp/qg-{uuid.uuid4().hex[:8]}"
     start    = time.time()
-    partial  = False  # FIX-B
+    partial  = False
     try:
         os.makedirs(temp_dir, exist_ok=True)
         with zipfile.ZipFile(io.BytesIO(contents)) as z:
             _safe_extractall(z, temp_dir)
-        # FIX-B: catch timeout and return partial results
         try:
             findings = scan_directory(temp_dir)
         except Exception as scan_err:
@@ -881,7 +1270,7 @@ async def public_scan_zip(request: Request, file: UploadFile = File(...)):
             "findings":                findings,
         }
         if partial:
-            result["warning"] = "Scan timed out on a large ZIP. Results shown are partial. Try splitting your project into smaller ZIPs."
+            result["warning"] = "Scan timed out on a large ZIP. Results shown are partial."
         return result
     except zipfile.BadZipFile:
         raise HTTPException(status_code=400, detail=friendly_error("Invalid ZIP"))
@@ -904,28 +1293,33 @@ async def scan_github(
 ):
     temp_dir = None
     start    = time.time()
-    partial  = False  # FIX-B
+    partial  = False
     try:
         zip_content, owner, repo = _download_github_zip(body.github_url, body.github_token)
         temp_dir = f"/tmp/qg-{uuid.uuid4().hex[:8]}"
         os.makedirs(temp_dir, exist_ok=True)
         with zipfile.ZipFile(io.BytesIO(zip_content)) as z:
             _safe_extractall(z, temp_dir)
-        # FIX-B: catch timeout and return partial results
         try:
             findings = scan_directory(temp_dir)
         except Exception as scan_err:
             if "timeout" in str(scan_err).lower():
                 findings = []; partial = True
-                logger.warning(f"Scan timed out for {body.github_url} — returning partial results")
+                logger.warning(f"Scan timed out for {body.github_url}")
             else:
                 raise
         score     = calculate_score(findings)
         sev, conf = _summarize_findings(findings)
+
+        # ORG-7: tag scan with org_id if user belongs to an org
+        org_id = None
         if current_user:
+            org = _get_user_org(current_user)
+            org_id = org["id"] if org else None
             db_increment_scan_count(current_user["email"])
             db_save_scan(current_user["id"], current_user["email"],
-                         body.github_url, score, len(findings), "github")
+                         body.github_url, score, len(findings), "github", org_id=org_id)
+
         result = {
             "github_url": body.github_url, "repo": f"{owner}/{repo}",
             "quantum_readiness_score": score,
@@ -936,13 +1330,13 @@ async def scan_github(
             "top_findings":            _build_top_findings(findings),
             "priority_actions":        _build_priority_actions(findings, sev, score),
             "findings":                findings,
-            "meta": {"tool": "QuantumGuard v2.6.2",
+            "meta": {"tool": "QuantumGuard v2.7.0",
                      "standards": ["NIST FIPS 203", "NIST FIPS 204", "NIST FIPS 205"],
                      "company": "Mangsri QuantumGuard LLC",
                      "website": "https://quantumguard.site"},
         }
         if partial:
-            result["warning"] = "Scan timed out on a large repository. Results shown are partial. Try uploading a ZIP of just the source files for a complete scan."
+            result["warning"] = "Scan timed out. Results are partial. Try uploading a ZIP of just the source files."
         return result
     except HTTPException as e:
         raise HTTPException(status_code=e.status_code, detail=friendly_error(e.detail))
@@ -1008,14 +1402,13 @@ async def unified_risk(
         raise HTTPException(status_code=500, detail=friendly_error("unified_risk_engine.py not found"))
     temp_dir = None
     start    = time.time()
-    partial  = False  # FIX-B
+    partial  = False
     try:
         zip_content, owner, repo = _download_github_zip(body.github_url, body.github_token)
         temp_dir = f"/tmp/qg-unified-{uuid.uuid4().hex[:8]}"
         os.makedirs(temp_dir, exist_ok=True)
         with zipfile.ZipFile(io.BytesIO(zip_content)) as z:
             _safe_extractall(z, temp_dir)
-        # FIX-B: catch timeout and return partial results
         try:
             findings = scan_directory(temp_dir)
         except Exception as scan_err:
@@ -1031,14 +1424,20 @@ async def unified_risk(
             try:
                 tls_result = _analyze_tls_domain(body.domain)
             except Exception as e:
-                tls_error = friendly_error(str(e))  # FIX-A on TLS errors too
+                tls_error = friendly_error(str(e))
         unified_result = calculate_unified_quantum_risk(
             findings=findings, agility_result=agility_result, tls_result=tls_result,
         )
+
+        # ORG-7: tag with org_id
+        org_id = None
         if current_user:
+            org = _get_user_org(current_user)
+            org_id = org["id"] if org else None
             db_increment_scan_count(current_user["email"])
             db_save_scan(current_user["id"], current_user["email"],
-                         body.github_url, code_score, len(findings), "unified")
+                         body.github_url, code_score, len(findings), "unified", org_id=org_id)
+
         result = {
             "repo": f"{owner}/{repo}", "github_url": body.github_url, "domain": body.domain,
             "unified_risk": unified_result,
@@ -1065,10 +1464,10 @@ async def unified_risk(
                 },
             },
             "top_findings": _build_top_findings(findings),
-            "meta": {"tool": "QuantumGuard Unified Risk Engine v2.6.2", "company": "Mangsri QuantumGuard LLC"},
+            "meta": {"tool": "QuantumGuard Unified Risk Engine v2.7.0", "company": "Mangsri QuantumGuard LLC"},
         }
         if partial:
-            result["warning"] = "Scan timed out on a large repository. Results are partial."
+            result["warning"] = "Scan timed out. Results are partial."
         return result
     except HTTPException as e:
         raise HTTPException(status_code=e.status_code, detail=friendly_error(e.detail))
