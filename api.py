@@ -1,27 +1,15 @@
 # ============================================================
-# QuantumGuard — FastAPI Backend v2.7.0
+# QuantumGuard — FastAPI Backend v2.8.0
 # Copyright (c) 2026 Pavansudheer Payyavula / MANGSRI
 # Licensed under AGPL v3 — github.com/cybersupe/quantumguard
 # Standards: NIST FIPS 203, FIPS 204, FIPS 205
 # ============================================================
-# v2.6.1 patches:
-#   FIX-1  psycopg2-binary restored
-#   FIX-2  ZIP path traversal fixed at all call sites
-#   FIX-3  SSRF guard on _download_github_zip
-#
-# v2.6.2 patches:
-#   FIX-A  Friendly human-readable error messages throughout
-#   FIX-B  Partial results on timeout instead of blank error
-#   FIX-C  Rate limits by user plan (free=3/day, auth=20/day, pro=100/day)
-#
-# v2.7.0 new — Org / Team Multi-Tenancy:
-#   ORG-1  organizations table + org_members table (auto-created on startup)
-#   ORG-2  POST /org/create      — create an org (JWT required)
-#   ORG-3  POST /org/invite      — invite a member by email
-#   ORG-4  GET  /org/me          — get your org + member list
-#   ORG-5  DELETE /org/member/{email} — remove a member (owner only)
-#   ORG-6  GET  /org/scans       — org-wide scan history
-#   ORG-7  scan_history gets org_id column — scans tagged automatically
+# v2.6.1  ZIP path traversal, SSRF guard, psycopg2 fix
+# v2.6.2  Friendly errors, partial results on timeout, plan rate limits
+# v2.7.0  Org/team multi-tenancy (organizations + org_members tables)
+# v2.8.0  Dependency scanner — POST /scan-dependencies
+#         Parses requirements.txt, package.json, go.mod, pom.xml,
+#         Cargo.toml, Gemfile and flags quantum-vulnerable libraries
 # ============================================================
 
 import os
@@ -64,6 +52,12 @@ from passlib.context import CryptContext
 from scanner.scan import (
     scan_directory, calculate_score, check_crypto_agility,
     generate_score_explanation, generate_scan_summary,
+)
+
+from scanner.dependency_scanner import (
+    scan_dependencies,
+    generate_dependency_score_explanation,
+    generate_dependency_summary,
 )
 
 try:
@@ -121,7 +115,7 @@ ENVIRONMENT                 = os.getenv("ENVIRONMENT", "production")
 
 
 # ============================================================
-# FIX-A: Friendly error messages
+# FRIENDLY ERROR MESSAGES
 # ============================================================
 
 FRIENDLY_ERRORS = {
@@ -147,7 +141,6 @@ FRIENDLY_ERRORS = {
     "Cannot resolve":                  "Could not find that domain. Check the spelling and try again.",
     "Connection timed out":            "The connection timed out. The server may be slow or unreachable.",
     "Too Many Requests":               "Too many requests. Please wait a moment and try again.",
-    # ORG errors
     "already in an org":               "You already belong to an organisation. Leave it first before creating or joining another.",
     "org not found":                   "Organisation not found.",
     "not org owner":                   "Only the organisation owner can perform this action.",
@@ -169,7 +162,7 @@ def friendly_error(detail: str) -> str:
 
 
 # ============================================================
-# FIX-C: Rate limit helper
+# RATE LIMIT HELPER
 # ============================================================
 
 def get_user_rate_limit(current_user: Optional[dict]) -> str:
@@ -181,7 +174,7 @@ def get_user_rate_limit(current_user: Optional[dict]) -> str:
 
 
 # ============================================================
-# FIX-2: Safe ZIP extraction
+# SAFE ZIP EXTRACTION
 # ============================================================
 
 def _safe_extractall(zf: zipfile.ZipFile, target_dir: str) -> None:
@@ -196,7 +189,7 @@ def _safe_extractall(zf: zipfile.ZipFile, target_dir: str) -> None:
 
 
 # ============================================================
-# FIX-3: SSRF guard
+# SSRF GUARD
 # ============================================================
 
 _PRIVATE_NETWORKS = [
@@ -243,7 +236,6 @@ def init_db():
         try:
             cur = conn.cursor()
 
-            # ── existing tables ──────────────────────────────
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id              TEXT PRIMARY KEY,
@@ -270,7 +262,6 @@ def init_db():
                 );
             """)
 
-            # ── ORG-1: new org tables ────────────────────────
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS organizations (
                     id         TEXT PRIMARY KEY,
@@ -294,8 +285,7 @@ def init_db():
                 );
             """)
 
-            # Add org_id column to scan_history if it doesn't exist yet
-            # (safe to run on existing DB — ALTER TABLE IF NOT EXISTS column)
+            # Safe migration — add org_id column if missing
             cur.execute("""
                 DO $$
                 BEGIN
@@ -310,7 +300,7 @@ def init_db():
 
             conn.commit()
             cur.close()
-            logger.info("PostgreSQL connected — v2.7.0 tables ready (orgs, members)")
+            logger.info("PostgreSQL connected — v2.8.0 tables ready")
         finally:
             db_pool.putconn(conn)
     except Exception as e:
@@ -420,7 +410,7 @@ def db_get_scan_history(user_id: str, limit: int = 50) -> list:
         db_pool.putconn(conn)
 
 
-# ── ORG-1: Org DB helpers ────────────────────────────────────
+# ── Org helpers ──────────────────────────────────────────────
 
 def db_get_org_by_owner(user_id: str) -> Optional[dict]:
     if db_pool is None:
@@ -437,7 +427,6 @@ def db_get_org_by_owner(user_id: str) -> Optional[dict]:
 
 
 def db_get_org_by_member(user_id: str) -> Optional[dict]:
-    """Return the org a user belongs to (either as owner or member)."""
     if db_pool is None:
         return None
     conn = db_pool.getconn()
@@ -497,13 +486,11 @@ def db_get_org_scans(org_id: str, limit: int = 100) -> list:
 
 
 def _make_slug(name: str) -> str:
-    """Turn org name into a URL-safe slug."""
     slug = re.sub(r"[^a-z0-9]+", "-", name.lower().strip()).strip("-")
     return f"{slug}-{uuid.uuid4().hex[:6]}"
 
 
 def _get_user_org(user: dict) -> Optional[dict]:
-    """Return the org the user belongs to, whether as owner or member."""
     org = db_get_org_by_owner(user["id"])
     if org:
         return org
@@ -595,7 +582,7 @@ limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
     title="QuantumGuard API",
     description="Post-quantum cryptography vulnerability scanner — Mangsri QuantumGuard LLC",
-    version="2.7.0",
+    version="2.8.0",
     docs_url="/docs" if ENVIRONMENT == "development" else None,
     redoc_url=None,
 )
@@ -607,7 +594,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 @app.on_event("startup")
 async def startup():
     init_db()
-    logger.info("QuantumGuard API v2.7.0 started")
+    logger.info("QuantumGuard API v2.8.0 started")
 
 
 @app.on_event("shutdown")
@@ -678,14 +665,12 @@ class UnifiedRiskRequest(BaseModel):
     domain:       Optional[str] = None
     github_token: Optional[str] = None
 
-# ── ORG models ───────────────────────────────────────────────
-
 class OrgCreateRequest(BaseModel):
     name: str
 
 class OrgInviteRequest(BaseModel):
     email: str
-    role:  Optional[str] = "member"  # "member" | "admin"
+    role:  Optional[str] = "member"
 
 
 # ============================================================
@@ -715,7 +700,7 @@ def _download_github_zip(github_url: str, github_token: Optional[str] = None):
     _block_private_ip("github.com")
 
     owner, repo = _parse_github_url(github_url)
-    headers = {"Accept": "application/vnd.github+json", "User-Agent": "QuantumGuard/2.7.0"}
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "QuantumGuard/2.8.0"}
     if github_token:
         headers["Authorization"] = f"token {github_token}"
 
@@ -961,7 +946,6 @@ async def get_me(current_user: dict = Depends(get_current_user)):
     user_data = {k: current_user[k] for k in
                  ("id", "email", "name", "plan", "scan_count", "created_at")
                  if k in current_user}
-    # Include org info if user belongs to one
     org = _get_user_org(current_user)
     if org:
         user_data["org"] = {"id": org["id"], "name": org["name"], "slug": org["slug"]}
@@ -980,7 +964,7 @@ async def get_history(current_user: dict = Depends(get_current_user)):
 
 
 # ============================================================
-# ORG ENDPOINTS — v2.7.0
+# ORG ENDPOINTS
 # ============================================================
 
 @app.post("/org/create", tags=["Org"])
@@ -990,29 +974,22 @@ async def org_create(
     body:         OrgCreateRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    """ORG-2: Create a new organisation. User becomes the owner."""
     if not db_pool:
         raise HTTPException(status_code=503, detail="Database required for org features.")
-
-    # Check user isn't already in an org
     existing = _get_user_org(current_user)
     if existing:
         raise HTTPException(status_code=409, detail=friendly_error("already in an org"))
-
-    org_id   = str(uuid.uuid4())
-    slug     = _make_slug(body.name)
+    org_id    = str(uuid.uuid4())
+    slug      = _make_slug(body.name)
     member_id = str(uuid.uuid4())
-
     conn = db_pool.getconn()
     try:
         cur = conn.cursor()
-        # Create org
         cur.execute("""
             INSERT INTO organizations (id, name, slug, owner_id, plan, created_at)
             VALUES (%s, %s, %s, %s, %s, %s)
         """, (org_id, body.name.strip(), slug, current_user["id"], "free",
               datetime.datetime.utcnow()))
-        # Add owner as member with role=owner
         cur.execute("""
             INSERT INTO org_members (id, org_id, user_id, user_email, role, joined_at)
             VALUES (%s, %s, %s, %s, %s, %s)
@@ -1022,7 +999,6 @@ async def org_create(
         cur.close()
     finally:
         db_pool.putconn(conn)
-
     logger.info(f"Org created: {body.name} by {current_user['email']}")
     return {
         "org": {"id": org_id, "name": body.name.strip(), "slug": slug,
@@ -1038,43 +1014,31 @@ async def org_invite(
     body:         OrgInviteRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    """ORG-3: Invite a user to your org by email. Owner or admin only."""
     if not db_pool:
         raise HTTPException(status_code=503, detail="Database required for org features.")
-
     org = _get_user_org(current_user)
     if not org:
-        raise HTTPException(status_code=404, detail="You don't belong to an organisation yet. Create one first.")
-
-    # Only owner or admin can invite
+        raise HTTPException(status_code=404, detail="You don't belong to an organisation yet.")
     conn = db_pool.getconn()
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute("""
-            SELECT role FROM org_members WHERE org_id = %s AND user_id = %s
-        """, (org["id"], current_user["id"]))
+        cur.execute("SELECT role FROM org_members WHERE org_id = %s AND user_id = %s",
+                    (org["id"], current_user["id"]))
         my_membership = cur.fetchone()
         cur.close()
     finally:
         db_pool.putconn(conn)
-
     if not my_membership or my_membership["role"] not in ("owner", "admin"):
         raise HTTPException(status_code=403, detail=friendly_error("not org owner"))
-
-    # Find invitee
     invite_email = body.email.lower().strip()
     invitee = db_get_user(invite_email)
     if not invitee:
         raise HTTPException(status_code=404, detail=friendly_error("user not found"))
-
-    # Check invitee not already in an org
     existing = _get_user_org(invitee)
     if existing:
         if existing["id"] == org["id"]:
             raise HTTPException(status_code=409, detail=friendly_error("already a member"))
         raise HTTPException(status_code=409, detail="That user already belongs to another organisation.")
-
-    # Add member
     member_id = str(uuid.uuid4())
     role = body.role if body.role in ("member", "admin") else "member"
     conn = db_pool.getconn()
@@ -1089,7 +1053,6 @@ async def org_invite(
         cur.close()
     finally:
         db_pool.putconn(conn)
-
     logger.info(f"Invited {invite_email} to org {org['name']} as {role}")
     return {
         "message": f"{invite_email} added to '{org['name']}' as {role}.",
@@ -1099,24 +1062,17 @@ async def org_invite(
 
 @app.get("/org/me", tags=["Org"])
 async def org_me(current_user: dict = Depends(get_current_user)):
-    """ORG-4: Get your org info + member list."""
     if not db_pool:
         raise HTTPException(status_code=503, detail="Database required for org features.")
-
     org = _get_user_org(current_user)
     if not org:
         raise HTTPException(status_code=404, detail="You don't belong to any organisation.")
-
     members = db_get_org_members(org["id"])
     owner   = db_get_user_by_id(org["owner_id"])
-
     return {
         "org": {
-            "id":         org["id"],
-            "name":       org["name"],
-            "slug":       org["slug"],
-            "plan":       org["plan"],
-            "created_at": str(org["created_at"]),
+            "id": org["id"], "name": org["name"], "slug": org["slug"],
+            "plan": org["plan"], "created_at": str(org["created_at"]),
             "owner": {
                 "id":    owner["id"] if owner else org["owner_id"],
                 "email": owner["email"] if owner else "",
@@ -1133,41 +1089,31 @@ async def org_remove_member(
     email:        str,
     current_user: dict = Depends(get_current_user),
 ):
-    """ORG-5: Remove a member from your org. Owner only."""
     if not db_pool:
         raise HTTPException(status_code=503, detail="Database required for org features.")
-
     org = _get_user_org(current_user)
     if not org:
         raise HTTPException(status_code=404, detail="You don't belong to any organisation.")
-
     if org["owner_id"] != current_user["id"]:
         raise HTTPException(status_code=403, detail=friendly_error("not org owner"))
-
     target_email = email.lower().strip()
     target_user  = db_get_user(target_email)
     if not target_user:
         raise HTTPException(status_code=404, detail=friendly_error("user not found"))
-
-    # Cannot remove owner
     if target_user["id"] == org["owner_id"]:
         raise HTTPException(status_code=400, detail=friendly_error("cannot remove owner"))
-
     conn = db_pool.getconn()
     try:
         cur = conn.cursor()
-        cur.execute("""
-            DELETE FROM org_members WHERE org_id = %s AND user_id = %s
-        """, (org["id"], target_user["id"]))
+        cur.execute("DELETE FROM org_members WHERE org_id = %s AND user_id = %s",
+                    (org["id"], target_user["id"]))
         deleted = cur.rowcount
         conn.commit()
         cur.close()
     finally:
         db_pool.putconn(conn)
-
     if deleted == 0:
         raise HTTPException(status_code=404, detail=friendly_error("member not found"))
-
     logger.info(f"Removed {target_email} from org {org['name']}")
     return {"message": f"{target_email} removed from '{org['name']}'."}
 
@@ -1177,30 +1123,22 @@ async def org_scans(
     current_user: dict = Depends(get_current_user),
     limit: int = 100,
 ):
-    """ORG-6: Get org-wide scan history. Any member can view."""
     if not db_pool:
         raise HTTPException(status_code=503, detail="Database required for org features.")
-
     org = _get_user_org(current_user)
     if not org:
         raise HTTPException(status_code=404, detail="You don't belong to any organisation.")
-
     scans = db_get_org_scans(org["id"], limit=min(limit, 200))
-    return {
-        "org_id":   org["id"],
-        "org_name": org["name"],
-        "scans":    scans,
-        "total":    len(scans),
-    }
+    return {"org_id": org["id"], "org_name": org["name"], "scans": scans, "total": len(scans)}
 
 
 # ============================================================
-# CORE SCAN ROUTES — unchanged from v2.6.2, org_id wired in
+# CORE ROUTES
 # ============================================================
 
 @app.get("/")
 def root():
-    return {"message": "QuantumGuard API is running!", "version": "2.7.0",
+    return {"message": "QuantumGuard API is running!", "version": "2.8.0",
             "company": "Mangsri QuantumGuard LLC", "website": "https://quantumguard.site",
             "standards": ["NIST FIPS 203", "NIST FIPS 204", "NIST FIPS 205"],
             "db": "postgresql" if db_pool else "memory"}
@@ -1208,7 +1146,7 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "version": "2.7.0", "tool": "QuantumGuard",
+    return {"status": "healthy", "version": "2.8.0", "tool": "QuantumGuard",
             "db": "postgresql" if db_pool else "memory (no DATABASE_URL set)"}
 
 
@@ -1218,9 +1156,9 @@ def scan(request: Request, body: ScanRequest, x_api_key: str = Header(...)):
     verify_key(x_api_key)
     if not os.path.exists(body.directory):
         raise HTTPException(status_code=404, detail=friendly_error("Directory not found"))
-    start    = time.time()
-    findings = scan_directory(body.directory)
-    score    = calculate_score(findings)
+    start     = time.time()
+    findings  = scan_directory(body.directory)
+    score     = calculate_score(findings)
     sev, conf = _summarize_findings(findings)
     return {
         "quantum_readiness_score": score,
@@ -1310,16 +1248,13 @@ async def scan_github(
                 raise
         score     = calculate_score(findings)
         sev, conf = _summarize_findings(findings)
-
-        # ORG-7: tag scan with org_id if user belongs to an org
         org_id = None
         if current_user:
-            org = _get_user_org(current_user)
+            org    = _get_user_org(current_user)
             org_id = org["id"] if org else None
             db_increment_scan_count(current_user["email"])
             db_save_scan(current_user["id"], current_user["email"],
                          body.github_url, score, len(findings), "github", org_id=org_id)
-
         result = {
             "github_url": body.github_url, "repo": f"{owner}/{repo}",
             "quantum_readiness_score": score,
@@ -1330,7 +1265,7 @@ async def scan_github(
             "top_findings":            _build_top_findings(findings),
             "priority_actions":        _build_priority_actions(findings, sev, score),
             "findings":                findings,
-            "meta": {"tool": "QuantumGuard v2.7.0",
+            "meta": {"tool": "QuantumGuard v2.8.0",
                      "standards": ["NIST FIPS 203", "NIST FIPS 204", "NIST FIPS 205"],
                      "company": "Mangsri QuantumGuard LLC",
                      "website": "https://quantumguard.site"},
@@ -1342,6 +1277,89 @@ async def scan_github(
         raise HTTPException(status_code=e.status_code, detail=friendly_error(e.detail))
     except Exception as e:
         logger.error(f"scan_github error: {str(e)[:200]}")
+        raise HTTPException(status_code=500, detail=friendly_error(str(e)))
+    finally:
+        if temp_dir and os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+
+
+@app.post("/scan-dependencies")
+@limiter.limit("10/minute")
+async def scan_dependencies_endpoint(
+    request:      Request,
+    body:         GitScanRequest,
+    current_user: Optional[dict] = Depends(get_optional_user),
+):
+    """
+    Dependency vulnerability scanner — v1.0
+    Parses requirements.txt, package.json, go.mod, pom.xml,
+    Cargo.toml, Gemfile and flags quantum-vulnerable libraries
+    with CVE references and NIST-approved replacements.
+    """
+    temp_dir = None
+    try:
+        zip_content, owner, repo = _download_github_zip(body.github_url, body.github_token)
+        temp_dir = f"/tmp/qg-deps-{uuid.uuid4().hex[:8]}"
+        os.makedirs(temp_dir, exist_ok=True)
+        with zipfile.ZipFile(io.BytesIO(zip_content)) as z:
+            _safe_extractall(z, temp_dir)
+
+        dep_result = scan_dependencies(temp_dir)
+
+        # Also run code scanner for the combined score
+        start = time.time()
+        try:
+            code_findings = scan_directory(temp_dir)
+        except Exception:
+            code_findings = []
+        code_score = calculate_score(code_findings)
+
+        # Dependency score penalty:
+        # CRITICAL dep = -15 pts (capped at -40)
+        # HIGH dep     = -8  pts (capped at -24)
+        # MEDIUM dep   = -3  pts (capped at -9)
+        sev = dep_result["severity_summary"]
+        dep_penalty    = (min(sev.get("CRITICAL", 0) * 15, 40) +
+                          min(sev.get("HIGH",     0) * 8,  24) +
+                          min(sev.get("MEDIUM",   0) * 3,  9))
+        combined_score = max(0, code_score - dep_penalty)
+
+        org_id = None
+        if current_user:
+            org    = _get_user_org(current_user)
+            org_id = org["id"] if org else None
+            db_increment_scan_count(current_user["email"])
+            db_save_scan(
+                current_user["id"], current_user["email"],
+                body.github_url, combined_score,
+                len(code_findings) + dep_result["vulnerable_count"],
+                "dependency", org_id=org_id,
+            )
+
+        return {
+            "github_url":     body.github_url,
+            "repo":           f"{owner}/{repo}",
+            "quantum_readiness_score": combined_score,
+            "code_score":              code_score,
+            "dependency_penalty":      dep_penalty,
+            "dependency_scan":         dep_result,
+            "dependency_score_explanation": generate_dependency_score_explanation(dep_result),
+            "dependency_summary":      generate_dependency_summary(dep_result),
+            "total_code_findings":     len(code_findings),
+            "code_score_explanation":  generate_score_explanation(code_findings, code_score),
+            "code_scan_summary":       generate_scan_summary(temp_dir, code_findings, start),
+            "code_findings":           code_findings[:50],
+            "meta": {
+                "tool":      "QuantumGuard Dependency Scanner v1.0",
+                "standards": ["NIST FIPS 203", "NIST FIPS 204", "NIST FIPS 205"],
+                "company":   "Mangsri QuantumGuard LLC",
+                "website":   "https://quantumguard.site",
+            },
+        }
+    except HTTPException as e:
+        raise HTTPException(status_code=e.status_code, detail=friendly_error(e.detail))
+    except Exception as e:
+        logger.error(f"scan_dependencies error: {str(e)[:200]}")
         raise HTTPException(status_code=500, detail=friendly_error(str(e)))
     finally:
         if temp_dir and os.path.exists(temp_dir):
@@ -1428,16 +1446,13 @@ async def unified_risk(
         unified_result = calculate_unified_quantum_risk(
             findings=findings, agility_result=agility_result, tls_result=tls_result,
         )
-
-        # ORG-7: tag with org_id
         org_id = None
         if current_user:
-            org = _get_user_org(current_user)
+            org    = _get_user_org(current_user)
             org_id = org["id"] if org else None
             db_increment_scan_count(current_user["email"])
             db_save_scan(current_user["id"], current_user["email"],
                          body.github_url, code_score, len(findings), "unified", org_id=org_id)
-
         result = {
             "repo": f"{owner}/{repo}", "github_url": body.github_url, "domain": body.domain,
             "unified_risk": unified_result,
@@ -1464,7 +1479,8 @@ async def unified_risk(
                 },
             },
             "top_findings": _build_top_findings(findings),
-            "meta": {"tool": "QuantumGuard Unified Risk Engine v2.7.0", "company": "Mangsri QuantumGuard LLC"},
+            "meta": {"tool": "QuantumGuard Unified Risk Engine v2.8.0",
+                     "company": "Mangsri QuantumGuard LLC"},
         }
         if partial:
             result["warning"] = "Scan timed out. Results are partial."
