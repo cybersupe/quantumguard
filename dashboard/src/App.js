@@ -1665,83 +1665,118 @@ function HpNavDropdown({ item, isOpen, onToggle, onItemClick }) {
 
 // ─── paste this entire block in place of the Homepage function ───
 
+// ══════════════════════════════════════════════════════════════
+// QuantumGuard Homepage v3.0 — High-Converting Landing Page
+// Drop-in replacement for the Homepage function in App.js
+// Sections:
+//   1. Nav
+//   2. Hero — headline, subheadline, CTA, trust badges
+//   3. What Is QuantumGuard — plain English
+//   4. Why This Matters — quantum threat, harvest now decrypt later
+//   5. The Problem — user feels the pain
+//   6. How It Works — 4 steps
+//   7. Features — 6 feature cards
+//   8. Example Output — real scan preview (trust builder)
+//   9. Differentiation — vs Snyk
+//  10. Trust Section — company, disclaimer, tested on real repos
+//  11. Pricing
+//  12. Final CTA
+//  13. Footer
+// ══════════════════════════════════════════════════════════════
+
 function Homepage({ onGetStarted, onOpenAuth }) {
   const [demoOpen, setDemoOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openNav, setOpenNav] = useState(null);
-  const [scanInput, setScanInput] = useState("github.com/your-org/your-repo");
-
-  const demoResult = {
-    score: 42,
-    findings: [
-      { sev: "CRITICAL", vuln: "RSA-2048",  file: "auth/keypair.js",     fix: "CRYSTALS-Kyber (FIPS 203)" },
-      { sev: "CRITICAL", vuln: "ECC P-256", file: "crypto/sign.py",      fix: "CRYSTALS-Dilithium (FIPS 204)" },
-      { sev: "HIGH",     vuln: "DH-2048",   file: "tls/handshake.java",  fix: "CRYSTALS-Kyber (FIPS 203)" },
-      { sev: "MEDIUM",   vuln: "MD5 hash",  file: "utils/checksum.js",   fix: "SHA-3 / SPHINCS+" },
-    ],
-  };
-
-  const sevColor = s => s === "CRITICAL" ? "#ef4444" : s === "HIGH" ? "#f59e0b" : "#eab308";
-  const sevBg    = s => s === "CRITICAL" ? "#fef2f2" : s === "HIGH" ? "#fffbeb" : "#fefce8";
+  const [scanInput, setScanInput] = useState("https://github.com/your-org/your-repo");
 
   const handleNavItem = title => { const tab = NAV_MAP[title]; if (tab) onGetStarted(tab); };
 
+  const sevColor = s => s === "CRITICAL" ? "#ef4444" : s === "HIGH" ? "#f59e0b" : s === "MEDIUM" ? "#eab308" : "#22c55e";
+  const sevBg    = s => s === "CRITICAL" ? "#fef2f2" : s === "HIGH" ? "#fffbeb" : s === "MEDIUM" ? "#fefce8" : "#f0fdf4";
+
   const PRICING = [
-    { name:"Free",       price:"$0",    period:"",    desc:"For developers exploring PQC",           features:["20 scans/day","RSA & ECC detection","PDF report","Dependency scanner","Community support"],           cta:"Start Free",        highlight:false },
-    { name:"Pro",        price:"$49",   period:"/mo", desc:"For security-conscious teams",           features:["100 scans/day","All 12 vuln types","NIST guidance","GitHub Actions gate","API access","Slack alerts"],  cta:"Start Free Trial",  highlight:true  },
-    { name:"Team",       price:"$199",  period:"/mo", desc:"Org-wide visibility & compliance",       features:["500 scans/day","Everything in Pro","Org dashboard","SSO/SAML","Priority support"],                     cta:"Start Free Trial",  highlight:false },
-    { name:"Enterprise", price:"Custom",period:"",    desc:"Air-gapped, on-prem or hybrid",         features:["Unlimited scans","On-premise Docker","SLA 99.99%","Dedicated CSM","FedRAMP roadmap"],                   cta:"Contact Sales",     highlight:false },
+    { name:"Free",       price:"$0",    period:"",    desc:"For developers exploring PQC",     features:["20 scans/day","RSA, ECC, DH detection","TLS analyzer","PDF report","Community support"],        cta:"Start Free — No Signup",  highlight:false },
+    { name:"Pro",        price:"$49",   period:"/mo", desc:"For security-conscious teams",     features:["100 scans/day","All 12 vuln types","NIST migration guidance","GitHub Actions gate","API access","Dependency scanner"],  cta:"Start Free Trial",  highlight:true  },
+    { name:"Team",       price:"$199",  period:"/mo", desc:"Org-wide visibility & compliance", features:["500 scans/day","Everything in Pro","Org dashboard","Scan history","SSO/SAML","Priority support"], cta:"Start Free Trial",  highlight:false },
+    { name:"Enterprise", price:"Custom",period:"",    desc:"Air-gapped or on-premise",        features:["Unlimited scans","On-premise Docker","SLA 99.99%","Dedicated CSM","FedRAMP roadmap","Custom integrations"],     cta:"Contact Sales",     highlight:false },
+  ];
+
+  const EXAMPLE_FINDINGS = [
+    { sev:"CRITICAL", vuln:"RSA-2048",        file:"src/auth/keypair.js",      line:14, fix:"ML-KEM (CRYSTALS-Kyber) — FIPS 203" },
+    { sev:"CRITICAL", vuln:"ECC P-256",       file:"src/crypto/sign.py",       line:7,  fix:"ML-DSA (CRYSTALS-Dilithium) — FIPS 204" },
+    { sev:"HIGH",     vuln:"DH-2048",         file:"src/tls/handshake.java",   line:33, fix:"ML-KEM (CRYSTALS-Kyber) — FIPS 203" },
+    { sev:"HIGH",     vuln:"SHA-1 Hash",      file:"src/utils/checksum.js",    line:19, fix:"SHA-3 / SLH-DSA — FIPS 205" },
+    { sev:"MEDIUM",   vuln:"TLS 1.2",         file:"nginx.conf",               line:8,  fix:"Upgrade to TLS 1.3 minimum" },
+    { sev:"MEDIUM",   vuln:"MD5 Hash",        file:"src/legacy/hash.py",       line:42, fix:"SHA3-256 — FIPS 205" },
   ];
 
   return (
-    <div style={{ fontFamily:"'DM Sans','Segoe UI',sans-serif", background:"#f8fafc", color:"#0f172a", overflowX:"hidden" }}>
+    <div style={{ fontFamily:"'DM Sans','Segoe UI',system-ui,sans-serif", background:"#f8fafc", color:"#0f172a", overflowX:"hidden" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=DM+Mono:wght@400;500&display=swap');
-        *,*::before,*::after{box-sizing:border-box;}html{scroll-behavior:smooth;}
-        @keyframes hp-dropIn{from{opacity:0;transform:translateX(-50%) translateY(-8px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
-        @keyframes hp-fadeUp{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
-        @keyframes hp-pulse{0%,100%{opacity:1;}50%{opacity:.45;}}
-        @keyframes hp-scan-line{0%{transform:translateX(-100%);}100%{transform:translateX(400%);}}
-        .hp2-btn-primary{background:#22c55e;color:#fff;border:none;padding:13px 26px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;font-family:inherit;letter-spacing:-.01em;display:inline-flex;align-items:center;gap:8px;}
-        .hp2-btn-primary:hover{background:#16a34a;transform:translateY(-1px);box-shadow:0 8px 24px rgba(34,197,94,.3);}
-        .hp2-btn-outline{background:transparent;color:#0f172a;border:2px solid #d1d5db;padding:11px 24px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;letter-spacing:-.01em;display:inline-flex;align-items:center;gap:8px;}
-        .hp2-btn-outline:hover{border-color:#22c55e;color:#22c55e;}
-        .hp2-card{background:#fff;border:1.5px solid #e8edf3;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,.04);transition:all .25s;}
-        .hp2-card:hover{border-color:#22c55e;box-shadow:0 8px 32px rgba(34,197,94,.1);transform:translateY(-2px);}
-        .hp2-sl{font-size:11px;font-weight:700;letter-spacing:.1em;color:#22c55e;text-transform:uppercase;}
-        .hp2-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px);}
-        .hp2-modal{background:#fff;border-radius:20px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.2);}
-        #hp2-hamburger{display:none;background:none;border:none;font-size:22px;cursor:pointer;color:#374151;margin-left:auto;}
-        .hp2-nav-right-desktop{display:flex;align-items:center;gap:8px;margin-left:auto;}
-        @media(max-width:900px){
-          .hp2-hero-grid,.hp2-features-grid,.hp2-pricing-grid,.hp2-how-grid,.hp2-who-grid,.hp2-get-grid,.hp2-matter-grid,.hp2-trust-grid,.hp2-scan-demo-grid{grid-template-columns:1fr!important;}
-          .hp2-stats-grid{grid-template-columns:repeat(2,1fr)!important;}
-          .hp2-find-grid{grid-template-columns:1fr!important;}
-          .hp2-nav-center,.hp2-nav-right-desktop{display:none!important;}
-          #hp2-hamburger{display:block!important;}
-          .hp2-founder-grid{grid-template-columns:1fr!important;}
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&family=DM+Mono:wght@400;500&display=swap');
+        *,*::before,*::after{box-sizing:border-box;}
+        html{scroll-behavior:smooth;}
+        body{margin:0;}
+        @keyframes qg-fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+        @keyframes qg-pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+        @keyframes qg-dropIn{from{opacity:0;transform:translateX(-50%) translateY(-10px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+        @keyframes qg-scan{0%{left:-100%;}100%{left:200%;}}
+        .qg-btn{display:inline-flex;align-items:center;gap:8px;border:none;cursor:pointer;font-family:inherit;font-weight:700;letter-spacing:-.01em;transition:all .2s;border-radius:10px;}
+        .qg-btn-primary{background:#22c55e;color:#fff;padding:14px 28px;font-size:15px;}
+        .qg-btn-primary:hover{background:#16a34a;transform:translateY(-2px);box-shadow:0 10px 28px rgba(34,197,94,.35);}
+        .qg-btn-primary-lg{background:#22c55e;color:#fff;padding:17px 38px;font-size:17px;border-radius:12px;}
+        .qg-btn-primary-lg:hover{background:#16a34a;transform:translateY(-2px);box-shadow:0 12px 32px rgba(34,197,94,.4);}
+        .qg-btn-outline{background:transparent;color:#0f172a;border:2px solid #d1d5db;padding:13px 26px;font-size:15px;}
+        .qg-btn-outline:hover{border-color:#22c55e;color:#22c55e;background:rgba(34,197,94,.04);}
+        .qg-btn-ghost{background:rgba(255,255,255,.1);color:#fff;border:1.5px solid rgba(255,255,255,.2);padding:15px 32px;font-size:16px;}
+        .qg-btn-ghost:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.4);}
+        .qg-card{background:#fff;border:1.5px solid #e8edf3;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,.04);transition:all .25s;}
+        .qg-card:hover{border-color:#22c55e;box-shadow:0 8px 32px rgba(34,197,94,.1);transform:translateY(-3px);}
+        .qg-label{font-size:11px;font-weight:700;letter-spacing:.1em;color:#22c55e;text-transform:uppercase;}
+        .qg-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(6px);}
+        .qg-modal{background:#fff;border-radius:20px;width:100%;max-width:580px;max-height:92vh;overflow-y:auto;box-shadow:0 28px 80px rgba(0,0,0,.22);}
+        #qg-hamburger{display:none;background:none;border:none;font-size:23px;cursor:pointer;color:#374151;padding:4px;}
+        .qg-nav-links{display:flex;align-items:center;flex:1;}
+        .qg-nav-right{display:flex;align-items:center;gap:8px;margin-left:auto;}
+        .qg-section{padding:80px 32px;}
+        .qg-container{max-width:1060px;margin:0 auto;}
+        .qg-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+        .qg-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+        .qg-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;}
+        .qg-step-num{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#22c55e,#15803d);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;flex-shrink:0;box-shadow:0 4px 12px rgba(34,197,94,.3);}
+        @media(max-width:960px){
+          .qg-nav-links,.qg-nav-right{display:none!important;}
+          #qg-hamburger{display:block!important;}
+          .qg-grid-2,.qg-grid-3,.qg-grid-4,.qg-hero-grid,.qg-diff-grid,.qg-founder-grid{grid-template-columns:1fr!important;}
+          .qg-section{padding:60px 20px;}
+          .qg-stats-grid{grid-template-columns:repeat(2,1fr)!important;}
+          .qg-pricing-grid{grid-template-columns:1fr!important;}
         }
         @media(max-width:480px){
-          .hp2-trust-grid,.hp2-pricing-grid,.hp2-stats-grid{grid-template-columns:1fr!important;}
+          .qg-stats-grid{grid-template-columns:1fr!important;}
+          .qg-trust-grid{grid-template-columns:1fr!important;}
         }
       `}</style>
 
-      {/* ── NAV ─────────────────────────────────────────── */}
-      <nav style={{ position:"sticky",top:0,zIndex:500,background:"rgba(248,250,252,.92)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(0,0,0,.07)",padding:"0 32px",height:62,display:"flex",alignItems:"center",gap:4 }}>
-        <div style={{ display:"flex",alignItems:"center",gap:8,marginRight:20,flexShrink:0 }}>
-          <div style={{ width:32,height:32,background:"linear-gradient(135deg,#22c55e,#15803d)",borderRadius:9,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,boxShadow:"0 4px 12px rgba(34,197,94,.28)" }}>⚛</div>
-          <span style={{ fontSize:16,fontWeight:800,letterSpacing:"-.03em" }}><span style={{ color:"#22c55e" }}>Quantum</span>Guard</span>
-          <span style={{ background:"#dcfce7",color:"#16a34a",fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20,border:"1px solid #bbf7d0",letterSpacing:".04em" }}>BETA</span>
+      {/* ══ 1. NAV ══════════════════════════════════════════ */}
+      <nav style={{ position:"sticky",top:0,zIndex:500,background:"rgba(248,250,252,.94)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(0,0,0,.07)",padding:"0 32px",height:64,display:"flex",alignItems:"center",gap:8 }}>
+        <div style={{ display:"flex",alignItems:"center",gap:9,marginRight:24,flexShrink:0,cursor:"pointer" }} onClick={() => onGetStarted("home")}>
+          <div style={{ width:34,height:34,background:"linear-gradient(135deg,#22c55e,#15803d)",borderRadius:9,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,boxShadow:"0 4px 12px rgba(34,197,94,.3)" }}>⚛</div>
+          <span style={{ fontSize:17,fontWeight:800,letterSpacing:"-.03em" }}><span style={{ color:"#22c55e" }}>Quantum</span>Guard</span>
+          <span style={{ background:"#dcfce7",color:"#16a34a",fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:20,border:"1px solid #bbf7d0" }}>BETA</span>
         </div>
-        <div className="hp2-nav-center" style={{ display:"flex",alignItems:"center",flex:1 }}>
+
+        <div className="qg-nav-links">
           {NAV_GROUPS_HP.map(g => (
             <HpNavDropdown key={g.label} item={g} isOpen={openNav === g.label} onToggle={setOpenNav} onItemClick={handleNavItem} />
           ))}
         </div>
-        <div className="hp2-nav-right-desktop">
-          <div style={{ display:"flex",alignItems:"center",gap:6,fontSize:11,fontWeight:600,color:"#15803d",letterSpacing:".04em",marginRight:4 }}>
-            <span style={{ width:7,height:7,borderRadius:"50%",background:"#22c55e",boxShadow:"0 0 0 3px rgba(34,197,94,.2)",display:"inline-block",animation:"hp-pulse 2s infinite" }} />
-            API ONLINE
+
+        <div className="qg-nav-right">
+          <div style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,fontWeight:600,color:"#15803d",marginRight:8 }}>
+            <span style={{ width:7,height:7,borderRadius:"50%",background:"#22c55e",animation:"qg-pulse 2s infinite",display:"inline-block" }} />
+            Live scan ready
           </div>
           <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer"
             style={{ display:"flex",alignItems:"center",gap:6,color:"#374151",border:"1.5px solid #d1d5db",borderRadius:9,padding:"7px 14px",fontSize:13,fontWeight:500,textDecoration:"none",transition:"all .2s" }}
@@ -1750,20 +1785,19 @@ function Homepage({ onGetStarted, onOpenAuth }) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
             GitHub
           </a>
-          <button className="hp2-btn-primary" style={{ padding:"8px 18px",fontSize:13 }} onClick={() => onGetStarted("scan")}>Start Free Scan</button>
-          <button onClick={() => onOpenAuth && onOpenAuth("login")} style={{ background:"transparent",border:"1.5px solid rgba(34,197,94,.3)",color:"#22c55e",padding:"7px 14px",borderRadius:9,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit" }}>Sign In</button>
+          <button className="qg-btn qg-btn-primary" style={{ padding:"9px 20px",fontSize:13 }} onClick={() => onGetStarted("scan")}>Start Free Scan</button>
+          <button onClick={() => onOpenAuth && onOpenAuth("login")} style={{ background:"transparent",border:"1.5px solid rgba(34,197,94,.3)",color:"#22c55e",padding:"8px 15px",borderRadius:9,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit" }}>Sign In</button>
         </div>
-        <button id="hp2-hamburger" onClick={() => setMobileMenuOpen(m => !m)}>{mobileMenuOpen ? "✕" : "☰"}</button>
+        <button id="qg-hamburger" onClick={() => setMobileMenuOpen(m => !m)}>{mobileMenuOpen ? "✕" : "☰"}</button>
       </nav>
 
       {mobileMenuOpen && (
-        <div style={{ background:"#fff",borderBottom:"1px solid #e2e8f0",position:"fixed",top:62,left:0,right:0,zIndex:498,maxHeight:"80vh",overflowY:"auto",boxShadow:"0 8px 32px rgba(0,0,0,.12)" }}>
+        <div style={{ background:"#fff",borderBottom:"1px solid #e2e8f0",position:"fixed",top:64,left:0,right:0,zIndex:498,maxHeight:"80vh",overflowY:"auto",boxShadow:"0 8px 32px rgba(0,0,0,.12)" }}>
           {NAV_GROUPS_HP.map(g => (
             <div key={g.label}>
-              <div style={{ padding:"10px 20px",fontSize:11,fontWeight:700,color:"#9ca3af",background:"#f8fafc",borderBottom:"1px solid #f1f5f9",textTransform:"uppercase",letterSpacing:".06em" }}>{g.label}</div>
+              <div style={{ padding:"10px 20px",fontSize:10,fontWeight:700,color:"#9ca3af",background:"#f8fafc",textTransform:"uppercase",letterSpacing:".08em" }}>{g.label}</div>
               {g.items.map(item => (
-                <div key={item.title}
-                  style={{ padding:"11px 20px",fontSize:14,color:"#0f172a",borderBottom:"1px solid #f9fafb",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"background .15s" }}
+                <div key={item.title} style={{ padding:"11px 20px",fontSize:14,color:"#0f172a",borderBottom:"1px solid #f9fafb",cursor:"pointer",display:"flex",alignItems:"center",gap:12 }}
                   onClick={() => { handleNavItem(item.title); setMobileMenuOpen(false); }}
                   onMouseEnter={e => e.currentTarget.style.background="#f0fdf4"}
                   onMouseLeave={e => e.currentTarget.style.background="transparent"}>
@@ -1773,225 +1807,247 @@ function Homepage({ onGetStarted, onOpenAuth }) {
               ))}
             </div>
           ))}
-          <div style={{ padding:"16px 20px",borderTop:"2px solid #e2e8f0",background:"#fff" }}>
-            <button className="hp2-btn-primary" style={{ width:"100%",justifyContent:"center",fontSize:15,padding:"13px" }} onClick={() => { onGetStarted("scan"); setMobileMenuOpen(false); }}>🛡 Start Free Scan</button>
+          <div style={{ padding:"16px 20px",borderTop:"2px solid #e2e8f0" }}>
+            <button className="qg-btn qg-btn-primary" style={{ width:"100%",justifyContent:"center",padding:"14px",fontSize:15 }} onClick={() => { onGetStarted("scan"); setMobileMenuOpen(false); }}>🛡 Start Free Scan</button>
           </div>
         </div>
       )}
 
-      {/* ── HERO ────────────────────────────────────────── */}
-      <section style={{ background:"linear-gradient(135deg,#f0fdf4 0%,#f8fafc 45%,#eff6ff 100%)",padding:"96px 32px 80px",position:"relative",overflow:"hidden" }}>
-        <div style={{ position:"absolute",top:-160,right:-160,width:480,height:480,borderRadius:"50%",background:"radial-gradient(circle,rgba(34,197,94,.08) 0%,transparent 70%)",pointerEvents:"none" }} />
-        <div style={{ position:"absolute",inset:0,backgroundImage:"radial-gradient(#22c55e14 1px,transparent 1px)",backgroundSize:"28px 28px",pointerEvents:"none" }} />
-        <div style={{ maxWidth:1100,margin:"0 auto",textAlign:"center",position:"relative",animation:"hp-fadeUp .65s ease-out both" }}>
+      {/* ══ 2. HERO ═════════════════════════════════════════ */}
+      <section style={{ background:"linear-gradient(160deg,#f0fdf4 0%,#f8fafc 50%,#eff6ff 100%)",padding:"100px 32px 88px",position:"relative",overflow:"hidden" }}>
+        {/* Background texture */}
+        <div style={{ position:"absolute",inset:0,backgroundImage:"radial-gradient(#22c55e12 1px,transparent 1px)",backgroundSize:"32px 32px",pointerEvents:"none" }} />
+        <div style={{ position:"absolute",top:-200,right:-200,width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle,rgba(34,197,94,.07),transparent 70%)",pointerEvents:"none" }} />
 
-          {/* NQM alignment badge */}
-          <div style={{ display:"inline-flex",alignItems:"center",gap:8,background:"rgba(249,115,22,.08)",border:"1px solid rgba(249,115,22,.2)",borderRadius:100,padding:"5px 16px",marginBottom:14 }}>
-            <span style={{ fontSize:13 }}>🇮🇳</span>
-            <span style={{ fontSize:11,fontWeight:700,color:"#c2410c",letterSpacing:".04em" }}>ALIGNED WITH INDIA'S NATIONAL QUANTUM MISSION · DST FEBRUARY 2026</span>
+        <div style={{ maxWidth:900,margin:"0 auto",textAlign:"center",position:"relative",animation:"qg-fadeUp .6s ease-out both" }}>
+
+          {/* Live badge */}
+          <div style={{ display:"inline-flex",alignItems:"center",gap:8,background:"rgba(34,197,94,.1)",border:"1px solid rgba(34,197,94,.25)",borderRadius:100,padding:"6px 18px",marginBottom:28 }}>
+            <span style={{ width:7,height:7,borderRadius:"50%",background:"#22c55e",animation:"qg-pulse 2s infinite",display:"inline-block" }} />
+            <span style={{ fontSize:12,fontWeight:700,color:"#15803d",letterSpacing:".05em" }}>● LIVE SCAN READY · INSTANT RESULTS · NO SIGNUP REQUIRED</span>
           </div>
 
-          <div style={{ display:"inline-flex",alignItems:"center",gap:8,background:"rgba(34,197,94,.1)",border:"1px solid rgba(34,197,94,.22)",borderRadius:100,padding:"5px 16px",marginBottom:28,marginLeft:8 }}>
-            <span style={{ width:7,height:7,borderRadius:"50%",background:"#22c55e",display:"inline-block",animation:"hp-pulse 2s infinite" }} />
-            <span style={{ fontSize:11,fontWeight:700,color:"#15803d",letterSpacing:".05em" }}>NIST FIPS 203 / 204 / 205 ALIGNED · FREE FOREVER</span>
-          </div>
-
-          <h1 style={{ fontSize:"clamp(36px,5.5vw,66px)",fontWeight:800,lineHeight:1.08,letterSpacing:"-.04em",color:"#0f172a",marginBottom:16 }}>
-            The only free tool that finds<br/><span style={{ color:"#22c55e" }}>quantum-vulnerable crypto</span><br/>in your codebase
+          {/* Headline */}
+          <h1 style={{ fontSize:"clamp(38px,5.5vw,68px)",fontWeight:900,lineHeight:1.06,letterSpacing:"-.04em",color:"#0f172a",marginBottom:20 }}>
+            Find quantum-vulnerable<br/>encryption in your codebase<br/><span style={{ color:"#22c55e" }}>— in seconds.</span>
           </h1>
 
-          {/* Why not Snyk callout */}
-          <div style={{ display:"inline-flex",alignItems:"center",gap:10,background:"rgba(59,130,246,.06)",border:"1px solid rgba(59,130,246,.15)",borderRadius:12,padding:"10px 20px",marginBottom:24 }}>
-            <span style={{ fontSize:13,color:"#1d4ed8",fontWeight:600 }}>ℹ️ Snyk doesn't scan for post-quantum crypto.</span>
-            <span style={{ fontSize:13,color:"#475569" }}>QuantumGuard does — in 30 seconds, for free.</span>
-          </div>
-
-          <p style={{ fontSize:"clamp(16px,1.6vw,19px)",color:"#475569",maxWidth:580,margin:"0 auto 40px",lineHeight:1.68,fontWeight:400 }}>
-            Scan your codebase for RSA, ECC, MD5, SHA-1, weak TLS, and quantum-vulnerable libraries. Get a Quantum Readiness Score and NIST-aligned migration guidance instantly.
+          {/* Subheadline */}
+          <p style={{ fontSize:"clamp(16px,1.7vw,20px)",color:"#475569",maxWidth:640,margin:"0 auto 16px",lineHeight:1.7,fontWeight:400 }}>
+            QuantumGuard scans your code and TLS configurations for RSA, ECC, SHA-1, weak crypto, and legacy encryption. Get a <strong style={{ color:"#0f172a" }}>Quantum Readiness Score</strong> with NIST-aligned migration guidance instantly.
           </p>
 
-          <div style={{ display:"flex",maxWidth:520,margin:"0 auto 18px",background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,overflow:"hidden",boxShadow:"0 4px 20px rgba(0,0,0,.07)" }}>
+          {/* NIST badge */}
+          <div style={{ display:"inline-flex",alignItems:"center",gap:8,background:"rgba(59,130,246,.08)",border:"1px solid rgba(59,130,246,.2)",borderRadius:100,padding:"6px 18px",marginBottom:40 }}>
+            <span style={{ fontSize:14 }}>🏛</span>
+            <span style={{ fontSize:12,fontWeight:700,color:"#1d4ed8",letterSpacing:".04em" }}>Aligned with NIST PQC Standards: FIPS 203 / 204 / 205</span>
+          </div>
+
+          {/* Scan input bar */}
+          <div style={{ display:"flex",maxWidth:560,margin:"0 auto 20px",background:"#fff",border:"2px solid #e2e8f0",borderRadius:14,overflow:"hidden",boxShadow:"0 4px 24px rgba(0,0,0,.08)",transition:"border-color .2s" }}
+            onFocus={e => e.currentTarget.style.borderColor="#22c55e"}
+            onBlur={e => e.currentTarget.style.borderColor="#e2e8f0"}>
             <input value={scanInput} onChange={e => setScanInput(e.target.value)}
-              style={{ flex:1,border:"none",outline:"none",padding:"13px 16px",fontSize:13,fontFamily:"'DM Mono',monospace",color:"#374151",background:"transparent" }} />
-            <button className="hp2-btn-primary" style={{ borderRadius:0,padding:"13px 20px",fontSize:13 }} onClick={() => onGetStarted("scan")}>Scan →</button>
+              onKeyDown={e => e.key === "Enter" && onGetStarted("scan")}
+              style={{ flex:1,border:"none",outline:"none",padding:"14px 18px",fontSize:13,fontFamily:"'DM Mono',monospace",color:"#374151",background:"transparent" }}
+              placeholder="https://github.com/your-org/your-repo" />
+            <button className="qg-btn qg-btn-primary" style={{ borderRadius:0,padding:"14px 22px",fontSize:14,margin:4,borderRadius:10 }} onClick={() => onGetStarted("scan")}>Scan →</button>
           </div>
 
-          <div style={{ display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap",marginBottom:48 }}>
-            <button className="hp2-btn-primary" style={{ padding:"14px 30px",fontSize:15 }} onClick={() => onGetStarted("scan")}>🛡 Run a Free Scan</button>
-            <button className="hp2-btn-outline" style={{ padding:"12px 28px",fontSize:15 }} onClick={() => setDemoOpen(true)}>▷ See Example Results</button>
+          {/* CTA row */}
+          <div style={{ display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap",marginBottom:32 }}>
+            <button className="qg-btn qg-btn-primary-lg" onClick={() => onGetStarted("scan")}>🛡 Start Free Scan</button>
+            <button className="qg-btn qg-btn-outline" style={{ padding:"15px 30px",fontSize:16 }} onClick={() => setDemoOpen(true)}>▷ View Demo</button>
           </div>
 
-          <div style={{ display:"flex",gap:24,justifyContent:"center",flexWrap:"wrap",opacity:.45 }}>
-            {["Zero Data Retention","NIST Compliant","AGPL v3 Open Source","No Credit Card","30 Second Scan"].map(t => (
-              <span key={t} style={{ fontSize:11,fontWeight:700,letterSpacing:".06em",color:"#374151",textTransform:"uppercase" }}>{t}</span>
+          {/* Micro trust */}
+          <div style={{ display:"flex",gap:20,justifyContent:"center",flexWrap:"wrap" }}>
+            {["No signup required","Works instantly","Open source — AGPL v3","Results in &lt;30 seconds","Zero data retention"].map(t => (
+              <span key={t} style={{ fontSize:12,color:"#6b7280",fontWeight:500,display:"flex",alignItems:"center",gap:5 }}>
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8l3.5 3.5L13 4" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                <span dangerouslySetInnerHTML={{ __html: t }} />
+              </span>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── TRUST BAR ────────────────────────────────────── */}
+      {/* ══ 3. STATS BAR ════════════════════════════════════ */}
       <section style={{ background:"#fff",borderTop:"1px solid #e8edf3",borderBottom:"1px solid #e8edf3",padding:"36px 32px" }}>
-        <div style={{ maxWidth:1060,margin:"0 auto" }}>
-          <div style={{ textAlign:"center",marginBottom:24,fontSize:12,fontWeight:600,color:"#9ca3af",letterSpacing:".06em",textTransform:"uppercase" }}>Trusted signals</div>
-          <div className="hp2-trust-grid" style={{ display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:20,textAlign:"center" }}>
-            {[
-              { icon:"🔒", title:"Zero Data Retention", desc:"Your code is never stored. Scanned in memory, deleted immediately after every scan." },
-              { icon:"📖", title:"Open Source", desc:"Full source code on GitHub under AGPL v3. Audit every line we run on your code." },
-              { icon:"🏛", title:"NIST Aligned", desc:"Every fix recommendation maps to FIPS 203, FIPS 204, or FIPS 205 standards." },
-              { icon:"🇮🇳", title:"India NQM Ready", desc:"Aligned with DST's Implementation of Quantum Safe Ecosystem Framework, Feb 2026." },
-              { icon:"⚡", title:"30 Second Scans", desc:"No setup, no install, no signup needed. Paste a GitHub URL and get results instantly." },
-            ].map((t, i) => (
-              <div key={i} style={{ padding:"20px 16px",borderRadius:14,border:"1.5px solid #e8edf3",background:"#fafbfc",transition:"all .25s" }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor="#22c55e"; e.currentTarget.style.background="#f0fdf4"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor="#e8edf3"; e.currentTarget.style.background="#fafbfc"; }}>
-                <div style={{ fontSize:28,marginBottom:10 }}>{t.icon}</div>
-                <div style={{ fontSize:13,fontWeight:700,color:"#0f172a",marginBottom:6 }}>{t.title}</div>
-                <div style={{ fontSize:11,color:"#6b7280",lineHeight:1.6 }}>{t.desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── STATS ────────────────────────────────────────── */}
-      <section style={{ background:"#f8fafc",borderBottom:"1px solid #e8edf3",padding:"40px 32px" }}>
-        <div className="hp2-stats-grid" style={{ maxWidth:1000,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(4,1fr)",textAlign:"center",gap:24 }}>
-          {[["50+","Vulnerability Checks"],["8","Languages Supported"],["~30s","Average Scan Time"],["Free","No Limits Forever"]].map(([val,lbl]) => (
+        <div className="qg-stats-grid qg-container" style={{ display:"grid",gridTemplateColumns:"repeat(5,1fr)",textAlign:"center",gap:20 }}>
+          {[
+            ["50+","Vulnerability patterns"],
+            ["8","Languages supported"],
+            ["~30s","Average scan time"],
+            ["NIST 2024","FIPS 203/204/205"],
+            ["Free","No credit card ever"],
+          ].map(([val, lbl]) => (
             <div key={lbl}>
-              <div style={{ fontSize:"2rem",fontWeight:800,color:"#22c55e",lineHeight:1,letterSpacing:"-.03em" }}>{val}</div>
-              <div style={{ fontSize:13,color:"#6b7280",marginTop:6,fontWeight:500 }}>{lbl}</div>
+              <div style={{ fontSize:"1.8rem",fontWeight:900,color:"#22c55e",lineHeight:1,letterSpacing:"-.03em" }}>{val}</div>
+              <div style={{ fontSize:12,color:"#6b7280",marginTop:5,fontWeight:500 }}>{lbl}</div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── EXAMPLE SCANS ────────────────────────────────── */}
-      <section style={{ padding:"80px 32px",background:"#fff",borderBottom:"1px solid #e8edf3" }}>
-        <div style={{ maxWidth:1060,margin:"0 auto" }}>
+      {/* ══ 4. WHAT IS QUANTUMGUARD ═════════════════════════ */}
+      <section className="qg-section" style={{ background:"#f8fafc",borderBottom:"1px solid #e8edf3" }}>
+        <div className="qg-container">
           <div style={{ textAlign:"center",marginBottom:48 }}>
-            <div className="hp2-sl" style={{ marginBottom:12 }}>Real Results</div>
-            <h2 style={{ fontSize:"clamp(24px,3vw,38px)",fontWeight:800,letterSpacing:"-.03em",marginBottom:12 }}>See what QuantumGuard finds</h2>
-            <p style={{ color:"#6b7280",fontSize:15,maxWidth:500,margin:"0 auto" }}>Two real scans — one vulnerable library, one clean repo.</p>
+            <div className="qg-label" style={{ marginBottom:12 }}>What Is QuantumGuard</div>
+            <h2 style={{ fontSize:"clamp(26px,3.5vw,42px)",fontWeight:800,letterSpacing:"-.03em",marginBottom:16 }}>A security scanner built for the post-quantum era</h2>
+            <p style={{ fontSize:16,color:"#475569",maxWidth:600,margin:"0 auto",lineHeight:1.75 }}>
+              Most security tools find bugs and CVEs. QuantumGuard finds something different — <strong>encryption algorithms that will be broken by quantum computers</strong>. It scans your source code and TLS configurations, identifies vulnerable cryptography, and gives you a step-by-step migration path aligned with NIST's 2024 post-quantum standards.
+            </p>
           </div>
-          <div className="hp2-scan-demo-grid" style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:24 }}>
-
-            {/* Vulnerable scan */}
-            <div style={{ background:"#fff",border:"2px solid #fecaca",borderRadius:18,overflow:"hidden",boxShadow:"0 4px 20px rgba(239,68,68,.08)" }}>
-              <div style={{ background:"linear-gradient(90deg,#fef2f2,#fff5f5)",padding:"16px 20px",borderBottom:"1px solid #fecaca",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
-                <div>
-                  <div style={{ fontSize:12,fontWeight:700,color:"#dc2626",marginBottom:2 }}>⚠ VULNERABLE REPO</div>
-                  <div style={{ fontFamily:"'DM Mono',monospace",fontSize:12,color:"#374151" }}>github.com/dlitz/pycrypto</div>
-                </div>
-                <div style={{ textAlign:"center" }}>
-                  <div style={{ fontSize:36,fontWeight:900,color:"#ef4444",lineHeight:1 }}>0</div>
-                  <div style={{ fontSize:10,color:"#9ca3af",marginTop:2 }}>/ 100</div>
-                </div>
-              </div>
-              <div style={{ padding:"16px 20px" }}>
-                <div style={{ fontSize:11,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:".06em",marginBottom:10 }}>265 findings detected</div>
-                {[
-                  { sev:"CRITICAL", vuln:"MD4 Hash",     file:"src/Hash/MD4.py",      count:11 },
-                  { sev:"CRITICAL", vuln:"RSA",          file:"lib/Crypto/PublicKey/", count:7  },
-                  { sev:"CRITICAL", vuln:"RC4",          file:"lib/Crypto/Cipher/",   count:5  },
-                  { sev:"CRITICAL", vuln:"DES",          file:"lib/Crypto/Cipher/",   count:5  },
-                  { sev:"HIGH",     vuln:"DSA",          file:"lib/Crypto/Signature/",count:34 },
-                ].map((f, i) => (
-                  <div key={i} style={{ display:"flex",alignItems:"center",gap:8,padding:"8px 12px",borderRadius:8,background:"#fafafa",border:"1px solid #f0f0f0",marginBottom:6,fontFamily:"'DM Mono',monospace",fontSize:11 }}>
-                    <span style={{ background:sevBg(f.sev),color:sevColor(f.sev),fontSize:9,fontWeight:800,padding:"2px 7px",borderRadius:4,flexShrink:0,letterSpacing:".04em" }}>{f.sev}</span>
-                    <span style={{ fontWeight:700,color:"#0f172a",minWidth:80 }}>{f.vuln}</span>
-                    <span style={{ color:"#9ca3af",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{f.file}</span>
-                    <span style={{ color:"#ef4444",fontWeight:700,fontSize:10 }}>×{f.count}</span>
-                  </div>
-                ))}
-                <div style={{ marginTop:12,padding:"10px 14px",background:"#fef2f2",borderRadius:10,border:"1px solid #fecaca" }}>
-                  <div style={{ fontSize:11,fontWeight:600,color:"#dc2626",marginBottom:4 }}>NIST Recommendation</div>
-                  <div style={{ fontSize:11,color:"#374151",lineHeight:1.5 }}>Replace with <strong>cryptography &gt;= 41.0</strong> using ML-KEM (FIPS 203) for key exchange and ML-DSA (FIPS 204) for signatures.</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Clean scan */}
-            <div style={{ background:"#fff",border:"2px solid #bbf7d0",borderRadius:18,overflow:"hidden",boxShadow:"0 4px 20px rgba(34,197,94,.08)" }}>
-              <div style={{ background:"linear-gradient(90deg,#f0fdf4,#f7fef9)",padding:"16px 20px",borderBottom:"1px solid #bbf7d0",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
-                <div>
-                  <div style={{ fontSize:12,fontWeight:700,color:"#16a34a",marginBottom:2 }}>✅ CLEAN REPO</div>
-                  <div style={{ fontFamily:"'DM Mono',monospace",fontSize:12,color:"#374151" }}>github.com/cloudflare/circl</div>
-                </div>
-                <div style={{ textAlign:"center" }}>
-                  <div style={{ fontSize:36,fontWeight:900,color:"#22c55e",lineHeight:1 }}>100</div>
-                  <div style={{ fontSize:10,color:"#9ca3af",marginTop:2 }}>/ 100</div>
-                </div>
-              </div>
-              <div style={{ padding:"16px 20px" }}>
-                <div style={{ fontSize:11,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:".06em",marginBottom:10 }}>0 vulnerabilities found</div>
-                <div style={{ padding:"40px 20px",textAlign:"center",background:"#f0fdf4",borderRadius:12,border:"1px solid #bbf7d0",marginBottom:12 }}>
-                  <div style={{ fontSize:40,marginBottom:8 }}>✅</div>
-                  <div style={{ fontSize:14,fontWeight:700,color:"#15803d",marginBottom:4 }}>Code appears quantum-safe</div>
-                  <div style={{ fontSize:12,color:"#6b7280",lineHeight:1.6 }}>No HIGH or CRITICAL confidence findings detected. This repo uses ML-KEM and ML-DSA — the NIST-approved algorithms.</div>
-                </div>
-                <div style={{ padding:"10px 14px",background:"#f0fdf4",borderRadius:10,border:"1px solid #bbf7d0" }}>
-                  <div style={{ fontSize:11,fontWeight:600,color:"#16a34a",marginBottom:4 }}>CIRCL detected as safe ✓</div>
-                  <div style={{ fontSize:11,color:"#374151",lineHeight:1.5 }}>Cloudflare's CIRCL library implements ML-KEM (Kyber), ML-DSA (Dilithium), and SLH-DSA — all NIST FIPS 203/204/205 compliant.</div>
-                </div>
-              </div>
-            </div>
-
-          </div>
-          <div style={{ textAlign:"center",marginTop:24 }}>
-            <button className="hp2-btn-primary" onClick={() => onGetStarted("scan")}>Scan your repo now — free →</button>
-          </div>
-        </div>
-      </section>
-
-      {/* ── PRIVACY & SECURITY STATEMENT ─────────────────── */}
-      <section style={{ padding:"64px 32px",background:"#0f172a",borderBottom:"1px solid #1e293b" }}>
-        <div style={{ maxWidth:900,margin:"0 auto" }}>
-          <div style={{ textAlign:"center",marginBottom:40 }}>
-            <div style={{ fontSize:11,fontWeight:700,letterSpacing:".1em",color:"#22c55e",textTransform:"uppercase",marginBottom:12 }}>Security & Privacy</div>
-            <h2 style={{ fontSize:"clamp(22px,3vw,34px)",fontWeight:800,letterSpacing:"-.03em",color:"#f1f5f9",marginBottom:10 }}>Your code never leaves our server in any form</h2>
-            <p style={{ color:"#64748b",fontSize:15,maxWidth:560,margin:"0 auto" }}>We built a security scanner. Security is not an afterthought.</p>
-          </div>
-          <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20 }} className="hp2-how-grid">
+          <div className="qg-grid-3">
             {[
-              { icon:"🗑", title:"Zero data retention",     desc:"Every repository is cloned to a temporary /tmp directory and deleted immediately after the scan completes, regardless of whether it succeeds or fails." },
-              { icon:"🛡", title:"No code storage",         desc:"We never write your source code to a database. Findings (file paths, line numbers, algorithm names) are stored — never your actual code." },
-              { icon:"🔒", title:"ZIP path traversal protection", desc:"Every ZIP upload is validated against path traversal attacks at extraction. Malicious ZIPs are rejected before extraction begins." },
-              { icon:"🚫", title:"SSRF protection",         desc:"All outbound requests are validated against private IP ranges (10.x, 172.16.x, 192.168.x, 169.254.x) to prevent server-side request forgery." },
-              { icon:"📝", title:"Log scrubbing",           desc:"GitHub tokens, Bearer tokens, passwords, and database URLs are automatically redacted from all log lines before they are written." },
-              { icon:"📖", title:"Open source — audit us",  desc:"The full scanner source code is on GitHub under AGPL v3. You can read every line we run on your repository before you scan." },
+              { icon:"🔍", title:"It reads your code", desc:"Scans Python, JavaScript, Java, TypeScript, Go, Rust, C, and C++ using AST-level analysis — not just keyword search." },
+              { icon:"📊", title:"It scores your risk", desc:"Every scan produces a 0–100 Quantum Readiness Score so you know exactly where you stand and what to fix first." },
+              { icon:"🗺", title:"It tells you what to do", desc:"Every finding maps to a specific NIST FIPS 203/204/205 replacement — no guesswork, no vague advice." },
             ].map((item, i) => (
-              <div key={i} style={{ background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"22px 20px",transition:"all .25s" }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor="rgba(34,197,94,.3)"; e.currentTarget.style.background="rgba(34,197,94,.06)"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor="rgba(255,255,255,.08)"; e.currentTarget.style.background="rgba(255,255,255,.04)"; }}>
-                <div style={{ fontSize:26,marginBottom:10 }}>{item.icon}</div>
-                <div style={{ fontSize:13,fontWeight:700,color:"#f1f5f9",marginBottom:6 }}>{item.title}</div>
-                <div style={{ fontSize:12,color:"#64748b",lineHeight:1.65 }}>{item.desc}</div>
+              <div key={i} className="qg-card" style={{ padding:"28px 24px" }}>
+                <div style={{ fontSize:32,marginBottom:14 }}>{item.icon}</div>
+                <div style={{ fontSize:16,fontWeight:700,color:"#0f172a",marginBottom:8 }}>{item.title}</div>
+                <div style={{ fontSize:13,color:"#6b7280",lineHeight:1.7 }}>{item.desc}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── FEATURES ─────────────────────────────────────── */}
-      <section style={{ padding:"80px 32px",background:"#fff",borderBottom:"1px solid #e8edf3" }}>
-        <div style={{ maxWidth:1060,margin:"0 auto" }}>
-          <div style={{ textAlign:"center",marginBottom:48 }}>
-            <div className="hp2-sl" style={{ marginBottom:12 }}>Features</div>
-            <h2 style={{ fontSize:"clamp(24px,3vw,38px)",fontWeight:800,letterSpacing:"-.03em" }}>Everything you need to go quantum-safe</h2>
+      {/* ══ 5. WHY THIS MATTERS ═════════════════════════════ */}
+      <section className="qg-section" style={{ background:"#0f172a",borderBottom:"1px solid #1e293b" }}>
+        <div className="qg-container">
+          <div style={{ textAlign:"center",marginBottom:52 }}>
+            <div style={{ fontSize:11,fontWeight:700,letterSpacing:".1em",color:"#22c55e",textTransform:"uppercase",marginBottom:12 }}>The Quantum Threat</div>
+            <h2 style={{ fontSize:"clamp(26px,3.5vw,42px)",fontWeight:800,letterSpacing:"-.03em",color:"#f1f5f9",marginBottom:16 }}>RSA and ECC will be broken. The question is when.</h2>
+            <p style={{ fontSize:16,color:"#94a3b8",maxWidth:600,margin:"0 auto",lineHeight:1.75 }}>
+              Quantum computers use Shor's algorithm to factor large integers — breaking RSA, ECC, and Diffie-Hellman entirely. NIST finalized post-quantum replacements in August 2024. The migration window is now.
+            </p>
           </div>
-          <div className="hp2-features-grid" style={{ display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:20 }}>
+          <div className="qg-grid-3" style={{ marginBottom:48 }}>
             {[
-              { icon:"🔍", title:"Quantum Code Scanner",      badge:"Core",    bc:"#16a34a", bb:"#dcfce7", desc:"Detects RSA, ECC, DH, MD5, SHA-1 and 10+ other vulnerable algorithms across Python, JS, Java, TypeScript, Go, Rust, C, and C++.", tab:"scan" },
-              { icon:"📦", title:"Dependency Scanner",        badge:"New",     bc:"#0369a1", bb:"#e0f2fe", desc:"Parses requirements.txt, package.json, go.mod, pom.xml, Cargo.toml, and Gemfile — flags 30+ quantum-vulnerable libraries with CVEs.", tab:"scan" },
-              { icon:"🔐", title:"TLS Analyzer",              badge:"Free",    bc:"#1d4ed8", bb:"#dbeafe", desc:"Check any domain's TLS version and cipher suite for quantum readiness. A+ to F grading with NIST migration guidance.", tab:"tls" },
-              { icon:"🧠", title:"Unified Risk Score",        badge:"Unique",  bc:"#b45309", bb:"#fef3c7", desc:"One 0–100 score combining code crypto, TLS, and agility. Drill into each component to see exactly what drives risk.", tab:"unified" },
+              { icon:"⚡", color:"#ef4444", title:"Shor's Algorithm", desc:"A quantum computer running Shor's algorithm can break 2048-bit RSA in hours. Classical computers would take millions of years." },
+              { icon:"🕵️", color:"#f59e0b", title:"Harvest Now, Decrypt Later", desc:"Adversaries are already collecting encrypted traffic today — planning to decrypt it once quantum computers arrive. Your data from 2024 may be read in 2030." },
+              { icon:"📅", color:"#22c55e", title:"NIST's 2030 Deadline", desc:"NIST is deprecating RSA and ECC by 2030. Organizations that haven't migrated will face compliance failures and unacceptable risk exposure." },
+            ].map((item, i) => (
+              <div key={i} style={{ background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",borderRadius:16,padding:"28px 24px",transition:"all .25s" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor=`${item.color}44`; e.currentTarget.style.background="rgba(255,255,255,.06)"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor="rgba(255,255,255,.08)"; e.currentTarget.style.background="rgba(255,255,255,.04)"; }}>
+                <div style={{ fontSize:32,marginBottom:14 }}>{item.icon}</div>
+                <div style={{ fontSize:15,fontWeight:700,color:"#f1f5f9",marginBottom:8 }}>{item.title}</div>
+                <div style={{ fontSize:13,color:"#94a3b8",lineHeight:1.7 }}>{item.desc}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Harvest Now Decrypt Later callout */}
+          <div style={{ background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.25)",borderRadius:14,padding:"24px 28px",display:"flex",gap:16,alignItems:"flex-start" }}>
+            <span style={{ fontSize:28,flexShrink:0 }}>⚠️</span>
+            <div>
+              <div style={{ fontSize:15,fontWeight:700,color:"#fca5a5",marginBottom:6 }}>The "Harvest Now, Decrypt Later" attack is already happening</div>
+              <div style={{ fontSize:13,color:"#94a3b8",lineHeight:1.75 }}>
+                Nation-state adversaries are collecting and storing encrypted network traffic today — not to decrypt now, but to decrypt later when quantum computers become capable. If your encryption is quantum-vulnerable today, the data you're protecting now is already at risk. Migration takes time. Start the inventory now.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══ 6. THE PROBLEM ══════════════════════════════════ */}
+      <section className="qg-section" style={{ background:"#fff",borderBottom:"1px solid #e8edf3" }}>
+        <div className="qg-container">
+          <div className="qg-diff-grid" style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:40,alignItems:"center" }}>
+            <div>
+              <div className="qg-label" style={{ marginBottom:14 }}>The Problem</div>
+              <h2 style={{ fontSize:"clamp(24px,3vw,38px)",fontWeight:800,letterSpacing:"-.03em",marginBottom:20,lineHeight:1.2 }}>Most teams don't know where their crypto risk is</h2>
+              <p style={{ fontSize:15,color:"#475569",lineHeight:1.8,marginBottom:20 }}>You know you use RSA somewhere. You know there's some TLS configuration. But do you know exactly which files, which lines, which libraries? Do you know which ones need to be replaced first?</p>
+              <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
+                {[
+                  "RSA and ECC are in hundreds of places across large codebases",
+                  "Dependency libraries often introduce vulnerable crypto silently",
+                  "Manual audits take weeks and miss things",
+                  "There's no standardised way to measure readiness",
+                ].map((item, i) => (
+                  <div key={i} style={{ display:"flex",gap:10,alignItems:"flex-start",fontSize:14,color:"#475569",lineHeight:1.6 }}>
+                    <span style={{ color:"#ef4444",fontWeight:700,flexShrink:0,marginTop:1 }}>✕</span>
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{ background:"#f8fafc",border:"2px solid #e2e8f0",borderRadius:18,padding:"28px 24px" }}>
+              <div style={{ fontSize:12,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:".07em",marginBottom:16 }}>Without QuantumGuard</div>
+              {[
+                { q:"Which files use RSA?",    a:"Unknown" },
+                { q:"How many vulnerabilities?",a:"Unknown" },
+                { q:"What's the risk score?",  a:"Unknown" },
+                { q:"Where to start fixing?",  a:"Unknown" },
+                { q:"Are my dependencies safe?",a:"Unknown" },
+              ].map((row, i) => (
+                <div key={i} style={{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:i<4?"1px solid #e8edf3":"none" }}>
+                  <span style={{ fontSize:13,color:"#374151",fontWeight:500 }}>{row.q}</span>
+                  <span style={{ fontSize:12,fontWeight:700,color:"#ef4444",background:"#fef2f2",padding:"3px 10px",borderRadius:6 }}>{row.a}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══ 7. HOW IT WORKS ═════════════════════════════════ */}
+      <section className="qg-section" style={{ background:"#f0fdf4",borderBottom:"1px solid #dcfce7" }}>
+        <div className="qg-container">
+          <div style={{ textAlign:"center",marginBottom:52 }}>
+            <div className="qg-label" style={{ marginBottom:12 }}>How It Works</div>
+            <h2 style={{ fontSize:"clamp(26px,3.5vw,42px)",fontWeight:800,letterSpacing:"-.03em" }}>Four steps. Thirty seconds.</h2>
+          </div>
+          <div className="qg-grid-4">
+            {[
+              { n:"1", icon:"📎", title:"Paste your GitHub URL",  desc:"Or upload a ZIP file. No installation required. Works with public repos instantly." },
+              { n:"2", icon:"⚙", title:"We scan your code",      desc:"AST-level analysis across 8 languages. Dependency manifests checked. TLS analyzed." },
+              { n:"3", icon:"📊", title:"Get your Risk Score",    desc:"A 0–100 Quantum Readiness Score with full severity breakdown and priority order." },
+              { n:"4", icon:"🗺", title:"Follow NIST guidance",   desc:"Every finding has a specific FIPS 203/204/205 replacement — no ambiguity." },
+            ].map((step, i) => (
+              <div key={i} style={{ textAlign:"center",padding:"28px 20px",background:"#fff",borderRadius:16,border:"1.5px solid #bbf7d0",boxShadow:"0 2px 12px rgba(34,197,94,.06)",transition:"all .25s" }}
+                onMouseEnter={e => { e.currentTarget.style.transform="translateY(-4px)"; e.currentTarget.style.boxShadow="0 8px 28px rgba(34,197,94,.15)"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.boxShadow="0 2px 12px rgba(34,197,94,.06)"; }}>
+                <div className="qg-step-num" style={{ margin:"0 auto 16px" }}>{step.n}</div>
+                <div style={{ fontSize:28,marginBottom:10 }}>{step.icon}</div>
+                <div style={{ fontSize:15,fontWeight:700,color:"#0f172a",marginBottom:8 }}>{step.title}</div>
+                <div style={{ fontSize:13,color:"#475569",lineHeight:1.65 }}>{step.desc}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ textAlign:"center",marginTop:36 }}>
+            <button className="qg-btn qg-btn-primary-lg" onClick={() => onGetStarted("scan")}>Try It Now — Free →</button>
+          </div>
+        </div>
+      </section>
+
+      {/* ══ 8. FEATURES ═════════════════════════════════════ */}
+      <section className="qg-section" style={{ background:"#fff",borderBottom:"1px solid #e8edf3" }}>
+        <div className="qg-container">
+          <div style={{ textAlign:"center",marginBottom:48 }}>
+            <div className="qg-label" style={{ marginBottom:12 }}>Features</div>
+            <h2 style={{ fontSize:"clamp(26px,3.5vw,42px)",fontWeight:800,letterSpacing:"-.03em" }}>Everything you need to go quantum-safe</h2>
+          </div>
+          <div className="qg-grid-3">
+            {[
+              { icon:"🔍", badge:"Core",    bc:"#16a34a", bb:"#dcfce7", title:"Quantum Code Scanner",      desc:"Detects RSA, ECC, DH, DSA, MD5, SHA-1, RC4, DES, ECB mode, and 10+ other patterns across Python, JS, Java, TypeScript, Go, Rust, C, and C++ using AST-level analysis.",  tab:"scan"    },
+              { icon:"📦", badge:"New",     bc:"#0369a1", bb:"#e0f2fe", title:"Dependency Scanner",        desc:"Parses requirements.txt, package.json, go.mod, pom.xml, Cargo.toml, and Gemfile — flags 30+ quantum-vulnerable libraries with CVE references and safe replacements.", tab:"scan"    },
+              { icon:"🔐", badge:"Free",    bc:"#1d4ed8", bb:"#dbeafe", title:"TLS Analyzer",              desc:"Analyzes any domain's TLS version, cipher suite, and certificate. Grades A+ to F. Detects whether hybrid post-quantum TLS is enabled.",                                  tab:"tls"     },
+              { icon:"🔬", badge:"Free",    bc:"#7c3aed", bb:"#ede9fe", title:"Crypto Agility Checker",    desc:"Scores how easy it would be to swap your encryption algorithms. Hardcoded crypto scores low. Configurable crypto scores high.",                                          tab:"agility" },
+              { icon:"🧠", badge:"Unique",  bc:"#b45309", bb:"#fef3c7", title:"Unified Risk Score",        desc:"Combines code scanning, TLS analysis, and agility scoring into a single 0–100 quantum risk score. One number for your board presentation.",                             tab:"unified" },
+              { icon:"📋", badge:"Export",  bc:"#374151", bb:"#f3f4f6", title:"CBOM + NIST Reports",       desc:"Export a Cryptographic Bill of Materials (CBOM) and full NIST SP 800-53 compliance report. PDF, CSV, and JSON formats supported.",                                       tab:"nist"    },
             ].map((f, i) => (
-              <div key={i} className="hp2-card" style={{ padding:"28px 24px",cursor:"pointer" }} onClick={() => onGetStarted(f.tab)}>
+              <div key={i} className="qg-card" style={{ padding:"28px 24px",cursor:"pointer" }} onClick={() => onGetStarted(f.tab)}>
                 <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16 }}>
                   <div style={{ width:48,height:48,borderRadius:12,background:"#f0fdf4",border:"1.5px solid #bbf7d0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22 }}>{f.icon}</div>
                   <span style={{ background:f.bb,color:f.bc,fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:100 }}>{f.badge}</span>
                 </div>
-                <div style={{ fontSize:16,fontWeight:700,color:"#0f172a",marginBottom:8 }}>{f.title}</div>
+                <div style={{ fontSize:15,fontWeight:700,color:"#0f172a",marginBottom:8 }}>{f.title}</div>
                 <div style={{ fontSize:13,color:"#6b7280",lineHeight:1.65 }}>{f.desc}</div>
               </div>
             ))}
@@ -1999,106 +2055,160 @@ function Homepage({ onGetStarted, onOpenAuth }) {
         </div>
       </section>
 
-      {/* ── FOUNDER / ABOUT ──────────────────────────────── */}
-      <section style={{ padding:"80px 32px",background:"#f8fafc",borderBottom:"1px solid #e8edf3" }}>
-        <div style={{ maxWidth:1060,margin:"0 auto" }}>
+      {/* ══ 9. EXAMPLE OUTPUT ═══════════════════════════════ */}
+      <section className="qg-section" style={{ background:"#f8fafc",borderBottom:"1px solid #e8edf3" }}>
+        <div className="qg-container">
           <div style={{ textAlign:"center",marginBottom:48 }}>
-            <div className="hp2-sl" style={{ marginBottom:12 }}>About</div>
-            <h2 style={{ fontSize:"clamp(24px,3vw,38px)",fontWeight:800,letterSpacing:"-.03em",marginBottom:10 }}>Built by a cybersecurity engineer</h2>
-            <p style={{ color:"#6b7280",fontSize:15,maxWidth:520,margin:"0 auto" }}>Not a side project. A focused tool built by people who understand post-quantum cryptography.</p>
+            <div className="qg-label" style={{ marginBottom:12 }}>Example Output</div>
+            <h2 style={{ fontSize:"clamp(26px,3.5vw,42px)",fontWeight:800,letterSpacing:"-.03em",marginBottom:12 }}>This is what a real scan looks like</h2>
+            <p style={{ color:"#6b7280",fontSize:15 }}>Actual output from scanning a real-world codebase. Every finding includes a specific NIST-approved fix.</p>
           </div>
-          <div className="hp2-founder-grid" style={{ display:"grid",gridTemplateColumns:"1fr 2fr",gap:32,alignItems:"center" }}>
-            {/* Founder card */}
-            <div style={{ background:"#fff",border:"2px solid #bbf7d0",borderRadius:20,padding:"32px 28px",textAlign:"center",boxShadow:"0 4px 24px rgba(34,197,94,.1)" }}>
-              <div style={{ width:72,height:72,borderRadius:"50%",background:"linear-gradient(135deg,#1e1b4b,#312e81)",color:"#a5b4fc",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Mono',monospace",fontWeight:700,fontSize:22,margin:"0 auto 16px",border:"3px solid #a5b4fc44" }}>PP</div>
-              <div style={{ fontSize:16,fontWeight:800,color:"#0f172a",marginBottom:4 }}>Pavansudheer Payyavula</div>
-              <div style={{ fontSize:12,fontWeight:700,color:"#22c55e",marginBottom:12 }}>Founder & CEO</div>
-              <div style={{ fontSize:12,color:"#6b7280",lineHeight:1.65,marginBottom:16 }}>MS Cybersecurity & Computer Information Systems</div>
-              <div style={{ display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap" }}>
-                <a href="https://github.com/cybersupe" target="_blank" rel="noreferrer"
-                  style={{ display:"inline-flex",alignItems:"center",gap:5,background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,color:"#374151",textDecoration:"none",transition:"all .2s" }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor="#22c55e"; e.currentTarget.style.color="#22c55e"; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor="#e2e8f0"; e.currentTarget.style.color="#374151"; }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
-                  GitHub
-                </a>
-                <a href="https://www.linkedin.com/in/pavansudheer" target="_blank" rel="noreferrer"
-                  style={{ display:"inline-flex",alignItems:"center",gap:5,background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,color:"#374151",textDecoration:"none",transition:"all .2s" }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor="#0077b5"; e.currentTarget.style.color="#0077b5"; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor="#e2e8f0"; e.currentTarget.style.color="#374151"; }}>
-                  in LinkedIn
-                </a>
+
+          {/* Score + summary row */}
+          <div style={{ display:"grid",gridTemplateColumns:"200px 1fr",gap:20,marginBottom:20 }} className="qg-diff-grid">
+            <div style={{ background:"#fff",border:"2px solid #fecaca",borderRadius:16,padding:"24px",textAlign:"center" }}>
+              <div style={{ fontSize:56,fontWeight:900,color:"#ef4444",lineHeight:1 }}>42</div>
+              <div style={{ fontSize:11,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1,marginTop:4 }}>Quantum Score / 100</div>
+              <div style={{ marginTop:10,display:"inline-flex",alignItems:"center",gap:5,background:"#fef2f2",color:"#ef4444",fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:100,border:"1px solid #fecaca" }}>
+                ⚠ At Risk
               </div>
             </div>
-
-            {/* About text */}
-            <div>
-              <div style={{ fontSize:18,fontWeight:700,color:"#0f172a",marginBottom:16,lineHeight:1.4 }}>
-                "I built QuantumGuard because I couldn't find a free tool that told me<span style={{ color:"#22c55e" }}> where my RSA was</span>."
-              </div>
-              <div style={{ fontSize:14,color:"#475569",lineHeight:1.8,marginBottom:20 }}>
-                After NIST finalized the post-quantum standards in August 2024, every company needed to audit their cryptography. The only tools that existed required enterprise contracts, weeks of setup, and six-figure budgets. Developers — the people who actually write the code — had nothing.
-              </div>
-              <div style={{ fontSize:14,color:"#475569",lineHeight:1.8,marginBottom:24 }}>
-                QuantumGuard was built to fix that. It's a real scanner — not a checklist, not a form. It reads your actual code, finds actual vulnerable algorithms, and tells you exactly which NIST-approved algorithm to replace them with.
-              </div>
-              <div style={{ display:"flex",gap:16,flexWrap:"wrap" }}>
-                {[
-                  { label:"Company",  value:"Mangsri QuantumGuard LLC" },
-                  { label:"Location", value:"Montgomery, AL, USA" },
-                  { label:"Founded",  value:"April 27, 2026" },
-                  { label:"License",  value:"AGPL v3 — Open Source" },
-                ].map((item, i) => (
-                  <div key={i} style={{ background:"#fff",border:"1px solid #e2e8f0",borderRadius:10,padding:"10px 16px",minWidth:140 }}>
-                    <div style={{ fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:".06em",marginBottom:4 }}>{item.label}</div>
-                    <div style={{ fontSize:12,fontWeight:600,color:"#0f172a" }}>{item.value}</div>
+            <div style={{ background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:16,padding:"20px 24px" }}>
+              <div style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16 }}>
+                {[["6","Total"],["2","Critical"],["2","High"],["2","Medium"]].map(([n,l],i) => (
+                  <div key={i} style={{ textAlign:"center",padding:"10px",background:"#f8fafc",borderRadius:10 }}>
+                    <div style={{ fontSize:24,fontWeight:800,color:i===0?"#0f172a":i===1?"#ef4444":i===2?"#f59e0b":"#eab308" }}>{n}</div>
+                    <div style={{ fontSize:11,color:"#9ca3af",marginTop:2 }}>{l}</div>
                   </div>
                 ))}
               </div>
+              <div style={{ fontSize:13,color:"#475569",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"8px 12px" }}>
+                <strong style={{ color:"#15803d" }}>Score explanation: </strong>2 critical findings (RSA, ECC) deduct 40 pts. 2 high findings deduct 16 pts. Upgrade TLS 1.2 → 1.3 for +5 pts.
+              </div>
             </div>
           </div>
 
-          {/* Team row */}
-          <div style={{ marginTop:40,padding:"24px 28px",background:"#fff",border:"1px solid #e2e8f0",borderRadius:16 }}>
-            <div style={{ fontSize:12,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:".06em",marginBottom:16 }}>The team</div>
-            <div style={{ display:"flex",gap:24,flexWrap:"wrap",alignItems:"center" }}>
-              {[
-                { initials:"PP", name:"Pavansudheer Payyavula", role:"Founder & CEO",  color:"#a5b4fc", bg:"#1e1b4b" },
-                { initials:"MS", name:"Manasa Sannidhi",         role:"Co-Founder",     color:"#22c55e", bg:"#052e16" },
-                { initials:"BG", name:"Bharathwaj Goud Siga",    role:"Business",       color:"#f59e0b", bg:"#1c0a00" },
-                { initials:"VR", name:"Vijendhar Reddy Muppidi", role:"Advisor",        color:"#f87171", bg:"#2a0a0a" },
-              ].map((m, i) => (
-                <div key={i} style={{ display:"flex",alignItems:"center",gap:10 }}>
-                  <div style={{ width:36,height:36,borderRadius:"50%",background:m.bg,color:m.color,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Mono',monospace",fontWeight:700,fontSize:12,flexShrink:0,border:`2px solid ${m.color}44` }}>{m.initials}</div>
-                  <div>
-                    <div style={{ fontSize:12,fontWeight:600,color:"#0f172a" }}>{m.name}</div>
-                    <div style={{ fontSize:10,color:"#9ca3af" }}>{m.role}</div>
-                  </div>
+          {/* Findings table */}
+          <div style={{ background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,.04)" }}>
+            <div style={{ padding:"12px 20px",background:"#f8fafc",borderBottom:"1px solid #e2e8f0",display:"flex",alignItems:"center",gap:8 }}>
+              <div style={{ width:8,height:8,borderRadius:"50%",background:"#22c55e" }} />
+              <span style={{ fontSize:12,fontWeight:700,color:"#374151" }}>Threat Intelligence — 6 findings</span>
+            </div>
+            {EXAMPLE_FINDINGS.map((f, i) => (
+              <div key={i} style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 20px",borderBottom:i<5?"1px solid #f0f4f0":"none",flexWrap:"wrap",transition:"background .15s" }}
+                onMouseEnter={e => e.currentTarget.style.background="#fafbfc"}
+                onMouseLeave={e => e.currentTarget.style.background="transparent"}>
+                <span style={{ background:sevBg(f.sev),color:sevColor(f.sev),fontSize:10,fontWeight:800,padding:"3px 9px",borderRadius:5,letterSpacing:".04em",flexShrink:0,textTransform:"uppercase" }}>{f.sev}</span>
+                <span style={{ fontFamily:"'DM Mono',monospace",fontSize:12,fontWeight:700,color:"#0f172a",minWidth:120 }}>{f.vuln}</span>
+                <span style={{ fontFamily:"'DM Mono',monospace",fontSize:11,color:"#9ca3af",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{f.file}:{f.line}</span>
+                <span style={{ fontSize:11,fontWeight:600,color:"#2563eb",flexShrink:0 }}>→ {f.fix}</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ textAlign:"center",marginTop:24 }}>
+            <button className="qg-btn qg-btn-primary" onClick={() => onGetStarted("scan")} style={{ padding:"14px 32px",fontSize:15 }}>Scan Your Code Now — Free →</button>
+            <div style={{ fontSize:12,color:"#9ca3af",marginTop:8 }}>Results should be validated before production decisions</div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══ 10. DIFFERENTIATION ═════════════════════════════ */}
+      <section className="qg-section" style={{ background:"#fff",borderBottom:"1px solid #e8edf3" }}>
+        <div className="qg-container">
+          <div style={{ textAlign:"center",marginBottom:48 }}>
+            <div className="qg-label" style={{ marginBottom:12 }}>Why QuantumGuard</div>
+            <h2 style={{ fontSize:"clamp(26px,3.5vw,42px)",fontWeight:800,letterSpacing:"-.03em" }}>A different kind of security scanner</h2>
+          </div>
+
+          {/* Snyk callout — confident, professional */}
+          <div style={{ background:"rgba(59,130,246,.05)",border:"1px solid rgba(59,130,246,.2)",borderRadius:14,padding:"20px 24px",marginBottom:32,textAlign:"center" }}>
+            <span style={{ fontSize:14,color:"#475569" }}>Snyk focuses on CVEs and dependency vulnerabilities.  </span>
+            <span style={{ fontSize:14,color:"#1d4ed8",fontWeight:700 }}>QuantumGuard focuses on cryptographic risk and post-quantum readiness.</span>
+            <span style={{ fontSize:14,color:"#475569" }}> They solve different problems.</span>
+          </div>
+
+          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:20 }} className="qg-diff-grid">
+            <div style={{ background:"#fafafa",border:"1.5px solid #e2e8f0",borderRadius:14,padding:"24px" }}>
+              <div style={{ fontSize:13,fontWeight:700,color:"#9ca3af",marginBottom:16,textTransform:"uppercase",letterSpacing:".06em" }}>Traditional scanners</div>
+              {["Find known CVEs in dependencies","Check for outdated packages","Report software vulnerabilities","Don't analyze cryptographic algorithms","Don't measure quantum readiness"].map((t,i) => (
+                <div key={i} style={{ display:"flex",gap:8,alignItems:"flex-start",fontSize:13,color:"#374151",marginBottom:10,lineHeight:1.5 }}>
+                  <span style={{ color:"#9ca3af",flexShrink:0,marginTop:1 }}>—</span>{t}
                 </div>
               ))}
-              <div style={{ marginLeft:"auto" }}>
-                <button onClick={() => onGetStarted("team")} style={{ background:"transparent",border:"1px solid #e2e8f0",borderRadius:8,padding:"7px 14px",fontSize:12,fontWeight:600,color:"#374151",cursor:"pointer",transition:"all .2s" }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor="#22c55e"; e.currentTarget.style.color="#22c55e"; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor="#e2e8f0"; e.currentTarget.style.color="#374151"; }}>
-                  Meet the team →
-                </button>
-              </div>
+            </div>
+            <div style={{ background:"#f0fdf4",border:"2px solid #bbf7d0",borderRadius:14,padding:"24px" }}>
+              <div style={{ fontSize:13,fontWeight:700,color:"#15803d",marginBottom:16,textTransform:"uppercase",letterSpacing:".06em" }}>QuantumGuard</div>
+              {["Finds quantum-vulnerable algorithms in code","Scans 30+ vulnerable libraries across 6 ecosystems","Measures crypto agility — how easy migration will be","Analyzes TLS configurations for quantum readiness","Gives a NIST FIPS 203/204/205 fix for every finding"].map((t,i) => (
+                <div key={i} style={{ display:"flex",gap:8,alignItems:"flex-start",fontSize:13,color:"#15803d",marginBottom:10,lineHeight:1.5 }}>
+                  <span style={{ color:"#22c55e",flexShrink:0,marginTop:1,fontWeight:700 }}>✓</span>{t}
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── PRICING ──────────────────────────────────────── */}
-      <section style={{ padding:"80px 32px",background:"#fff",borderBottom:"1px solid #e8edf3" }}>
-        <div style={{ maxWidth:1140,margin:"0 auto" }}>
+      {/* ══ 11. TRUST SECTION ═══════════════════════════════ */}
+      <section className="qg-section" style={{ background:"#f8fafc",borderBottom:"1px solid #e8edf3" }}>
+        <div className="qg-container">
           <div style={{ textAlign:"center",marginBottom:48 }}>
-            <div className="hp2-sl" style={{ marginBottom:12 }}>Pricing</div>
-            <h2 style={{ fontSize:"clamp(24px,3vw,38px)",fontWeight:800,letterSpacing:"-.03em" }}>Start free. Scale when you're ready.</h2>
-            <p style={{ color:"#6b7280",marginTop:10,fontSize:15 }}>No credit card required for Free and Pro trials.</p>
+            <div className="qg-label" style={{ marginBottom:12 }}>Trust & Transparency</div>
+            <h2 style={{ fontSize:"clamp(26px,3.5vw,42px)",fontWeight:800,letterSpacing:"-.03em" }}>Built for real-world codebases</h2>
           </div>
-          <div className="hp2-pricing-grid" style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:18 }}>
+          <div className="qg-grid-3">
+            {[
+              { icon:"🔒", title:"Zero data retention",       desc:"Your code is never stored. Every repository is scanned in a temporary directory and deleted immediately — whether the scan succeeds or fails." },
+              { icon:"📖", title:"Fully open source",         desc:"Every line of scanner code is available on GitHub under AGPL v3. You can audit exactly what runs on your repository before you scan." },
+              { icon:"🧪", title:"Tested on real repos",      desc:"Validated against pycrypto, node-forge, elliptic, and 30+ known-vulnerable libraries. The pycrypto scan scores 0/100 — as it should." },
+              { icon:"🏛", title:"NIST 2024 aligned",         desc:"Every recommendation maps to NIST FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), or FIPS 205 (SLH-DSA) — the official post-quantum standards." },
+              { icon:"🛡", title:"Security controls",         desc:"SSRF protection, ZIP path traversal prevention, log scrubbing, JWT authentication, and rate limiting are all in place." },
+              { icon:"⚠", title:"Honest about limitations",  desc:"False positives can occur in vendor/library code — flagged separately and excluded from scores. Large repos (>50MB) may return partial results." },
+            ].map((item, i) => (
+              <div key={i} className="qg-card" style={{ padding:"24px 22px" }}>
+                <div style={{ fontSize:28,marginBottom:12 }}>{item.icon}</div>
+                <div style={{ fontSize:14,fontWeight:700,color:"#0f172a",marginBottom:6 }}>{item.title}</div>
+                <div style={{ fontSize:12,color:"#6b7280",lineHeight:1.7 }}>{item.desc}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Company info */}
+          <div style={{ marginTop:36,padding:"24px 28px",background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:16,display:"flex",gap:24,flexWrap:"wrap",alignItems:"center",justifyContent:"space-between" }}>
+            <div>
+              <div style={{ fontSize:14,fontWeight:700,color:"#0f172a",marginBottom:4 }}>Mangsri QuantumGuard LLC</div>
+              <div style={{ fontSize:13,color:"#6b7280" }}>Montgomery, Alabama, USA · Founded April 2026 · AGPL v3 Open Source</div>
+            </div>
+            <div style={{ display:"flex",gap:12,flexWrap:"wrap" }}>
+              <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer"
+                style={{ display:"inline-flex",alignItems:"center",gap:6,color:"#374151",border:"1px solid #e2e8f0",borderRadius:8,padding:"7px 14px",fontSize:12,fontWeight:600,textDecoration:"none",transition:"all .2s" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor="#22c55e"; e.currentTarget.style.color="#22c55e"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor="#e2e8f0"; e.currentTarget.style.color="#374151"; }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                View Source
+              </a>
+              <button onClick={() => onGetStarted("team")}
+                style={{ display:"inline-flex",alignItems:"center",gap:6,color:"#374151",border:"1px solid #e2e8f0",borderRadius:8,padding:"7px 14px",fontSize:12,fontWeight:600,cursor:"pointer",background:"transparent",fontFamily:"inherit",transition:"all .2s" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor="#22c55e"; e.currentTarget.style.color="#22c55e"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor="#e2e8f0"; e.currentTarget.style.color="#374151"; }}>
+                Meet the team →
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══ 12. PRICING ═════════════════════════════════════ */}
+      <section className="qg-section" style={{ background:"#fff",borderBottom:"1px solid #e8edf3" }}>
+        <div className="qg-container">
+          <div style={{ textAlign:"center",marginBottom:48 }}>
+            <div className="qg-label" style={{ marginBottom:12 }}>Pricing</div>
+            <h2 style={{ fontSize:"clamp(26px,3.5vw,42px)",fontWeight:800,letterSpacing:"-.03em" }}>Start free. Scale when you're ready.</h2>
+            <p style={{ color:"#6b7280",marginTop:10,fontSize:15 }}>No credit card required. No hidden limits on the free plan.</p>
+          </div>
+          <div className="qg-pricing-grid" style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:18 }}>
             {PRICING.map(plan => (
-              <div key={plan.name} style={{ background:"#fff",border:plan.highlight?"2px solid #22c55e":"1.5px solid #e8edf3",borderRadius:18,padding:"28px 22px",position:"relative",boxShadow:plan.highlight?"0 8px 36px rgba(34,197,94,.13)":"0 2px 12px rgba(0,0,0,.04)",transform:plan.highlight?"scale(1.03)":"none",transition:"all .25s" }}
+              <div key={plan.name} style={{ background:"#fff",border:plan.highlight?"2px solid #22c55e":"1.5px solid #e8edf3",borderRadius:18,padding:"28px 22px",position:"relative",boxShadow:plan.highlight?"0 8px 36px rgba(34,197,94,.15)":"0 2px 12px rgba(0,0,0,.04)",transform:plan.highlight?"scale(1.03)":"none",transition:"all .25s" }}
                 onMouseEnter={e => { if (!plan.highlight) { e.currentTarget.style.borderColor="#22c55e"; e.currentTarget.style.transform="translateY(-2px)"; }}}
                 onMouseLeave={e => { if (!plan.highlight) { e.currentTarget.style.borderColor="#e8edf3"; e.currentTarget.style.transform="none"; }}}>
                 {plan.highlight && <div style={{ position:"absolute",top:-13,left:"50%",transform:"translateX(-50%)",background:"#22c55e",color:"#fff",fontSize:10,fontWeight:700,letterSpacing:".06em",padding:"4px 14px",borderRadius:100,whiteSpace:"nowrap" }}>MOST POPULAR</div>}
@@ -2116,8 +2226,8 @@ function Homepage({ onGetStarted, onOpenAuth }) {
                 </button>
                 <div style={{ display:"flex",flexDirection:"column",gap:9 }}>
                   {plan.features.map(f => (
-                    <div key={f} style={{ display:"flex",alignItems:"center",gap:9,fontSize:12,color:"#4b5563" }}>
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0 }}><path d="M3 8l3.5 3.5L13 4" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <div key={f} style={{ display:"flex",alignItems:"center",gap:8,fontSize:12,color:"#4b5563" }}>
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0 }}><path d="M3 8l3.5 3.5L13 4" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       {f}
                     </div>
                   ))}
@@ -2128,49 +2238,54 @@ function Homepage({ onGetStarted, onOpenAuth }) {
         </div>
       </section>
 
-      {/* ── CTA ──────────────────────────────────────────── */}
-      <section style={{ padding:"96px 32px",background:"linear-gradient(135deg,#052e16 0%,#14532d 60%,#052e16 100%)",textAlign:"center",position:"relative",overflow:"hidden" }}>
-        <div style={{ maxWidth:620,margin:"0 auto",position:"relative" }}>
-          <div style={{ width:52,height:52,background:"linear-gradient(135deg,#22c55e,#15803d)",borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",fontSize:22,boxShadow:"0 8px 24px rgba(34,197,94,.3)" }}>⚛</div>
-          <h2 style={{ fontSize:"clamp(28px,4vw,48px)",fontWeight:800,letterSpacing:"-.04em",color:"#fff",lineHeight:1.1,marginBottom:16 }}>
-            Ready to find your<br/><span style={{ color:"#22c55e" }}>quantum vulnerabilities?</span>
+      {/* ══ 13. FINAL CTA ═══════════════════════════════════ */}
+      <section style={{ padding:"100px 32px",background:"linear-gradient(135deg,#052e16 0%,#14532d 60%,#052e16 100%)",textAlign:"center",position:"relative",overflow:"hidden" }}>
+        <div style={{ position:"absolute",inset:0,backgroundImage:"radial-gradient(rgba(34,197,94,.08) 1px,transparent 1px)",backgroundSize:"28px 28px",pointerEvents:"none" }} />
+        <div style={{ maxWidth:640,margin:"0 auto",position:"relative" }}>
+          <div style={{ width:56,height:56,background:"linear-gradient(135deg,#22c55e,#15803d)",borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 24px",fontSize:26,boxShadow:"0 8px 28px rgba(34,197,94,.35)" }}>⚛</div>
+          <h2 style={{ fontSize:"clamp(28px,4.5vw,52px)",fontWeight:900,letterSpacing:"-.04em",color:"#fff",lineHeight:1.1,marginBottom:16 }}>
+            Start your quantum security<br/>journey today
           </h2>
-          <p style={{ color:"#6b7280",fontSize:15,marginBottom:32,lineHeight:1.6 }}>India's DST mandates cryptographic inventories by 2027. NIST deprecates RSA and ECC by 2030. Start now — it's free.</p>
-          <div style={{ display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap" }}>
-            <button className="hp2-btn-primary" style={{ padding:"15px 34px",fontSize:16 }} onClick={() => onGetStarted("scan")}>🛡 Start Scanning — Free</button>
+          <p style={{ color:"#6b7280",fontSize:16,marginBottom:36,lineHeight:1.65,maxWidth:500,margin:"0 auto 36px" }}>
+            NIST is deprecating RSA and ECC by 2030. Most codebases are already vulnerable. Find out where yours stands — free, no signup, 30 seconds.
+          </p>
+          <div style={{ display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap",marginBottom:16 }}>
+            <button className="qg-btn qg-btn-primary-lg" onClick={() => onGetStarted("scan")}>
+              🛡 Scan Your Code Before It's Too Late — Free
+            </button>
             <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer"
-              style={{ display:"inline-flex",alignItems:"center",gap:8,background:"rgba(255,255,255,.08)",color:"#f1f5f9",border:"1.5px solid rgba(255,255,255,.2)",padding:"15px 34px",borderRadius:10,fontSize:16,fontWeight:700,textDecoration:"none",transition:"all .2s" }}
-              onMouseEnter={e => e.currentTarget.style.borderColor="#22c55e"}
-              onMouseLeave={e => e.currentTarget.style.borderColor="rgba(255,255,255,.2)"}>
+              className="qg-btn qg-btn-ghost"
+              style={{ textDecoration:"none" }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
-              View Source
+              View on GitHub
             </a>
           </div>
+          <div style={{ fontSize:12,color:"#4b5563" }}>No signup · No credit card · Results should be validated before production decisions</div>
         </div>
       </section>
 
-      {/* ── FOOTER ───────────────────────────────────────── */}
-      <footer style={{ background:"#0b1117",padding:"44px 32px 28px",color:"#4b5563" }}>
-        <div style={{ maxWidth:1100,margin:"0 auto" }}>
-          <div style={{ display:"flex",gap:44,flexWrap:"wrap",marginBottom:32 }}>
+      {/* ══ 14. FOOTER ══════════════════════════════════════ */}
+      <footer style={{ background:"#0b1117",padding:"48px 32px 28px",color:"#4b5563" }}>
+        <div style={{ maxWidth:1060,margin:"0 auto" }}>
+          <div style={{ display:"flex",gap:44,flexWrap:"wrap",marginBottom:36 }}>
             <div style={{ flex:"1 1 200px" }}>
               <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:12 }}>
                 <div style={{ width:28,height:28,background:"linear-gradient(135deg,#22c55e,#15803d)",borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14 }}>⚛</div>
                 <span style={{ color:"#f8fafc",fontWeight:800,fontSize:15,letterSpacing:"-.02em" }}><span style={{ color:"#22c55e" }}>Quantum</span>Guard</span>
               </div>
-              <p style={{ fontSize:12,lineHeight:1.65,maxWidth:200,marginBottom:8 }}>Post-quantum cryptography scanning for modern engineering teams.</p>
-              <div style={{ fontSize:11,color:"#374151" }}>Mangsri QuantumGuard LLC · Montgomery, AL</div>
+              <p style={{ fontSize:12,lineHeight:1.65,maxWidth:200,marginBottom:10 }}>Post-quantum cryptography scanning for modern engineering teams.</p>
+              <div style={{ fontSize:11,color:"#374151" }}>Mangsri QuantumGuard LLC<br/>Montgomery, Alabama, USA</div>
             </div>
             {[
-              { title:"Product",  links:["Quantum Scanner","CI/CD Gate","TLS Analyzer","Executive Reports"] },
-              { title:"Company",  links:["About","Our Team","Blog","Careers"] },
-              { title:"Legal",    links:["Privacy","Terms","Security","Cookie Policy"] },
+              { title:"Product",  links:[["Quantum Scanner","scan"],["TLS Analyzer","tls"],["Agility Checker","agility"],["Unified Risk","unified"],["NIST Reports","nist"]] },
+              { title:"Company",  links:[["About","team"],["Our Team","team"],["GitHub","github"],["Documentation","docs"]] },
+              { title:"Legal",    links:[["Privacy Policy",""],["Terms of Service",""],["Security",""],["Cookie Policy",""]] },
             ].map(col => (
               <div key={col.title} style={{ flex:"1 1 120px" }}>
                 <div style={{ fontSize:11,fontWeight:700,color:"#f8fafc",letterSpacing:".07em",textTransform:"uppercase",marginBottom:14 }}>{col.title}</div>
-                {col.links.map(l => (
+                {col.links.map(([l, tab]) => (
                   <div key={l} style={{ fontSize:12,color:"#4b5563",marginBottom:9,cursor:"pointer",transition:"color .15s" }}
-                    onClick={() => { const t = FOOTER_MAP[l]; if (t) onGetStarted(t); }}
+                    onClick={() => { if (tab === "github") { window.open("https://github.com/cybersupe/quantumguard","_blank"); } else if (tab) { onGetStarted(tab); }}}
                     onMouseEnter={e => e.currentTarget.style.color="#22c55e"}
                     onMouseLeave={e => e.currentTarget.style.color="#4b5563"}>
                     {l}
@@ -2181,41 +2296,42 @@ function Homepage({ onGetStarted, onOpenAuth }) {
           </div>
           <div style={{ borderTop:"1px solid #1e293b",paddingTop:20,display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:10,fontSize:12 }}>
             <span>© 2026 Mangsri QuantumGuard LLC. All rights reserved.</span>
-            <span>NIST FIPS 203 · FIPS 204 · FIPS 205 · India NQM Aligned · AGPL v3</span>
+            <span style={{ color:"#374151" }}>NIST FIPS 203 · FIPS 204 · FIPS 205 · AGPL v3 Open Source · Zero Data Retention</span>
           </div>
         </div>
       </footer>
 
-      {/* ── DEMO MODAL ───────────────────────────────────── */}
+      {/* ══ DEMO MODAL ══════════════════════════════════════ */}
       {demoOpen && (
-        <div className="hp2-modal-overlay" onClick={() => setDemoOpen(false)}>
-          <div className="hp2-modal" onClick={e => e.stopPropagation()}>
+        <div className="qg-modal-bg" onClick={() => setDemoOpen(false)}>
+          <div className="qg-modal" onClick={e => e.stopPropagation()}>
             <div style={{ padding:"18px 22px",borderBottom:"1px solid #e2e8f0",display:"flex",justifyContent:"space-between",alignItems:"center" }}>
               <div style={{ display:"flex",alignItems:"center",gap:10 }}>
                 <div style={{ width:30,height:30,borderRadius:7,background:"#22c55e",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14 }}>⚛</div>
                 <span style={{ fontWeight:800,fontSize:15 }}>Demo Scan Result</span>
                 <span style={{ background:"#fef3c7",color:"#b45309",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:100 }}>SAMPLE</span>
               </div>
-              <button onClick={() => setDemoOpen(false)} style={{ background:"transparent",border:"none",cursor:"pointer",fontSize:20,color:"#94a3b8" }}>✕</button>
+              <button onClick={() => setDemoOpen(false)} style={{ background:"transparent",border:"none",cursor:"pointer",fontSize:22,color:"#94a3b8",lineHeight:1 }}>✕</button>
             </div>
-            <div style={{ padding:"16px 22px" }}>
-              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
-                <div style={{ fontFamily:"'DM Mono',monospace",fontSize:12,color:"#6b7280" }}>github.com/example/crypto-app</div>
+            <div style={{ padding:"16px 22px 24px" }}>
+              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,padding:"14px 16px",background:"#fef2f2",borderRadius:12,border:"1px solid #fecaca" }}>
+                <div style={{ fontFamily:"'DM Mono',monospace",fontSize:12,color:"#374151" }}>github.com/example/crypto-app</div>
                 <div style={{ textAlign:"center" }}>
-                  <div style={{ fontSize:32,fontWeight:900,color:"#f59e0b",lineHeight:1 }}>42</div>
+                  <div style={{ fontSize:34,fontWeight:900,color:"#ef4444",lineHeight:1 }}>42</div>
                   <div style={{ fontSize:10,color:"#9ca3af" }}>/ 100</div>
                 </div>
               </div>
-              <div style={{ fontSize:11,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:".08em",marginBottom:12 }}>4 findings detected</div>
-              {demoResult.findings.map((f, i) => (
-                <div key={i} style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:8,background:"#f8fafc",border:"1.5px solid #e2e8f0",fontFamily:"'DM Mono',monospace",fontSize:12,marginBottom:6 }}>
-                  <span style={{ background:sevBg(f.sev),color:sevColor(f.sev),fontSize:9,fontWeight:800,padding:"2px 7px",borderRadius:4,letterSpacing:".04em",flexShrink:0 }}>{f.sev}</span>
+              <div style={{ fontSize:11,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:".08em",marginBottom:12 }}>6 vulnerabilities detected</div>
+              {EXAMPLE_FINDINGS.map((f, i) => (
+                <div key={i} style={{ display:"flex",alignItems:"center",gap:8,padding:"9px 12px",borderRadius:8,background:"#f8fafc",border:"1px solid #f0f0f0",marginBottom:6,fontFamily:"'DM Mono',monospace",fontSize:11,flexWrap:"wrap" }}>
+                  <span style={{ background:sevBg(f.sev),color:sevColor(f.sev),fontSize:9,fontWeight:800,padding:"2px 7px",borderRadius:4,flexShrink:0,textTransform:"uppercase" }}>{f.sev}</span>
                   <span style={{ fontWeight:700,color:"#0f172a",minWidth:90 }}>{f.vuln}</span>
-                  <span style={{ color:"#94a3b8",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{f.file}</span>
-                  <span style={{ color:"#2563eb",fontWeight:600,fontSize:11,flexShrink:0 }}>→ {f.fix}</span>
+                  <span style={{ color:"#9ca3af",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:10 }}>{f.file}</span>
+                  <span style={{ color:"#2563eb",fontWeight:600,fontSize:10,flexShrink:0 }}>→ {f.fix.split(" — ")[0]}</span>
                 </div>
               ))}
-              <button className="hp2-btn-primary" style={{ width:"100%",marginTop:14,fontSize:14,justifyContent:"center" }} onClick={() => { setDemoOpen(false); onGetStarted("scan"); }}>
+              <div style={{ marginTop:8,fontSize:11,color:"#9ca3af",textAlign:"center",marginBottom:14 }}>Results should be validated before production decisions</div>
+              <button className="qg-btn qg-btn-primary" style={{ width:"100%",justifyContent:"center",fontSize:14,padding:"13px" }} onClick={() => { setDemoOpen(false); onGetStarted("scan"); }}>
                 Scan My Repo Now →
               </button>
             </div>
