@@ -3126,7 +3126,7 @@ function Homepage({ onGetStarted, onOpenAuth }) {
               <div style={{ fontSize:11,color:"#374151" }}>Montgomery, Alabama, USA</div>
             </div>
             {[
-              { title:"Product",  links:[["Scanner","scan"],["TLS Analyzer","tls"],["Agility Checker","agility"],["Unified Risk",privacy:"Privacy Policy", terms:"Terms of Service", security:"Security", disclaimer:"Disclaimer","unified"],["NIST Reports","nist"]] },
+              { title:"Product",  links:[["Scanner","scan"],["TLS Analyzer","tls"],["Agility Checker","agility"],["Unified Risk","unified"],["NIST Reports","nist"]] },
               { title:"Company",  links:[["About","team"],["Our Team","team"],["GitHub","github"],["Documentation","docs"]] },
               { title:"Legal", links:[["Privacy Policy","privacy"],["Terms of Service","terms"],["Security","security"],["Disclaimer","disclaimer"]] }
             ].map(col => (
