@@ -1709,6 +1709,664 @@ function HpNavDropdown({ item, isOpen, onToggle, onItemClick }) {
 // Replace everything from "function Homepage(" to its closing "}"
 // ══════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════
+// App.js patch — wire up Privacy, Terms, Security, Disclaimer
+// Make ONLY these 4 targeted changes. Nothing else.
+// ══════════════════════════════════════════════════════════════
+
+// ── CHANGE 1 — pageTitle object ──────────────────────────────
+// FIND this in AppInner:
+//   const pageTitle = { scan:"Threat Scanner", agility: ...
+// ADD these 4 entries to the object:
+
+/*
+  privacy:    "Privacy Policy",
+  terms:      "Terms of Service",
+  security:   "Security",
+  disclaimer: "Disclaimer",
+*/
+
+// Full object after change:
+/*
+const pageTitle = {
+  scan:"Threat Scanner", agility:"Agility Checker", tls:"TLS Analyzer",
+  history:"Scan History", migration:"Migration Tracker", dashboard:"Analytics",
+  nist:"NIST Report", docs:"Documentation", team:"Our Team", unified:"Unified Risk",
+  privacy:"Privacy Policy", terms:"Terms of Service",
+  security:"Security", disclaimer:"Disclaimer",
+};
+*/
+
+
+// ── CHANGE 2 — render block in AppInner ──────────────────────
+// FIND this block (near the bottom of AppInner):
+//   {active==="team" && <TeamPage />}
+// ADD these 4 lines immediately after it:
+
+/*
+  {active==="privacy"    && <PrivacyPage />}
+  {active==="terms"      && <TermsPage />}
+  {active==="security"   && <SecurityPage />}
+  {active==="disclaimer" && <DisclaimerPage />}
+*/
+
+
+// ── CHANGE 3 — Footer links ───────────────────────────────────
+// FIND in Homepage footer:
+//   { title:"Legal", links:[["Privacy Policy",""],["Terms of Service",""],["Security",""],["Disclaimer",""]] }
+// CHANGE to:
+//   { title:"Legal", links:[["Privacy Policy","privacy"],["Terms of Service","terms"],["Security","security"],["Disclaimer","disclaimer"]] }
+
+
+// ── CHANGE 4 — Add the 4 page components ─────────────────────
+// PASTE these 4 functions anywhere before AppInner in App.js
+// (e.g. right after TeamPage)
+
+// ════════════════════════════════════════════════════════════
+// PASTE THESE 4 COMPONENTS INTO App.js BEFORE AppInner
+// ════════════════════════════════════════════════════════════
+
+function PrivacyPage() {
+  const bg    = "#0a0e1a";
+  const card  = "#0d1220";
+  const bdr   = "#1e2d40";
+  const text  = "#f1f5f9";
+  const mid   = "#94a3b8";
+  const muted = "#4b5563";
+  const green = "#22c55e";
+  const gdim  = "rgba(34,197,94,0.1)";
+  const gbdr  = "rgba(34,197,94,0.2)";
+  const amber = "#f59e0b";
+  const adim  = "rgba(245,158,11,0.08)";
+  const abdr  = "rgba(245,158,11,0.2)";
+  const red   = "#ef4444";
+
+  const Section = ({ id, title, children }) => (
+    <section id={id} style={{ marginBottom: 48 }}>
+      <h2 style={{ fontSize:20, fontWeight:800, color:text, letterSpacing:"-.03em", marginBottom:16,
+        paddingBottom:12, borderBottom:`1px solid ${bdr}`,
+        display:"flex", alignItems:"center", gap:10 }}>
+        <span style={{ display:"inline-block", width:3, height:20, background:green,
+          borderRadius:2, flexShrink:0 }} />
+        {title}
+      </h2>
+      <div style={{ color:mid, fontSize:14, lineHeight:1.85 }}>{children}</div>
+    </section>
+  );
+
+  const P = ({ children }) => <p style={{ marginBottom:14 }}>{children}</p>;
+
+  const Callout = ({ icon, title, body, color=green, bgc=gdim, bdrc=gbdr }) => (
+    <div style={{ background:bgc, border:`1px solid ${bdrc}`, borderLeft:`3px solid ${color}`,
+      borderRadius:"0 10px 10px 0", padding:"14px 18px", marginBottom:16 }}>
+      {title && <div style={{ fontSize:13, fontWeight:700, color, marginBottom:4 }}>{icon} {title}</div>}
+      <div style={{ fontSize:13, color:mid, lineHeight:1.7 }}>{body}</div>
+    </div>
+  );
+
+  const Item = ({ children, cross=false }) => (
+    <div style={{ display:"flex", gap:10, alignItems:"flex-start", fontSize:13, color:mid,
+      marginBottom:8, lineHeight:1.65 }}>
+      <span style={{ color:cross?red:green, flexShrink:0, marginTop:2, fontWeight:700 }}>
+        {cross?"✕":"✓"}
+      </span>
+      <span>{children}</span>
+    </div>
+  );
+
+  return (
+    <div style={{ background:bg, minHeight:"100vh", fontFamily:"'DM Sans','Segoe UI',sans-serif" }}>
+      {/* Hero */}
+      <div style={{ background:`linear-gradient(135deg,${card},#0f1929)`,
+        borderBottom:`1px solid ${bdr}`, padding:"60px 32px 48px", position:"relative", overflow:"hidden" }}>
+        <div style={{ position:"absolute", inset:0,
+          backgroundImage:"radial-gradient(rgba(34,197,94,0.05) 1px,transparent 1px)",
+          backgroundSize:"28px 28px", pointerEvents:"none" }} />
+        <div style={{ maxWidth:760, margin:"0 auto", position:"relative" }}>
+          <div style={{ display:"inline-flex", alignItems:"center", gap:8,
+            background:gdim, border:`1px solid ${gbdr}`, borderRadius:100,
+            padding:"5px 14px", marginBottom:20 }}>
+            <span style={{ fontSize:11, fontWeight:700, color:green, letterSpacing:".05em" }}>LEGAL DOCUMENT</span>
+          </div>
+          <h1 style={{ fontSize:"clamp(28px,4vw,44px)", fontWeight:900, letterSpacing:"-.04em",
+            color:text, marginBottom:14, lineHeight:1.1 }}>Privacy Policy</h1>
+          <p style={{ fontSize:15, color:mid, marginBottom:20, lineHeight:1.7 }}>
+            This policy explains how <strong style={{ color:text }}>Mangsri QuantumGuard LLC</strong> collects,
+            uses, and protects information when you use QuantumGuard at{" "}
+            <a href="https://quantumguard.site" style={{ color:green, textDecoration:"none" }}>quantumguard.site</a>.
+          </p>
+          <div style={{ display:"flex", gap:16, flexWrap:"wrap" }}>
+            {[["Effective date","May 5, 2026"],["Company","Mangsri QuantumGuard LLC"],["Location","Montgomery, Alabama, USA"]].map(([k,v])=>(
+              <span key={k} style={{ fontSize:12, color:muted }}>
+                <strong style={{ color:mid }}>{k}:</strong> {v}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div style={{ maxWidth:760, margin:"0 auto", padding:"48px 32px 80px" }}>
+
+        {/* Commitments */}
+        <div style={{ background:gdim, border:`1px solid ${gbdr}`, borderRadius:14,
+          padding:"20px 24px", marginBottom:48 }}>
+          <div style={{ fontSize:13, fontWeight:700, color:green, marginBottom:12 }}>
+            Our core commitments — plain English
+          </div>
+          {[
+            "Your source code is never permanently stored. Scanned in a temporary directory, deleted immediately.",
+            "We do not sell your data to anyone, ever.",
+            "We do not share your personal information with third parties except as required to operate the service.",
+            "You can delete your account and all associated data at any time.",
+            "The scanner is open source — you can verify exactly what runs on your code.",
+          ].map((t,i) => <Item key={i}>{t}</Item>)}
+        </div>
+
+        <Section id="information" title="1. Information We Collect">
+          <P>We collect the minimum information necessary to operate QuantumGuard.</P>
+          <div style={{ fontSize:13, fontWeight:700, color:text, marginBottom:8, marginTop:16 }}>Information you provide</div>
+          {["Account information: email address and hashed password if you create an account.",
+            "Payment information: processed entirely by Stripe. We never see or store your card number.",
+            "GitHub repository URLs you submit for scanning.",
+            "Feedback or support messages you send to us.",
+          ].map((t,i) => <Item key={i}>{t}</Item>)}
+          <div style={{ fontSize:13, fontWeight:700, color:text, marginBottom:8, marginTop:16 }}>Information collected automatically</div>
+          {["IP address and general geographic region for rate limiting and abuse prevention.",
+            "Browser type and operating system for debugging.",
+            "Pages visited and features used (aggregated on the free tier).",
+            "Scan metadata: repository URL, timestamp, score, finding counts. Not the source code content.",
+          ].map((t,i) => <Item key={i}>{t}</Item>)}
+          <Callout icon="🔒" title="What we do NOT collect"
+            body="We do not collect your source code content. Files are read in memory and never written to any database. We do not collect passwords or payment credentials." />
+        </Section>
+
+        <Section id="scanning" title="2. How Scanning Works">
+          <P>Your code is never stored. Here is exactly what happens during a scan.</P>
+          <Callout icon="⚡" title="Public GitHub scan"
+            body="Repository is fetched via GitHub API, cloned to a temporary sandboxed directory, analyzed in memory, and deleted immediately after the scan — success or failure." />
+          <Callout icon="📁" title="ZIP file upload"
+            body="ZIP is received, extracted to a temporary directory, analyzed in memory, and deleted immediately. Never written to a database." />
+          <Callout icon="🔑" title="Private repo (OAuth token)"
+            body="Token is used for a single API request and never stored in our database or logs. Exists in memory for the duration of the scan only." />
+          <P>What IS stored: scan metadata — repo URL, timestamp, finding counts, score, and user ID (if authenticated). Source code content is never stored.</P>
+        </Section>
+
+        <Section id="usage" title="3. How We Use Information">
+          {["Providing the scanning service.",
+            "Authentication — verifying your identity when you log in.",
+            "Rate limiting — ensuring fair usage.",
+            "Billing — processing payments via Stripe.",
+            "Scan history — showing past scans on authenticated accounts.",
+            "Service improvement and security.",
+          ].map((t,i) => <Item key={i}>{t}</Item>)}
+          <Callout icon="⚠️" title="What we do NOT do" color={amber} bgc={adim} bdrc={abdr}
+            body="We do not sell your data. We do not use your data for advertising. We do not share your scan results with third parties. We do not use your source code to train ML models." />
+        </Section>
+
+        <Section id="retention" title="4. Data Retention">
+          <div style={{ background:card, border:`1px solid ${bdr}`, borderRadius:10, overflow:"hidden", marginBottom:14 }}>
+            {[
+              ["Source code content", "Deleted immediately — never persisted"],
+              ["Scan metadata", "Retained while account is active; deleted on account deletion"],
+              ["Account information", "Retained until you delete your account"],
+              ["Payment records", "Retained as required by law (7 years)"],
+              ["Server logs", "Retained for 30 days"],
+            ].map(([type, retention], i, arr) => (
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start",
+                padding:"12px 16px", gap:16, flexWrap:"wrap",
+                borderBottom: i < arr.length-1 ? `1px solid ${bdr}` : "none" }}>
+                <span style={{ fontSize:13, color:text, fontWeight:500, flex:1 }}>{type}</span>
+                <span style={{ fontSize:12, color:mid, textAlign:"right", maxWidth:280 }}>{retention}</span>
+              </div>
+            ))}
+          </div>
+          <P>Email <a href="mailto:privacy@quantumguard.site" style={{ color:green, textDecoration:"none" }}>privacy@quantumguard.site</a> to request account deletion. Processed within 30 days.</P>
+        </Section>
+
+        <Section id="sharing" title="5. Data Sharing">
+          <P>We do not sell, trade, or rent your personal information. We share data only in these limited circumstances:</P>
+          {["Stripe — payment processing for paid plans.",
+            "Render.com — our cloud infrastructure provider.",
+            "Law enforcement — if required by law or court order.",
+            "Business transfer — in the event of a merger or acquisition.",
+          ].map((t,i) => <Item key={i}>{t}</Item>)}
+        </Section>
+
+        <Section id="rights" title="6. Your Rights">
+          {["Right to access your personal data.",
+            "Right to correction of inaccurate data.",
+            "Right to deletion of your account and data.",
+            "Right to portability in machine-readable format.",
+            "Right to withdraw consent at any time.",
+          ].map((t,i) => <Item key={i}>{t}</Item>)}
+          <P>Email <a href="mailto:privacy@quantumguard.site" style={{ color:green, textDecoration:"none" }}>privacy@quantumguard.site</a>. We respond within 30 days.</P>
+        </Section>
+
+        <Section id="contact" title="7. Contact Us">
+          <div style={{ background:card, border:`1px solid ${bdr}`, borderRadius:12, padding:"20px 24px" }}>
+            {[["Company","Mangsri QuantumGuard LLC"],["Address","Montgomery, Alabama, USA"],
+              ["Privacy","privacy@quantumguard.site"],["Security","security@quantumguard.site"]].map(([label, value], i) => (
+              <div key={i} style={{ display:"flex", gap:16, padding:"8px 0",
+                borderBottom: i < 3 ? `1px solid ${bdr}` : "none" }}>
+                <span style={{ fontSize:12, color:muted, width:80, flexShrink:0,
+                  fontWeight:600, textTransform:"uppercase", letterSpacing:".05em" }}>{label}</span>
+                <span style={{ fontSize:13, color:mid }}>
+                  {label==="Privacy"||label==="Security"
+                    ? <a href={`mailto:${value}`} style={{ color:green, textDecoration:"none" }}>{value}</a>
+                    : value}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        <div style={{ borderTop:`1px solid ${bdr}`, paddingTop:32, fontSize:12, color:muted, lineHeight:1.7 }}>
+          Last updated: May 5, 2026. Mangsri QuantumGuard LLC, Montgomery, Alabama, USA.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TermsPage() {
+  const bg    = "#0a0e1a";
+  const card  = "#0d1220";
+  const bdr   = "#1e2d40";
+  const text  = "#f1f5f9";
+  const mid   = "#94a3b8";
+  const muted = "#4b5563";
+  const green = "#22c55e";
+  const gdim  = "rgba(34,197,94,0.1)";
+  const gbdr  = "rgba(34,197,94,0.2)";
+  const amber = "#f59e0b";
+  const adim  = "rgba(245,158,11,0.08)";
+  const abdr  = "rgba(245,158,11,0.2)";
+  const red   = "#ef4444";
+  const rdim  = "rgba(239,68,68,0.08)";
+  const rbdr  = "rgba(239,68,68,0.2)";
+
+  const Section = ({ id, title, children }) => (
+    <section id={id} style={{ marginBottom:48 }}>
+      <h2 style={{ fontSize:20, fontWeight:800, color:text, letterSpacing:"-.03em",
+        marginBottom:16, paddingBottom:12, borderBottom:`1px solid ${bdr}`,
+        display:"flex", alignItems:"center", gap:10 }}>
+        <span style={{ display:"inline-block", width:3, height:20, background:green, borderRadius:2, flexShrink:0 }} />
+        {title}
+      </h2>
+      <div style={{ color:mid, fontSize:14, lineHeight:1.85 }}>{children}</div>
+    </section>
+  );
+
+  const P = ({ children }) => <p style={{ marginBottom:14 }}>{children}</p>;
+
+  const Callout = ({ icon, title, body, color=green, bgc=gdim, bdrc=gbdr }) => (
+    <div style={{ background:bgc, border:`1px solid ${bdrc}`, borderLeft:`3px solid ${color}`,
+      borderRadius:"0 10px 10px 0", padding:"14px 18px", marginBottom:16 }}>
+      {title && <div style={{ fontSize:13, fontWeight:700, color, marginBottom:4 }}>{icon} {title}</div>}
+      <div style={{ fontSize:13, color:mid, lineHeight:1.7 }}>{body}</div>
+    </div>
+  );
+
+  const Item = ({ children, cross=false }) => (
+    <div style={{ display:"flex", gap:10, alignItems:"flex-start", fontSize:13, color:mid,
+      marginBottom:8, lineHeight:1.65 }}>
+      <span style={{ color:cross?red:green, flexShrink:0, marginTop:2, fontWeight:700 }}>
+        {cross?"✕":"✓"}
+      </span>
+      <span>{children}</span>
+    </div>
+  );
+
+  return (
+    <div style={{ background:bg, minHeight:"100vh", fontFamily:"'DM Sans','Segoe UI',sans-serif" }}>
+      {/* Hero */}
+      <div style={{ background:`linear-gradient(135deg,${card},#0f1929)`,
+        borderBottom:`1px solid ${bdr}`, padding:"60px 32px 48px", position:"relative", overflow:"hidden" }}>
+        <div style={{ position:"absolute", inset:0,
+          backgroundImage:"radial-gradient(rgba(34,197,94,0.05) 1px,transparent 1px)",
+          backgroundSize:"28px 28px", pointerEvents:"none" }} />
+        <div style={{ maxWidth:760, margin:"0 auto", position:"relative" }}>
+          <div style={{ display:"inline-flex", alignItems:"center", gap:8,
+            background:gdim, border:`1px solid ${gbdr}`, borderRadius:100, padding:"5px 14px", marginBottom:20 }}>
+            <span style={{ fontSize:11, fontWeight:700, color:green, letterSpacing:".05em" }}>LEGAL DOCUMENT</span>
+          </div>
+          <h1 style={{ fontSize:"clamp(28px,4vw,44px)", fontWeight:900, letterSpacing:"-.04em",
+            color:text, marginBottom:14, lineHeight:1.1 }}>Terms of Service</h1>
+          <p style={{ fontSize:15, color:mid, marginBottom:20, lineHeight:1.7 }}>
+            These terms govern your use of QuantumGuard, operated by{" "}
+            <strong style={{ color:text }}>Mangsri QuantumGuard LLC</strong>.
+            By using QuantumGuard, you agree to these terms.
+          </p>
+          <div style={{ display:"flex", gap:16, flexWrap:"wrap" }}>
+            {[["Effective date","May 5, 2026"],["Company","Mangsri QuantumGuard LLC"],["Location","Montgomery, Alabama, USA"]].map(([k,v])=>(
+              <span key={k} style={{ fontSize:12, color:muted }}><strong style={{ color:mid }}>{k}:</strong> {v}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ maxWidth:760, margin:"0 auto", padding:"48px 32px 80px" }}>
+
+        {/* Summary */}
+        <div style={{ background:gdim, border:`1px solid ${gbdr}`, borderRadius:14, padding:"20px 24px", marginBottom:48 }}>
+          <div style={{ fontSize:13, fontWeight:700, color:green, marginBottom:12 }}>Summary — plain English</div>
+          {["QuantumGuard is a security scanning tool. Results are guidance — not a guarantee of security.",
+            "You must not scan code you do not own or have permission to scan.",
+            "Your source code is never permanently stored.",
+            "The free tier is provided as-is. Paid plans include features listed at the time of purchase.",
+            "We are not liable for decisions made based on QuantumGuard scan results.",
+          ].map((t,i) => <Item key={i}>{t}</Item>)}
+        </div>
+
+        <Section id="acceptance" title="1. Acceptance of Terms">
+          <P>By accessing or using QuantumGuard at quantumguard.site, you agree to be bound by these Terms. If you do not agree, you may not use the Service.</P>
+          <P>If you are using the Service on behalf of an organization, you represent that you have authority to bind that organization to these Terms.</P>
+        </Section>
+
+        <Section id="description" title="2. Description of Service">
+          <P>QuantumGuard is a post-quantum cryptography readiness scanning platform that analyzes source code, dependency manifests, and TLS configurations to identify quantum-vulnerable cryptographic algorithms.</P>
+          <Callout icon="⚠️" title="Important limitation" color={amber} bgc={adim} bdrc={abdr}
+            body="QuantumGuard provides security insights and migration guidance. It is a static analysis tool — not a formal security audit. Results should be validated by qualified security professionals before production decisions." />
+        </Section>
+
+        <Section id="acceptable" title="3. Acceptable Use">
+          {["Scanning source code you own or have explicit written permission to scan.",
+            "Scanning domains and TLS configurations you own or administer.",
+            "Security research on systems you are authorized to test.",
+            "Education and learning about post-quantum cryptography.",
+            "Generating cryptographic inventories for your organization.",
+          ].map((t,i) => <Item key={i}>{t}</Item>)}
+        </Section>
+
+        <Section id="prohibited" title="4. Prohibited Uses">
+          {["Scanning code or systems you do not own without explicit authorization.",
+            "Circumventing rate limits through automated requests or multiple accounts.",
+            "Submitting malicious code, ZIP bombs, or files designed to disrupt the Service.",
+            "Reselling or sublicensing access to the Service without written permission.",
+            "Misrepresenting QuantumGuard scan results as NIST certification or a formal audit.",
+          ].map((t,i) => <Item key={i} cross>{t}</Item>)}
+          <Callout icon="🚨" title="Authorization requirement" color={red} bgc={rdim} bdrc={rbdr}
+            body="Scanning code or systems without authorization may violate the Computer Fraud and Abuse Act and equivalent laws. You are solely responsible for ensuring you have proper authorization." />
+        </Section>
+
+        <Section id="ip" title="5. Intellectual Property">
+          <P><strong style={{ color:text }}>Open source scanner:</strong> The core scanning engine is open source under AGPL v3. You can audit every line at github.com/cybersupe/quantumguard.</P>
+          <P><strong style={{ color:text }}>Your content:</strong> You retain all rights to your source code. By submitting for scanning, you grant us a limited, temporary license to process it for the scan only. This license terminates on scan completion.</P>
+        </Section>
+
+        <Section id="disclaimer" title="6. Disclaimers">
+          <Callout icon="⚠️" title="Service provided as-is" color={amber} bgc={adim} bdrc={abdr}
+            body='THE SERVICE IS PROVIDED "AS IS" WITHOUT WARRANTIES OF ANY KIND. WE DO NOT WARRANT THAT THE SERVICE WILL DETECT ALL QUANTUM-VULNERABLE ALGORITHMS OR THAT RESULTS ARE COMPLETE, ACCURATE, OR SUITABLE FOR ANY PARTICULAR PURPOSE.' />
+          <P><strong style={{ color:text }}>Not NIST certified:</strong> QuantumGuard provides NIST-aligned guidance based on FIPS 203, 204, and 205. QuantumGuard is not affiliated with, endorsed by, or certified by NIST.</P>
+        </Section>
+
+        <Section id="liability" title="7. Limitation of Liability">
+          <P>TO THE MAXIMUM EXTENT PERMITTED BY LAW, OUR TOTAL LIABILITY FOR ALL CLAIMS SHALL NOT EXCEED THE GREATER OF: (A) AMOUNTS YOU PAID IN THE PRECEDING 12 MONTHS, OR (B) ONE HUNDRED US DOLLARS ($100).</P>
+        </Section>
+
+        <Section id="payment" title="8. Payment & Billing">
+          {["Pro ($49/month) and Team ($199/month) plans are billed monthly in advance via Stripe.",
+            "Subscriptions automatically renew unless cancelled before the renewal date.",
+            "Cancellation takes effect at the end of the current billing period — no mid-period refunds.",
+            "Pricing changes require 30 days written notice to active subscribers.",
+          ].map((t,i) => <Item key={i}>{t}</Item>)}
+          <P>Billing questions: <a href="mailto:billing@quantumguard.site" style={{ color:green, textDecoration:"none" }}>billing@quantumguard.site</a></P>
+        </Section>
+
+        <Section id="governing" title="9. Governing Law">
+          <P>These Terms are governed by the laws of the State of Alabama, United States, without regard to conflict of law provisions.</P>
+        </Section>
+
+        <Section id="contact" title="10. Contact">
+          <div style={{ background:card, border:`1px solid ${bdr}`, borderRadius:12, padding:"20px 24px" }}>
+            {[["Company","Mangsri QuantumGuard LLC"],["Address","Montgomery, Alabama, USA"],
+              ["General","support@quantumguard.site"],["Legal","legal@quantumguard.site"]].map(([label, value], i) => (
+              <div key={i} style={{ display:"flex", gap:16, padding:"8px 0", borderBottom: i<3?`1px solid ${bdr}`:"none" }}>
+                <span style={{ fontSize:12, color:muted, width:80, flexShrink:0, fontWeight:600, textTransform:"uppercase", letterSpacing:".05em" }}>{label}</span>
+                <span style={{ fontSize:13, color:mid }}>
+                  {["General","Legal"].includes(label)
+                    ? <a href={`mailto:${value}`} style={{ color:green, textDecoration:"none" }}>{value}</a>
+                    : value}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        <div style={{ borderTop:`1px solid ${bdr}`, paddingTop:32, fontSize:12, color:muted, lineHeight:1.7 }}>
+          Last updated: May 5, 2026. Mangsri QuantumGuard LLC, Montgomery, Alabama, USA.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SecurityPage() {
+  const bg    = "#0a0e1a";
+  const card  = "#0d1220";
+  const bdr   = "#1e2d40";
+  const text  = "#f1f5f9";
+  const mid   = "#94a3b8";
+  const muted = "#4b5563";
+  const green = "#22c55e";
+  const gdim  = "rgba(34,197,94,0.1)";
+  const gbdr  = "rgba(34,197,94,0.2)";
+
+  const Section = ({ title, children }) => (
+    <section style={{ marginBottom:48 }}>
+      <h2 style={{ fontSize:20, fontWeight:800, color:text, letterSpacing:"-.03em",
+        marginBottom:16, paddingBottom:12, borderBottom:`1px solid ${bdr}`,
+        display:"flex", alignItems:"center", gap:10 }}>
+        <span style={{ display:"inline-block", width:3, height:20, background:green, borderRadius:2 }} />
+        {title}
+      </h2>
+      <div style={{ color:mid, fontSize:14, lineHeight:1.85 }}>{children}</div>
+    </section>
+  );
+
+  const Item = ({ children }) => (
+    <div style={{ display:"flex", gap:10, alignItems:"flex-start", fontSize:13, color:mid,
+      marginBottom:8, lineHeight:1.65 }}>
+      <span style={{ color:green, flexShrink:0, marginTop:2, fontWeight:700 }}>✓</span>
+      <span>{children}</span>
+    </div>
+  );
+
+  return (
+    <div style={{ background:bg, minHeight:"100vh", fontFamily:"'DM Sans','Segoe UI',sans-serif" }}>
+      <div style={{ background:`linear-gradient(135deg,${card},#0f1929)`,
+        borderBottom:`1px solid ${bdr}`, padding:"60px 32px 48px", position:"relative", overflow:"hidden" }}>
+        <div style={{ position:"absolute", inset:0, backgroundImage:"radial-gradient(rgba(34,197,94,0.05) 1px,transparent 1px)",
+          backgroundSize:"28px 28px", pointerEvents:"none" }} />
+        <div style={{ maxWidth:760, margin:"0 auto", position:"relative" }}>
+          <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:gdim,
+            border:`1px solid ${gbdr}`, borderRadius:100, padding:"5px 14px", marginBottom:20 }}>
+            <span style={{ fontSize:11, fontWeight:700, color:green, letterSpacing:".05em" }}>SECURITY</span>
+          </div>
+          <h1 style={{ fontSize:"clamp(28px,4vw,44px)", fontWeight:900, letterSpacing:"-.04em",
+            color:text, marginBottom:14, lineHeight:1.1 }}>Security at QuantumGuard</h1>
+          <p style={{ fontSize:15, color:mid, lineHeight:1.7 }}>
+            We are a security product. We hold ourselves to a high standard.
+            Here is exactly what we do to protect you and your code.
+          </p>
+        </div>
+      </div>
+
+      <div style={{ maxWidth:760, margin:"0 auto", padding:"48px 32px 80px" }}>
+
+        <Section title="Infrastructure Security">
+          <Item>All data in transit is encrypted via HTTPS / TLS 1.3.</Item>
+          <Item>API is hosted on Render.com with automatic HTTPS and DDoS protection.</Item>
+          <Item>PostgreSQL database uses encrypted connections and parameterised queries — no SQL injection surface.</Item>
+          <Item>JWT authentication tokens expire after 24 hours.</Item>
+          <Item>Rate limiting per IP and per user on all endpoints.</Item>
+        </Section>
+
+        <Section title="Scanner Security">
+          <Item>SSRF protection — repo URLs are validated against an allowlist of GitHub domains. Redirect following is disabled.</Item>
+          <Item>ZIP path traversal prevention — no absolute paths, no symlinks, no directory escape.</Item>
+          <Item>Sandboxed execution — every scan runs in an isolated temporary directory.</Item>
+          <Item>Token scrubbing — GitHub tokens are never written to application logs.</Item>
+          <Item>Repository content is never written to a database or persistent storage.</Item>
+        </Section>
+
+        <Section title="Open Source Auditability">
+          <p style={{ marginBottom:14 }}>
+            The scanner is fully open source under AGPL v3. Every pattern, every API endpoint,
+            and every data handling decision is visible at{" "}
+            <a href="https://github.com/cybersupe/quantumguard" target="_blank" rel="noreferrer"
+              style={{ color:green, textDecoration:"none" }}>github.com/cybersupe/quantumguard</a>.
+            You can audit exactly what runs on your code before you trust it.
+          </p>
+        </Section>
+
+        <Section title="Vulnerability Disclosure">
+          <p style={{ marginBottom:14 }}>
+            If you discover a security vulnerability in QuantumGuard, please report it responsibly.
+            We will acknowledge reports within 48 hours and provide a fix timeline.
+          </p>
+          <div style={{ background:card, border:`1px solid ${bdr}`, borderRadius:12, padding:"18px 22px" }}>
+            <div style={{ fontSize:13, fontWeight:700, color:text, marginBottom:8 }}>Report a vulnerability</div>
+            <div style={{ fontSize:13, color:mid, marginBottom:6 }}>
+              Email: <a href="mailto:security@quantumguard.site" style={{ color:green, textDecoration:"none" }}>security@quantumguard.site</a>
+            </div>
+            <div style={{ fontSize:12, color:muted, lineHeight:1.6 }}>
+              Please include: description of the vulnerability, steps to reproduce, potential impact,
+              and any proof-of-concept code. We ask that you do not publicly disclose the issue
+              until we have had a reasonable opportunity to address it.
+            </div>
+          </div>
+        </Section>
+
+        <div style={{ borderTop:`1px solid ${bdr}`, paddingTop:32, fontSize:12, color:muted, lineHeight:1.7 }}>
+          Mangsri QuantumGuard LLC · Montgomery, Alabama, USA · security@quantumguard.site
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DisclaimerPage() {
+  const bg    = "#0a0e1a";
+  const card  = "#0d1220";
+  const bdr   = "#1e2d40";
+  const text  = "#f1f5f9";
+  const mid   = "#94a3b8";
+  const muted = "#4b5563";
+  const green = "#22c55e";
+  const gdim  = "rgba(34,197,94,0.1)";
+  const gbdr  = "rgba(34,197,94,0.2)";
+  const amber = "#f59e0b";
+  const adim  = "rgba(245,158,11,0.08)";
+  const abdr  = "rgba(245,158,11,0.2)";
+
+  const Section = ({ title, children }) => (
+    <section style={{ marginBottom:48 }}>
+      <h2 style={{ fontSize:20, fontWeight:800, color:text, letterSpacing:"-.03em",
+        marginBottom:16, paddingBottom:12, borderBottom:`1px solid ${bdr}`,
+        display:"flex", alignItems:"center", gap:10 }}>
+        <span style={{ display:"inline-block", width:3, height:20, background:green, borderRadius:2 }} />
+        {title}
+      </h2>
+      <div style={{ color:mid, fontSize:14, lineHeight:1.85 }}>{children}</div>
+    </section>
+  );
+
+  return (
+    <div style={{ background:bg, minHeight:"100vh", fontFamily:"'DM Sans','Segoe UI',sans-serif" }}>
+      <div style={{ background:`linear-gradient(135deg,${card},#0f1929)`,
+        borderBottom:`1px solid ${bdr}`, padding:"60px 32px 48px", position:"relative", overflow:"hidden" }}>
+        <div style={{ position:"absolute", inset:0, backgroundImage:"radial-gradient(rgba(34,197,94,0.05) 1px,transparent 1px)",
+          backgroundSize:"28px 28px", pointerEvents:"none" }} />
+        <div style={{ maxWidth:760, margin:"0 auto", position:"relative" }}>
+          <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:gdim,
+            border:`1px solid ${gbdr}`, borderRadius:100, padding:"5px 14px", marginBottom:20 }}>
+            <span style={{ fontSize:11, fontWeight:700, color:green, letterSpacing:".05em" }}>LEGAL</span>
+          </div>
+          <h1 style={{ fontSize:"clamp(28px,4vw,44px)", fontWeight:900, letterSpacing:"-.04em",
+            color:text, marginBottom:14, lineHeight:1.1 }}>Disclaimer</h1>
+          <p style={{ fontSize:15, color:mid, lineHeight:1.7 }}>
+            Important limitations on the use of QuantumGuard scan results.
+          </p>
+        </div>
+      </div>
+
+      <div style={{ maxWidth:760, margin:"0 auto", padding:"48px 32px 80px" }}>
+
+        <div style={{ background:adim, border:`1px solid ${abdr}`, borderLeft:`3px solid ${amber}`,
+          borderRadius:"0 14px 14px 0", padding:"20px 24px", marginBottom:48 }}>
+          <div style={{ fontSize:14, fontWeight:700, color:amber, marginBottom:10 }}>
+            ⚠ Please read before using scan results
+          </div>
+          <div style={{ fontSize:14, color:mid, lineHeight:1.8 }}>
+            QuantumGuard scan results are security insights and migration guidance — not a formal security
+            audit, not NIST certification, and not a guarantee of security. Results must be validated by
+            qualified security professionals before production decisions.
+          </div>
+        </div>
+
+        <Section title="Not a Security Audit">
+          <p style={{ marginBottom:14 }}>QuantumGuard is a static analysis tool. It analyzes source code and dependency manifests using pattern matching. It does not perform:</p>
+          <div style={{ display:"flex", gap:10, alignItems:"flex-start", fontSize:13, color:mid, marginBottom:8 }}><span style={{ color:"#ef4444", flexShrink:0, fontWeight:700 }}>✕</span><span>Dynamic or runtime analysis</span></div>
+          <div style={{ display:"flex", gap:10, alignItems:"flex-start", fontSize:13, color:mid, marginBottom:8 }}><span style={{ color:"#ef4444", flexShrink:0, fontWeight:700 }}>✕</span><span>Penetration testing</span></div>
+          <div style={{ display:"flex", gap:10, alignItems:"flex-start", fontSize:13, color:mid, marginBottom:8 }}><span style={{ color:"#ef4444", flexShrink:0, fontWeight:700 }}>✕</span><span>Formal compliance certification</span></div>
+          <div style={{ display:"flex", gap:10, alignItems:"flex-start", fontSize:13, color:mid, marginBottom:14 }}><span style={{ color:"#ef4444", flexShrink:0, fontWeight:700 }}>✕</span><span>Professional security consulting</span></div>
+          <p>A Quantum Readiness Score is a starting point for cryptographic inventory — not a final determination of security posture.</p>
+        </Section>
+
+        <Section title="Not NIST Certified">
+          <p style={{ marginBottom:14 }}>
+            QuantumGuard provides NIST-aligned migration guidance based on NIST FIPS 203, 204, and 205
+            (published August 2024). QuantumGuard is not affiliated with, endorsed by, or certified by the
+            National Institute of Standards and Technology (NIST).
+          </p>
+          <p>
+            The terms "NIST-aligned" and "NIST-aligned guidance" mean that our recommendations are based on
+            the published NIST standards — not that the tool or its output has been reviewed or approved by NIST.
+          </p>
+        </Section>
+
+        <Section title="False Positives & False Negatives">
+          <p style={{ marginBottom:14 }}>QuantumGuard uses static pattern matching. This means:</p>
+          <p style={{ marginBottom:10 }}><strong style={{ color:text }}>False positives</strong> — the scanner may flag code that is not actually vulnerable in context. Vendor directories, test files, and documentation are common sources. These are flagged separately and excluded from scores.</p>
+          <p><strong style={{ color:text }}>False negatives</strong> — the scanner may not detect all quantum-vulnerable algorithms, especially in highly obfuscated code, dynamically constructed algorithm names, or languages not currently supported.</p>
+        </Section>
+
+        <Section title="Validate Before Acting">
+          <p style={{ marginBottom:14 }}>
+            Before making any production security decision based on QuantumGuard results — including
+            removing algorithms, changing TLS configuration, or updating dependencies — you should:
+          </p>
+          {["Review findings with a qualified security engineer or cryptographer.",
+            "Verify that flagged code is actually used in production contexts.",
+            "Test any proposed replacement algorithms in a non-production environment first.",
+            "Consult the relevant NIST FIPS standards directly for authoritative guidance.",
+          ].map((t,i) => (
+            <div key={i} style={{ display:"flex", gap:10, alignItems:"flex-start", fontSize:13, color:mid,
+              marginBottom:8, lineHeight:1.65 }}>
+              <span style={{ color:green, flexShrink:0, marginTop:2, fontWeight:700 }}>✓</span>
+              <span>{t}</span>
+            </div>
+          ))}
+        </Section>
+
+        <Section title="No Warranty">
+          <p>
+            THE SERVICE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. MANGSRI QUANTUMGUARD LLC
+            DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY,
+            FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. WE DO NOT WARRANT THAT THE
+            SERVICE WILL DETECT ALL CRYPTOGRAPHIC VULNERABILITIES IN YOUR CODEBASE.
+          </p>
+        </Section>
+
+        <div style={{ borderTop:`1px solid ${bdr}`, paddingTop:32, fontSize:12, color:muted, lineHeight:1.7 }}>
+          Mangsri QuantumGuard LLC · Montgomery, Alabama, USA · May 5, 2026
+        </div>
+      </div>
+    </div>
+  );
+}
 function AnimatedDemoCard() {
   const [phase, setPhase] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -2468,9 +3126,9 @@ function Homepage({ onGetStarted, onOpenAuth }) {
               <div style={{ fontSize:11,color:"#374151" }}>Montgomery, Alabama, USA</div>
             </div>
             {[
-              { title:"Product",  links:[["Scanner","scan"],["TLS Analyzer","tls"],["Agility Checker","agility"],["Unified Risk","unified"],["NIST Reports","nist"]] },
+              { title:"Product",  links:[["Scanner","scan"],["TLS Analyzer","tls"],["Agility Checker","agility"],["Unified Risk",privacy:"Privacy Policy", terms:"Terms of Service", security:"Security", disclaimer:"Disclaimer","unified"],["NIST Reports","nist"]] },
               { title:"Company",  links:[["About","team"],["Our Team","team"],["GitHub","github"],["Documentation","docs"]] },
-              { title:"Legal",    links:[["Privacy Policy",""],["Terms of Service",""],["Security",""],["Disclaimer",""]] },
+              { title:"Legal", links:[["Privacy Policy","privacy"],["Terms of Service","terms"],["Security","security"],["Disclaimer","disclaimer"]] }
             ].map(col => (
               <div key={col.title} style={{ flex:"1 1 120px" }}>
                 <div style={{ fontSize:11,fontWeight:700,color:"#f8fafc",letterSpacing:".07em",textTransform:"uppercase",marginBottom:14 }}>{col.title}</div>
@@ -2558,6 +3216,10 @@ function AppInner() {
             {active==="nist"      && <NISTReportPage />}
             {active==="docs"      && <DocsPage />}
             {active==="team"      && <TeamPage />}
+            {active==="privacy"    && <PrivacyPage />}
+            {active==="terms"      && <TermsPage />}
+            {active==="security"   && <SecurityPage />}
+            {active==="disclaimer" && <DisclaimerPage />}
           </div>
         </div>
       </div>
