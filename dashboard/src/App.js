@@ -106,6 +106,7 @@ function Sidebar({ active, setActive, user, plan, onLogin, onLogout, onUpgrade, 
     { id: "dashboard", icon: "📊", label: "Analytics" },
     { id: "docs",      icon: "📖", label: "Docs" },
     { id: "team",      icon: "👥", label: "Our Team" },
+    { id: "billing",   icon: "💳", label: "Billing" },
   ];
   return (
     <>
@@ -4185,6 +4186,188 @@ function AuthModal({ mode: initialMode, onClose, onSuccess }) {
   );
 }
 
+// ── BillingPage ───────────────────────────────────────────────
+function BillingPage({ user, plan, onUpgrade, onManageBilling }) {
+  const [info, setInfo] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user) { setLoading(false); return; }
+    const uid = user.uid || String(user.id);
+    fetch(`${API}/billing-info`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: uid, user_email: user.email }),
+    })
+      .then(r => r.json())
+      .then(d => setInfo(d))
+      .catch(() => setInfo(null))
+      .finally(() => setLoading(false));
+  }, [user]);
+
+  const handleCancelConfirm = async () => {
+    setPortalLoading(true);
+    try {
+      const uid = user.uid || String(user.id);
+      const res = await fetch(`${API}/customer-portal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: uid, user_email: user.email }),
+      });
+      const data = await res.json();
+      if (data.url) { window.location.href = data.url; }
+    } catch (e) {
+      alert("Could not open billing portal: " + e.message);
+      setPortalLoading(false);
+      setShowCancelModal(false);
+    }
+  };
+
+  const fmtDate = (ts) => {
+    if (!ts) return "—";
+    return new Date(ts * 1000).toLocaleDateString("en-US", { year:"numeric", month:"long", day:"numeric" });
+  };
+
+  const effectivePlan = info?.plan || plan;
+  const scansToday = info?.scans_today || 0;
+  const scansLimit = effectivePlan === "pro" ? "∞" : 10;
+  const totalScans = info?.total_scans || 0;
+  const usagePct = effectivePlan === "pro" ? 0 : Math.min(100, (scansToday / 10) * 100);
+
+  const StatCard = ({ icon, label, value, sub }) => (
+    <div style={{ background:C.panel, border:`1px solid ${C.panelBorder}`, borderRadius:12, padding:"18px 20px" }}>
+      <div style={{ fontSize:22, marginBottom:8 }}>{icon}</div>
+      <div style={{ fontSize:22, fontWeight:700, color:C.text, marginBottom:2 }}>{value}</div>
+      <div style={{ fontSize:12, color:C.textMid, fontWeight:600 }}>{label}</div>
+      {sub && <div style={{ fontSize:11, color:C.muted, marginTop:2 }}>{sub}</div>}
+    </div>
+  );
+
+  return (
+    <div style={{ padding:"28px 28px", maxWidth:820, margin:"0 auto" }}>
+      <div style={{ marginBottom:24 }}>
+        <div style={{ fontSize:20, fontWeight:700, color:C.text, marginBottom:4 }}>Billing & Plan</div>
+        <div style={{ fontSize:13, color:C.muted }}>Manage your subscription, usage, and billing details.</div>
+      </div>
+
+      {!user ? (
+        <div style={{ background:C.panel, border:`1px solid ${C.panelBorder}`, borderRadius:12, padding:"36px 24px", textAlign:"center" }}>
+          <div style={{ fontSize:36, marginBottom:12 }}>🔒</div>
+          <div style={{ fontSize:14, color:C.textMid, marginBottom:16 }}>Sign in to view your billing details</div>
+          <button onClick={onUpgrade} style={{ padding:"9px 24px", borderRadius:8, background:C.green, border:"none", color:"#fff", fontWeight:700, cursor:"pointer", fontSize:13 }}>Sign In</button>
+        </div>
+      ) : loading ? (
+        <div style={{ textAlign:"center", padding:48, color:C.muted }}>
+          <div style={{ fontSize:28, marginBottom:12, opacity:0.5 }}>⏳</div>
+          <div style={{ fontSize:13 }}>Loading billing info...</div>
+        </div>
+      ) : (
+        <>
+          {/* Plan Card */}
+          <div style={{ background:C.panel, border:`1px solid ${effectivePlan==="pro" ? "rgba(34,197,94,0.4)" : C.panelBorder}`, borderRadius:14, padding:"24px 28px", marginBottom:20, position:"relative", overflow:"hidden" }}>
+            {effectivePlan==="pro" && <div style={{ position:"absolute", top:0, left:0, right:0, height:3, background:"linear-gradient(90deg,#22c55e,#16a34a)" }} />}
+            <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", gap:16 }}>
+              <div>
+                <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+                  <span style={{ fontSize:13, fontWeight:700, color:C.text }}>Current Plan</span>
+                  <span style={{ fontSize:11, fontWeight:700, padding:"2px 10px", borderRadius:20,
+                    background: effectivePlan==="pro" ? "rgba(34,197,94,0.15)" : "rgba(100,116,139,0.15)",
+                    color: effectivePlan==="pro" ? C.green : C.textMid,
+                    border: effectivePlan==="pro" ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(100,116,139,0.2)",
+                    textTransform:"uppercase", letterSpacing:"0.05em"
+                  }}>{effectivePlan === "pro" ? "⚡ Pro" : "Free"}</span>
+                </div>
+                {effectivePlan === "pro" ? (
+                  <>
+                    <div style={{ fontSize:28, fontWeight:800, color:C.text, marginBottom:4 }}>$49<span style={{ fontSize:14, fontWeight:400, color:C.muted }}>/month</span></div>
+                    {info?.next_billing_date && (
+                      <div style={{ fontSize:12, color:C.muted }}>Next billing date: <span style={{ color:C.textMid, fontWeight:600 }}>{fmtDate(info.next_billing_date)}</span></div>
+                    )}
+                    {info?.subscription_status && (
+                      <div style={{ fontSize:11, color:C.muted, marginTop:2 }}>Status: <span style={{ color: info.subscription_status==="active" ? C.green : C.amber, fontWeight:600 }}>{info.subscription_status}</span></div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize:28, fontWeight:800, color:C.text, marginBottom:4 }}>Free</div>
+                    <div style={{ fontSize:12, color:C.muted }}>10 scans per day · GitHub repos only · PDF report export</div>
+                  </>
+                )}
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:8, minWidth:160 }}>
+                {effectivePlan === "pro" ? (
+                  <>
+                    <button onClick={onManageBilling} style={{ padding:"9px 18px", borderRadius:8, background:"transparent", border:`1px solid ${C.greenMid}`, color:C.green, cursor:"pointer", fontSize:12, fontWeight:600 }}>Manage Billing ↗</button>
+                    <button onClick={() => setShowCancelModal(true)} style={{ padding:"9px 18px", borderRadius:8, background:"transparent", border:"1px solid rgba(239,68,68,0.3)", color:"rgba(239,68,68,0.7)", cursor:"pointer", fontSize:12, fontWeight:600 }}>Cancel Plan</button>
+                  </>
+                ) : (
+                  <button onClick={onUpgrade} style={{ padding:"10px 22px", borderRadius:8, background:"linear-gradient(135deg,#22c55e,#16a34a)", border:"none", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:700, boxShadow:"0 4px 14px rgba(34,197,94,0.35)" }}>Upgrade to Pro →</button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Usage Stats */}
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))", gap:14, marginBottom:20 }}>
+            <StatCard icon="📊" label="Total Scans" value={totalScans} sub="All time" />
+            <StatCard icon="📅" label="Scans Today" value={scansToday} sub={effectivePlan==="pro" ? "Unlimited" : `of ${scansLimit} daily`} />
+            <StatCard icon="🔑" label="Plan Limit" value={effectivePlan==="pro" ? "∞" : "10/day"} sub={effectivePlan==="pro" ? "Unlimited scans" : "Upgrade for unlimited"} />
+            <StatCard icon="📆" label="Renewal" value={info?.next_billing_date ? fmtDate(info.next_billing_date) : (effectivePlan==="pro" ? "Active" : "—")} sub={effectivePlan==="pro" ? "Auto-renews" : "No subscription"} />
+          </div>
+
+          {/* Daily usage bar (free only) */}
+          {effectivePlan !== "pro" && (
+            <div style={{ background:C.panel, border:`1px solid ${C.panelBorder}`, borderRadius:12, padding:"18px 20px", marginBottom:20 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
+                <span style={{ fontSize:13, fontWeight:600, color:C.text }}>Daily Scan Usage</span>
+                <span style={{ fontSize:12, color: scansToday >= 10 ? C.red : C.textMid }}>{scansToday} / 10 scans</span>
+              </div>
+              <div style={{ height:8, borderRadius:4, background:"rgba(255,255,255,0.06)", overflow:"hidden" }}>
+                <div style={{ height:"100%", width:`${usagePct}%`, borderRadius:4, background: usagePct >= 100 ? C.red : usagePct >= 70 ? C.amber : C.green, transition:"width 0.4s" }} />
+              </div>
+              {scansToday >= 10 && <div style={{ fontSize:11, color:C.red, marginTop:6 }}>Daily limit reached — upgrade or wait until midnight UTC.</div>}
+            </div>
+          )}
+
+          {/* Pro features list */}
+          {effectivePlan !== "pro" && (
+            <div style={{ background:"rgba(34,197,94,0.04)", border:"1px solid rgba(34,197,94,0.15)", borderRadius:12, padding:"18px 20px" }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.green, marginBottom:12 }}>What you get with Pro — $49/month</div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:8 }}>
+                {["✅ Unlimited scans per day","✅ ZIP file & local path scanning","✅ AI-generated fix suggestions","✅ CI/CD GitHub Action integration","✅ API access for automation","✅ Priority email support"].map(f => (
+                  <div key={f} style={{ fontSize:12, color:C.textMid }}>{f}</div>
+                ))}
+              </div>
+              <button onClick={onUpgrade} style={{ marginTop:16, padding:"10px 26px", borderRadius:8, background:"linear-gradient(135deg,#22c55e,#16a34a)", border:"none", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:700, boxShadow:"0 4px 14px rgba(34,197,94,0.3)" }}>Upgrade to Pro →</button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelModal && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+          <div style={{ background:"#111827", border:"1px solid rgba(239,68,68,0.3)", borderRadius:16, padding:"32px 28px", maxWidth:440, width:"100%" }}>
+            <div style={{ fontSize:32, marginBottom:12, textAlign:"center" }}>⚠️</div>
+            <div style={{ fontSize:17, fontWeight:700, color:C.text, marginBottom:8, textAlign:"center" }}>Cancel Pro Subscription?</div>
+            <div style={{ fontSize:13, color:C.muted, lineHeight:1.7, marginBottom:24, textAlign:"center" }}>
+              You'll lose access to unlimited scans, AI fixes, and API access at the end of your current billing period. Your scan history and reports will remain accessible.
+            </div>
+            <div style={{ display:"flex", gap:12 }}>
+              <button onClick={() => setShowCancelModal(false)} style={{ flex:1, padding:"11px", borderRadius:8, background:"transparent", border:`1px solid ${C.panelBorder}`, color:C.textMid, cursor:"pointer", fontSize:13, fontWeight:600 }}>Keep Pro</button>
+              <button onClick={handleCancelConfirm} disabled={portalLoading} style={{ flex:1, padding:"11px", borderRadius:8, background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.4)", color:C.red, cursor:portalLoading?"not-allowed":"pointer", fontSize:13, fontWeight:600, opacity:portalLoading?0.6:1 }}>
+                {portalLoading ? "Opening portal..." : "Yes, Cancel"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════
 // APP ROOT — unchanged
 // ══════════════════════════════════════════════════════════════
@@ -4264,7 +4447,7 @@ function AppInner() {
   const handleLogin = () => setAuthModal("login");
   if (jwtLoading) return (<div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg }}><div style={{ textAlign:"center" }}><div style={{ width:40,height:40,borderRadius:10,background:"linear-gradient(135deg,#22c55e,#15803d)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,margin:"0 auto 12px" }}>⚛</div><div style={{ color:C.green,fontSize:13,fontWeight:600 }}>Loading QuantumGuard...</div></div></div>);
   if (active === "home") return (<><Homepage onGetStarted={(tab) => setActive(tab || "scan")} onOpenAuth={setAuthModal} onTryDemo={() => { setRunDemo(r => !r); setActive("scan"); }} />{authModal && <AuthModal mode={authModal} onClose={()=>setAuthModal(null)} onSuccess={()=>setActive("scan")} />}</>);
-  const pageTitle = { scan:"Threat Scanner", agility:"Agility Checker", tls:"TLS Analyzer", history:"Scan History", org:"Organization", migration:"Migration Tracker", dashboard:"Analytics", nist:"NIST Report", docs:"Documentation", team:"Our Team", unified:"Unified Risk" };
+  const pageTitle = { scan:"Threat Scanner", agility:"Agility Checker", tls:"TLS Analyzer", history:"Scan History", org:"Organization", migration:"Migration Tracker", dashboard:"Analytics", nist:"NIST Report", docs:"Documentation", team:"Our Team", unified:"Unified Risk", billing:"Billing & Plan" };
   return (
     <>
       <style>{`@keyframes pulse-ring{0%{box-shadow:0 0 0 0 rgba(34,197,94,0.5);}70%{box-shadow:0 0 0 8px rgba(34,197,94,0);}100%{box-shadow:0 0 0 0 rgba(34,197,94,0);}}`}</style>
@@ -4303,6 +4486,7 @@ function AppInner() {
             {active==="terms"      && <TermsPage />}
             {active==="security"   && <SecurityPage />}
             {active==="disclaimer" && <DisclaimerPage />}
+            {active==="billing"    && <BillingPage user={user} plan={plan} onUpgrade={handleUpgrade} onManageBilling={handleManageBilling} />}
           </div>
         </div>
       </div>

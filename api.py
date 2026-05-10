@@ -1760,3 +1760,46 @@ async def customer_portal(request: Request, body: CheckoutBody):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.post("/billing-info")
+@limiter.limit("10/minute")
+async def billing_info(request: Request, body: CheckoutBody):
+    """Return plan, next billing date, and usage stats for the billing page."""
+    result: dict = {
+        "plan": "free",
+        "next_billing_date": None,
+        "scans_today": 0,
+        "total_scans": 0,
+        "scans_limit": 10,
+        "subscription_status": None,
+    }
+    if _firebase_ready and body.user_id:
+        try:
+            db_admin = fb_firestore.client()
+            user_doc = db_admin.collection("users").document(body.user_id).get()
+            if user_doc.exists:
+                data = user_doc.to_dict()
+                result["plan"] = data.get("plan", "free")
+                result["total_scans"] = data.get("totalScans", 0)
+                from datetime import date
+                today_str = date.today().strftime("%a %b %d %Y")
+                if data.get("lastScanDate") == today_str:
+                    result["scans_today"] = data.get("scansToday", 0)
+        except Exception as e:
+            logger.warning("billing_info firestore error: %s", e)
+    if stripe is not None and stripe.api_key and body.user_email:
+        try:
+            customers = stripe.Customer.list(email=body.user_email, limit=1)
+            if customers.data:
+                customer = customers.data[0]
+                subs = stripe.Subscription.list(customer=customer.id, status="active", limit=1)
+                if subs.data:
+                    sub = subs.data[0]
+                    result["plan"] = "pro"
+                    result["subscription_status"] = sub.status
+                    result["next_billing_date"] = sub.current_period_end
+                    result["scans_limit"] = -1
+        except Exception as e:
+            logger.warning("billing_info stripe error: %s", e)
+    return result
+
+
