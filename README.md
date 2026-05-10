@@ -7,9 +7,11 @@
 [![API](https://img.shields.io/badge/API-v2.9.0-22c55e)](https://quantumguard-api.onrender.com/health)
 [![India NQM](https://img.shields.io/badge/India%20NQM-Aligned-orange)](https://dst.gov.in)
 
-**The world's only free, self-serve post-quantum cryptography vulnerability scanner.**
+**A developer-focused, free, self-serve post-quantum cryptography vulnerability scanner.**
 
 > Aligned with India's National Quantum Mission (DST, February 2026) · NIST FIPS 203/204/205 · Built by Mangsri QuantumGuard LLC · Montgomery, AL
+
+⭐ **[Star this repo](https://github.com/cybersupe/quantumguard)** to follow development · 🚀 **[Live Demo](https://quantumguard.site)** — no signup required
 
 ---
 
@@ -199,7 +201,7 @@ This blocks any PR with more than 10 critical findings or score below 60.
 
 | Plan | Price | Scans/Day | Key Features |
 |------|-------|-----------|-------------|
-| Free | $0 | 20 | Code scan, TLS analyzer, PDF report, NIST guidance |
+| Free | $0 | 10 | Code scan, TLS analyzer, PDF report, NIST guidance |
 | Pro | $49/mo | 100 | Everything + dependency scanner, GitHub Actions gate, API access |
 | Team | $199/mo | 500 | Everything + org dashboard, multi-repo, SSO/SAML |
 | Enterprise | Custom | Unlimited | On-prem Docker, SLA 99.99%, dedicated CSM |
@@ -294,4 +296,4 @@ AGPL v3 — Free for everyone, forever.
 
 ---
 
-*NIST FIPS 203 · FIPS 204 · FIPS 205 · India DST NQM Aligned · Zero Data Retention · SOC 2 Type II Roadmap*
+*NIST FIPS 203 · FIPS 204 · FIPS 205 · India DST NQM Aligned · Zero Data Retention · SOC 2 Type II — In Progress*
