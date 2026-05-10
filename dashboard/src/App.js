@@ -809,6 +809,7 @@ function ScannerPage({ user, onUpgrade = () => {}, runDemo = false }) {
   const intervalRef = useRef(null);
   const logTimers = useRef([]);
   const logEndRef = useRef(null);
+  const resultsRef = useRef(null);
   const [scanLogs, setScanLogs] = useState([]);
   const retryAttemptsRef = useRef(0);
   const [filesScanned, setFilesScanned] = useState(0);
@@ -857,6 +858,7 @@ function ScannerPage({ user, onUpgrade = () => {}, runDemo = false }) {
     setError(null); setResult(null); setChecklist({}); setSaved(false);
     setRating(0); setRatingComment(""); setRatingSubmitted(false);
     setResult(DEMO_RESULT);
+    setTimeout(() => resultsRef.current?.scrollIntoView({ behavior:"smooth", block:"start" }), 80);
   };
 
   useEffect(() => { if (runDemo) handleDemo(); }, [runDemo]); // eslint-disable-line
@@ -1274,9 +1276,26 @@ code{font-family:"JetBrains Mono",monospace;font-size:10px;background:#091428;pa
       )}
 
       {result?._isDemo && (
-        <div style={{ marginBottom:12, background:"rgba(59,130,246,0.08)", border:"1px solid rgba(59,130,246,0.25)", borderRadius:10, padding:"10px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8 }}>
-          <span style={{ fontSize:12, color:"#93c5fd", fontWeight:600 }}>📌 Demo scan — OWASP WebGoat · 47 Java files · 14 findings · Score: 28/100</span>
-          <button onClick={()=>setResult(null)} style={{ fontSize:11, fontWeight:600, color:"#60a5fa", background:"rgba(59,130,246,0.12)", border:"1px solid rgba(59,130,246,0.3)", borderRadius:6, padding:"4px 12px", cursor:"pointer", fontFamily:"inherit" }}>✕ Clear demo</button>
+        <div ref={resultsRef} style={{ marginBottom:16, background:"linear-gradient(135deg,rgba(59,130,246,0.10),rgba(99,102,241,0.06))", border:"1px solid rgba(99,102,241,0.3)", borderRadius:14, padding:"16px 20px" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:12, marginBottom:12 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ width:36, height:36, borderRadius:10, background:"rgba(99,102,241,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>🎯</div>
+              <div>
+                <div style={{ fontSize:14, fontWeight:700, color:"#a5b4fc" }}>Live Demo — OWASP WebGoat Analysis</div>
+                <div style={{ fontSize:11, color:"#818cf8", marginTop:1 }}>Sample scan of a real vulnerable Java application · No sign-up required</div>
+              </div>
+            </div>
+            <button onClick={()=>setResult(null)} style={{ fontSize:11, fontWeight:600, color:"#818cf8", background:"rgba(99,102,241,0.12)", border:"1px solid rgba(99,102,241,0.3)", borderRadius:6, padding:"5px 14px", cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>✕ Clear demo</button>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))", gap:8 }}>
+            {[["28/100","Quantum Risk Score","#f87171"],["14","Findings detected","#fbbf24"],["5","Critical (P1)","#ef4444"],["47 files","Java codebase","#60a5fa"]].map(([val,label,col])=>(
+              <div key={label} style={{ background:"rgba(0,0,0,0.2)", borderRadius:8, padding:"9px 12px" }}>
+                <div style={{ fontSize:18, fontWeight:800, color:col, lineHeight:1 }}>{val}</div>
+                <div style={{ fontSize:10, color:"#94a3b8", marginTop:3 }}>{label}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop:10, fontSize:11, color:"#64748b" }}>Scroll down to explore the score breakdown, findings, migration roadmap, and PDF report →</div>
         </div>
       )}
 
@@ -1285,7 +1304,7 @@ code{font-family:"JetBrains Mono",monospace;font-size:10px;background:#091428;pa
           {[{id:"github",label:"🔗 GitHub URL"},{id:"zip",label:"📁 Upload ZIP"},{id:"path",label:"🖥️ Server Path"}].map(m=>(
             <button key={m.id} onClick={()=>setMode(m.id)} style={btnStyle(mode===m.id)}>{m.label}</button>
           ))}
-          <button onClick={handleDemo} style={{ marginLeft:"auto", padding:"6px 14px", borderRadius:8, background:"rgba(59,130,246,0.1)", border:"1px solid rgba(59,130,246,0.3)", color:"#60a5fa", cursor:"pointer", fontSize:11, fontWeight:700, fontFamily:"inherit", whiteSpace:"nowrap" }}>▶ Try Demo</button>
+          <button onClick={handleDemo} style={{ marginLeft:"auto", padding:"7px 16px", borderRadius:8, background:"linear-gradient(135deg,rgba(99,102,241,0.18),rgba(59,130,246,0.12))", border:"1px solid rgba(99,102,241,0.4)", color:"#a5b4fc", cursor:"pointer", fontSize:11, fontWeight:700, fontFamily:"inherit", whiteSpace:"nowrap", boxShadow:"0 2px 8px rgba(99,102,241,0.15)" }}>▶ Try Demo — OWASP WebGoat</button>
         </div>
         {mode==="zip" ? (
           <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
