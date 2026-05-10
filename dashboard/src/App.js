@@ -1027,13 +1027,49 @@ function ScannerPage({ user, onUpgrade = () => {} }) {
           )}
 
           {result.score_explanation&&result.score_explanation.length>0&&(
-            <Panel title="Why this score?" accent>
+            <Panel title="Score Breakdown" accent>
+              {/* Score header */}
+              <div style={{ display:"flex", alignItems:"center", gap:20, marginBottom:20, padding:"14px 16px", background:"rgba(15,23,42,0.5)", borderRadius:10, border:`1px solid ${C.panelBorder}` }}>
+                <div style={{ textAlign:"center", flexShrink:0 }}>
+                  <div style={{ fontSize:42, fontWeight:900, color:scoreColor, lineHeight:1 }}>{result.quantum_readiness_score}</div>
+                  <div style={{ fontSize:10, color:C.muted, textTransform:"uppercase", letterSpacing:".07em", marginTop:3 }}>/ 100</div>
+                </div>
+                <div style={{ flex:1 }}>
+                  <div style={{ height:10, background:"rgba(255,255,255,0.07)", borderRadius:6, overflow:"hidden", marginBottom:6 }}>
+                    <div style={{ height:"100%", width:`${result.quantum_readiness_score}%`, background:scoreColor, borderRadius:6, transition:"width .5s ease" }} />
+                  </div>
+                  <div style={{ fontSize:12, fontWeight:700, color:scoreColor }}>{result.quantum_readiness_score>=70?"Quantum-Ready":"Risk Detected — Migration Recommended"}</div>
+                  <div style={{ fontSize:11, color:C.muted, marginTop:2 }}>Starts at 100 · penalties applied per finding severity</div>
+                </div>
+              </div>
+              {/* Breakdown rows */}
               {result.score_explanation.map((line,i)=>{
-                const color=line.startsWith("🔴")?C.critical:line.startsWith("🟡")?C.amber:line.startsWith("🟠")?C.medium:C.green;
-                return (<div key={i} style={{ display:"flex", gap:10, padding:"7px 0", borderBottom:i<result.score_explanation.length-1?`1px solid ${C.panelBorder}`:"none", alignItems:"flex-start" }}>
-                  <span style={{ fontSize:15, flexShrink:0 }}>{line.slice(0,2)}</span>
-                  <span style={{ fontSize:12, color, lineHeight:1.6 }}>{line.slice(2).trim()}</span>
-                </div>);
+                const isCrit=line.startsWith("🔴");
+                const isAmber=line.startsWith("🟡")||line.startsWith("🟠");
+                const isGreen=line.startsWith("🟢")||line.startsWith("✅");
+                const color=isCrit?C.critical:isAmber?C.amber:C.green;
+                const numMatch=line.match(/([+-]\d+)/);
+                const numVal=numMatch?parseInt(numMatch[1],10):0;
+                const maxAbs=40;
+                const barPct=Math.min(Math.abs(numVal)/maxAbs*100,100);
+                return (
+                  <div key={i} style={{ display:"flex", gap:12, padding:"9px 0", borderBottom:i<result.score_explanation.length-1?`1px solid ${C.panelBorder}`:"none", alignItems:"center" }}>
+                    <span style={{ fontSize:14, flexShrink:0, width:18, textAlign:"center" }}>{line.slice(0,2)}</span>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:12, color, lineHeight:1.5, marginBottom:numVal!==0?5:0 }}>{line.slice(2).trim()}</div>
+                      {numVal!==0 && (
+                        <div style={{ height:4, background:"rgba(255,255,255,0.06)", borderRadius:3, overflow:"hidden" }}>
+                          <div style={{ height:"100%", width:`${barPct}%`, background:color, borderRadius:3 }} />
+                        </div>
+                      )}
+                    </div>
+                    {numVal!==0 && (
+                      <div style={{ fontSize:13, fontWeight:800, color, flexShrink:0, minWidth:32, textAlign:"right" }}>
+                        {numVal>0?"+":""}{numVal}
+                      </div>
+                    )}
+                  </div>
+                );
               })}
             </Panel>
           )}
