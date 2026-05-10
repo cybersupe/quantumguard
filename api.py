@@ -49,6 +49,9 @@ from starlette.requests import Request as StarletteRequest
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
+import stripe
+import json
+
 from scanner.scan import (
     scan_directory, calculate_score, check_crypto_agility,
     generate_score_explanation, generate_scan_summary,
@@ -71,6 +74,18 @@ try:
     from scanner.unified_risk_engine import calculate_unified_quantum_risk
 except ImportError:
     calculate_unified_quantum_risk = None
+
+# ── Firebase Admin (for Stripe webhook plan updates) ──────────
+try:
+    import firebase_admin
+    from firebase_admin import credentials as fb_credentials, firestore as fb_firestore
+    _sdk_json = os.getenv("FIREBASE_ADMIN_SDK_JSON")
+    if _sdk_json and not firebase_admin._apps:
+        _cred = fb_credentials.Certificate(json.loads(_sdk_json))
+        firebase_admin.initialize_app(_cred)
+    _firebase_ready = bool(firebase_admin._apps)
+except Exception:
+    _firebase_ready = False
 
 
 # ============================================================
@@ -112,6 +127,11 @@ SECRET_KEY                  = os.getenv("JWT_SECRET_KEY", "CHANGE_THIS_IN_PRODUC
 ALGORITHM                   = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
 ENVIRONMENT                 = os.getenv("ENVIRONMENT", "production")
+
+stripe.api_key        = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_PRO_PRICE_ID   = os.getenv("STRIPE_PRO_PRICE_ID", "")
+FRONTEND_URL          = os.getenv("FRONTEND_URL", "https://quantumguard.site")
 
 
 # ============================================================
@@ -676,6 +696,11 @@ class OrgInviteRequest(BaseModel):
 # ============================================================
 # HELPERS
 # ============================================================
+
+class CheckoutBody(BaseModel):
+    user_id: str
+    user_email: str
+
 
 def verify_key(key: str):
     if key != API_KEY:
@@ -1604,3 +1629,89 @@ async def export_cbom_zip(request: Request, file: UploadFile = File(...)):
     finally:
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
+
+
+@app.post("/create-checkout-session")
+@limiter.limit("5/minute")
+async def create_checkout_session(request: Request, body: CheckoutBody):
+    if not stripe.api_key:
+        raise HTTPException(status_code=503, detail="Billing not configured")
+    if not body.user_id or not body.user_email:
+        raise HTTPException(status_code=400, detail="user_id and user_email required")
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{"price": STRIPE_PRO_PRICE_ID, "quantity": 1}],
+            mode="subscription",
+            success_url=f"{FRONTEND_URL}?checkout=success",
+            cancel_url=f"{FRONTEND_URL}?checkout=cancel",
+            customer_email=body.user_email,
+            metadata={"user_id": body.user_id},
+            subscription_data={"metadata": {"user_id": body.user_id}},
+        )
+        return {"url": session.url}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/stripe-webhook")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig = request.headers.get("stripe-signature", "")
+    try:
+        event = stripe.Webhook.construct_event(payload, sig, STRIPE_WEBHOOK_SECRET)
+    except stripe.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Invalid webhook signature")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if not _firebase_ready:
+        return {"received": True, "note": "firebase not configured — plan not updated"}
+
+    db_admin = fb_firestore.client()
+    event_type = event["type"]
+    data = event["data"]["object"]
+
+    if event_type == "checkout.session.completed":
+        user_id = data.get("metadata", {}).get("user_id")
+        customer_id = data.get("customer")
+        if user_id:
+            db_admin.collection("users").document(user_id).set(
+                {"plan": "pro", "stripeCustomerId": customer_id},
+                merge=True,
+            )
+    elif event_type in ("customer.subscription.deleted", "customer.subscription.paused"):
+        user_id = data.get("metadata", {}).get("user_id")
+        if user_id:
+            db_admin.collection("users").document(user_id).set(
+                {"plan": "free"},
+                merge=True,
+            )
+
+    return {"received": True}
+
+
+@app.post("/customer-portal")
+@limiter.limit("5/minute")
+async def customer_portal(request: Request, body: CheckoutBody):
+    if not stripe.api_key:
+        raise HTTPException(status_code=503, detail="Billing not configured")
+    if not _firebase_ready:
+        raise HTTPException(status_code=503, detail="Firebase not configured")
+    db_admin = fb_firestore.client()
+    user_doc = db_admin.collection("users").document(body.user_id).get()
+    if not user_doc.exists:
+        raise HTTPException(status_code=404, detail="User not found")
+    customer_id = user_doc.to_dict().get("stripeCustomerId")
+    if not customer_id:
+        raise HTTPException(status_code=404, detail="No billing record found")
+    try:
+        portal = stripe.billing_portal.Session.create(
+            customer=customer_id,
+            return_url=FRONTEND_URL,
+        )
+        return {"url": portal.url}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+

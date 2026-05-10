@@ -26,10 +26,21 @@ export const canUserScan = async (userId) => {
     const snap = await getDoc(ref);
     if (!snap.exists()) return { allowed: true };
     const data = snap.data();
+    if (data.plan === "pro") return { allowed: true };
     const today = new Date().toDateString();
     if (data.lastScanDate !== today) return { allowed: true };
     return { allowed: (data.scansToday || 0) < 10 };
   } catch { return { allowed: true }; }
+};
+
+export const getUserPlan = async (userId) => {
+  if (!userId) return "free";
+  try {
+    const ref = doc(db, "users", userId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return "free";
+    return snap.data().plan || "free";
+  } catch { return "free"; }
 };
 
 export const incrementScanCount = async (userId) => {

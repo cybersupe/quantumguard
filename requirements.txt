@@ -1,12 +1,7 @@
-# QuantumGuard requirements — v2.6.1 (May 2, 2026)
-# Key change: asyncpg REMOVED, psycopg2-binary RESTORED
-# api.py uses psycopg2 ThreadedConnectionPool (sync) — asyncpg is wrong driver
-#
-# Changes from previous version:
-#   - ADDED:   asyncpg (async PostgreSQL driver — replaces psycopg2)
-#   - REMOVED: psycopg2-binary (was installed but never called)
-#   - KEPT:    all other pins unchanged
-
+# QuantumGuard requirements — v2.8.0 (May 2026)
+annotated-doc==0.0.4
+firebase-admin==6.6.0
+stripe==11.4.1
 annotated-types==0.7.0
 anthropic==0.96.0
 anyio==4.13.0
