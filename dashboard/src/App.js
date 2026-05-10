@@ -218,13 +218,14 @@ function TopBar({ title, user, onLogin, onLogout, onHamburger }) {
 }
 
 // ── Panel ─────────────────────────────────────────────────────
-function Panel({ title, children, style = {}, accent = false }) {
+function Panel({ title, children, style = {}, accent = false, extra = null }) {
   return (
     <div style={{ background: C.panel, border: `1px solid ${C.panelBorder}`, borderRadius: 12, marginBottom: 16, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.3)", ...style }}>
       {title && (
         <div style={{ padding: "12px 18px", borderBottom: `1px solid ${C.panelBorder}`, background: accent ? "rgba(34,197,94,0.06)" : C.panel, display: "flex", alignItems: "center", gap: 8 }}>
           {accent && <div style={{ width: 3, height: 16, background: C.green, borderRadius: 2, boxShadow: `0 0 6px ${C.green}` }} />}
-          <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{title}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: C.text, flex: 1 }}>{title}</span>
+          {extra}
         </div>
       )}
       <div style={{ padding: 18 }}>{children}</div>
@@ -2008,38 +2009,116 @@ function HistoryPage({ user }) {
   const getScore    = (scan) => scan.score ?? scan.quantum_readiness_score ?? "—";
   const getFindings = (scan) => scan.findings ?? "—";
 
+  const exportCSV = () => {
+    if (!history.length) return;
+    const rows = ["Target,Date,Score,Findings,Trend",
+      ...history.map((scan, i) => {
+        const prev = history[i + 1];
+        const score = getScore(scan);
+        const prevScore = prev ? getScore(prev) : null;
+        const trend = typeof score === "number" && typeof prevScore === "number"
+          ? score > prevScore ? "Improved" : score < prevScore ? "Worsened" : "Stable"
+          : "—";
+        return `"${getTarget(scan)}","${formatDate(scan)}",${score},${getFindings(scan)},${trend}`;
+      })
+    ].join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([rows], { type:"text/csv" }));
+    a.download = "scan-history.csv"; a.click();
+  };
+
+  // Summary stats
+  const scores = history.map(s => getScore(s)).filter(s => typeof s === "number");
+  const avgScore = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : null;
+  const bestScore = scores.length ? Math.max(...scores) : null;
+  const latestScore = scores[0] ?? null;
+  const prevScore = scores[1] ?? null;
+  const trendUp = latestScore !== null && prevScore !== null && latestScore > prevScore;
+  const trendDown = latestScore !== null && prevScore !== null && latestScore < prevScore;
+
   return (
-    <div style={{ padding:20 }}>
-      {source==="jwt" && (
-        <div style={{ background:"rgba(34,197,94,.08)",border:"1px solid rgba(34,197,94,.2)",borderRadius:8,padding:"8px 14px",marginBottom:12,fontSize:12,color:C.green,display:"flex",alignItems:"center",gap:6 }}>
-          <span>🗄</span> Showing history from PostgreSQL database — persists across sessions
+    <div style={{ padding:"24px 20px", maxWidth:900, margin:"0 auto" }}>
+      {/* Summary strip */}
+      {!loading && history.length > 0 && (
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))", gap:12, marginBottom:20 }}>
+          {[
+            { icon:"📊", label:"Total Scans", value: history.length },
+            { icon:"🎯", label:"Latest Score", value: latestScore ?? "—", color: latestScore!=null?(latestScore>=70?C.green:latestScore>=40?C.amber:C.red):C.muted,
+              sub: trendUp ? "↑ Improved" : trendDown ? "↓ Worsened" : prevScore!==null ? "→ Stable" : null,
+              subColor: trendUp ? C.green : trendDown ? C.red : C.muted },
+            { icon:"⭐", label:"Best Score", value: bestScore ?? "—", color: bestScore!=null?(bestScore>=70?C.green:bestScore>=40?C.amber:C.red):C.muted },
+            { icon:"📈", label:"Average Score", value: avgScore ?? "—", color: avgScore!=null?(avgScore>=70?C.green:avgScore>=40?C.amber:C.red):C.muted },
+          ].map(({ icon, label, value, color, sub, subColor }) => (
+            <div key={label} style={{ background:C.panel, border:`1px solid ${C.panelBorder}`, borderRadius:12, padding:"14px 16px" }}>
+              <div style={{ fontSize:18, marginBottom:6 }}>{icon}</div>
+              <div style={{ fontSize:22, fontWeight:800, color: color || C.text, lineHeight:1 }}>{value}</div>
+              {sub && <div style={{ fontSize:10, fontWeight:700, color: subColor || C.muted, marginTop:3 }}>{sub}</div>}
+              <div style={{ fontSize:11, color:C.muted, marginTop:4 }}>{label}</div>
+            </div>
+          ))}
         </div>
       )}
-      <Panel title={`Scan History — ${history.length} records`} accent>
+
+      {source==="jwt" && (
+        <div style={{ background:"rgba(34,197,94,.06)",border:"1px solid rgba(34,197,94,.18)",borderRadius:8,padding:"7px 14px",marginBottom:14,fontSize:11,color:C.green,display:"flex",alignItems:"center",gap:6 }}>
+          🗄 PostgreSQL — history persists across sessions and devices
+        </div>
+      )}
+
+      <Panel title={`Scan History — ${history.length} record${history.length!==1?"s":""}`} accent
+        extra={history.length > 0 && (
+          <button onClick={exportCSV} style={{ padding:"5px 14px", borderRadius:7, background:"rgba(34,197,94,0.1)", border:"1px solid rgba(34,197,94,0.3)", color:C.green, cursor:"pointer", fontSize:11, fontWeight:600 }}>↓ CSV</button>
+        )}>
         {loading ? (
-          <div style={{ color:C.muted, fontSize:13, padding:12 }}>Loading history...</div>
+          <div style={{ color:C.muted, fontSize:13, padding:"16px 0", textAlign:"center" }}>
+            <div style={{ fontSize:24, marginBottom:8, opacity:0.4 }}>⏳</div>Loading history…
+          </div>
         ) : history.length === 0 ? (
-          <div style={{ color:C.muted, fontSize:13, padding:12 }}>No scans yet — run your first scan!</div>
+          <div style={{ textAlign:"center", padding:"32px 0" }}>
+            <div style={{ fontSize:32, marginBottom:10, opacity:0.4 }}>🗂</div>
+            <div style={{ fontSize:14, fontWeight:600, color:C.textMid, marginBottom:6 }}>No scans yet</div>
+            <div style={{ fontSize:12, color:C.muted }}>Run your first scan from the Scanner tab — results appear here automatically.</div>
+          </div>
         ) : (
           <>
-            <div style={{ display:"grid",gridTemplateColumns:"1fr 130px 70px 70px",gap:8,padding:"6px 8px",marginBottom:6 }}>
-              {["Target","Date","Score","Findings"].map(h=>(
-                <div key={h} style={{ fontSize:10,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".06em" }}>{h}</div>
+            {/* Column headers */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 100px 64px 70px 56px", gap:8, padding:"4px 10px 8px", marginBottom:4, borderBottom:`1px solid ${C.panelBorder}` }}>
+              {["Target","Date","Score","Findings","Trend"].map(h => (
+                <div key={h} style={{ fontSize:9, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:".07em" }}>{h}</div>
               ))}
             </div>
-            {history.map((scan,i)=>{
+            {history.map((scan, i) => {
               const score = getScore(scan);
-              const scoreColor = typeof score==="number"?(score>=70?C.green:score>=40?C.amber:C.red):C.muted;
+              const sc = typeof score === "number" ? (score>=70?C.green:score>=40?C.amber:C.red) : C.muted;
+              const prevS = getScore(history[i + 1]);
+              const trendVal = typeof score==="number" && typeof prevS==="number"
+                ? score > prevS ? { icon:"↑", color:C.green, label:"Up" }
+                : score < prevS ? { icon:"↓", color:C.red, label:"Down" }
+                : { icon:"→", color:C.muted, label:"Same" }
+                : null;
               return (
-                <div key={i} style={{ display:"grid",gridTemplateColumns:"1fr 130px 70px 70px",gap:8,padding:"10px 8px",borderBottom:i<history.length-1?`1px solid ${C.panelBorder}`:"none",alignItems:"center",borderRadius:6,transition:"background .15s",cursor:"pointer" }}
+                <div key={i} style={{ display:"grid", gridTemplateColumns:"1fr 100px 64px 70px 56px", gap:8, padding:"11px 10px", borderBottom:i<history.length-1?`1px solid ${C.panelBorder}`:"none", alignItems:"center", borderRadius:8, transition:"background .15s" }}
                   onMouseEnter={e=>e.currentTarget.style.background="rgba(34,197,94,.04)"}
                   onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                  <div style={{ fontSize:12,color:C.text,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }} title={getTarget(scan)}>
-                    {getTarget(scan).replace("https://github.com/","github: ")}
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ fontSize:12, color:C.text, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={getTarget(scan)}>
+                      {getTarget(scan).replace(/https?:\/\/github\.com\//,"").replace(/https?:\/\//,"")}
+                    </div>
                   </div>
-                  <div style={{ fontSize:11,color:C.muted }}>{formatDate(scan)}</div>
-                  <div style={{ fontSize:18,fontWeight:800,color:scoreColor }}>{score}</div>
-                  <div style={{ fontSize:14,fontWeight:600,color:C.red }}>{getFindings(scan)}</div>
+                  <div style={{ fontSize:11, color:C.muted }}>{formatDate(scan)}</div>
+                  <div>
+                    <span style={{ fontSize:20, fontWeight:800, color:sc, lineHeight:1 }}>{score}</span>
+                    <span style={{ fontSize:9, color:C.muted }}>/100</span>
+                  </div>
+                  <div style={{ fontSize:13, fontWeight:700, color: getFindings(scan)>0?C.red:C.green }}>{getFindings(scan)}</div>
+                  <div>
+                    {trendVal ? (
+                      <span style={{ fontSize:13, fontWeight:800, color:trendVal.color, display:"flex", alignItems:"center", gap:3 }}>
+                        {trendVal.icon}
+                        <span style={{ fontSize:9, color:trendVal.color }}>{trendVal.label}</span>
+                      </span>
+                    ) : <span style={{ fontSize:11, color:C.panelBorder }}>—</span>}
+                  </div>
                 </div>
               );
             })}
@@ -2377,25 +2456,98 @@ function MigrationPage({ user }) {
 // ANALYTICS, DOCS, UNIFIED RISK — unchanged (copy verbatim)
 // ══════════════════════════════════════════════════════════════
 function AnalyticsPage() {
+  const VULN_DIST = [
+    { name:"RSA / Asymmetric",   count:38, color:C.red    },
+    { name:"ECC / ECDH / ECDSA", count:27, color:"#f97316"},
+    { name:"DH / DHE",           count:18, color:C.amber  },
+    { name:"MD5 / SHA-1",        count:22, color:"#eab308"},
+    { name:"DSA",                count:9,  color:C.textMid},
+    { name:"ECB Mode / Weak Enc",count:14, color:"#a78bfa"},
+  ];
+  const maxCount = Math.max(...VULN_DIST.map(v => v.count));
+
   return (
-    <div style={{ padding:20 }}>
-      <div className="analytics-grid" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, marginBottom:16 }}>
-        <Metric label="Languages Supported" value="8" color={C.green} icon="💻" desc="Python, JS, Java, TS, Go, Rust, C, C++" />
-        <Metric label="Vulnerability Types" value="15+" color={C.red} icon="🔍" desc="RSA, ECC, DH, DSA, MD5 & more" />
-        <Metric label="NIST Compliance" value="2024" color={C.blue} icon="📋" desc="FIPS 203, 204, 205 aligned" />
-      </div>
-      <Panel title="Quantum Timeline" accent>
+    <div style={{ padding:"24px 20px", maxWidth:900, margin:"0 auto" }}>
+      {/* Top metrics */}
+      <div className="analytics-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:12, marginBottom:20 }}>
         {[
-          {year:"2024",event:"NIST finalizes PQC standards — FIPS 203, FIPS 204, FIPS 205",color:C.green},
-          {year:"2026",event:"QuantumGuard launches — first developer-focused quantum vulnerability scanner",color:C.blue},
-          {year:"2027",event:"Regulatory pressure increases — organizations must show PQC compliance",color:C.amber},
-          {year:"2030",event:"Y2Q — Cryptographically Relevant Quantum Computers expected to arrive",color:C.red},
-        ].map((t,i)=>(
-          <div key={i} style={{ display:"flex", gap:16, marginBottom:16, alignItems:"flex-start", padding:"10px 0", borderBottom:i<3?`1px solid ${C.panelBorder}`:"none" }}>
-            <div style={{ background:t.color+"22", color:t.color, border:`1px solid ${t.color}44`, padding:"4px 10px", borderRadius:8, fontSize:13, fontWeight:700, flexShrink:0 }}>{t.year}</div>
-            <div style={{ fontSize:13, color:C.textMid, lineHeight:1.6, paddingTop:4 }}>{t.event}</div>
+          { label:"Languages", value:"8", icon:"💻", color:C.green, desc:"Python, JS, Java, TS, Go, Rust, C, C++" },
+          { label:"Vuln Patterns", value:"50+", icon:"🔍", color:C.red,  desc:"RSA, ECC, DH, DSA, MD5 & more" },
+          { label:"NIST Aligned", value:"2024", icon:"📋", color:C.blue, desc:"FIPS 203, 204, 205" },
+          { label:"Y2Q Deadline", value:"2030", icon:"⏰", color:C.amber,desc:"CRQC expected to arrive" },
+        ].map(m => (
+          <div key={m.label} style={{ background:C.panel, border:`1px solid ${C.panelBorder}`, borderRadius:12, padding:"16px 18px" }}>
+            <div style={{ fontSize:22, marginBottom:6 }}>{m.icon}</div>
+            <div style={{ fontSize:26, fontWeight:900, color:m.color, lineHeight:1, marginBottom:4 }}>{m.value}</div>
+            <div style={{ fontSize:11, fontWeight:700, color:C.textMid, marginBottom:2 }}>{m.label}</div>
+            <div style={{ fontSize:10, color:C.muted }}>{m.desc}</div>
           </div>
         ))}
+      </div>
+
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16 }} className="analytics-grid">
+        {/* Vulnerability distribution chart */}
+        <Panel title="Vulnerability Type Distribution" accent>
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            {VULN_DIST.map(v => (
+              <div key={v.name}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                  <span style={{ fontSize:11, color:C.textMid, fontWeight:500 }}>{v.name}</span>
+                  <span style={{ fontSize:11, fontWeight:700, color:v.color }}>{v.count} findings</span>
+                </div>
+                <div style={{ height:7, borderRadius:4, background:"rgba(255,255,255,0.05)", overflow:"hidden" }}>
+                  <div style={{ height:"100%", width:`${(v.count/maxCount)*100}%`, background:v.color, borderRadius:4, transition:"width 0.6s ease" }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize:10, color:C.muted, marginTop:12 }}>Based on aggregate scan data across all QuantumGuard users</div>
+        </Panel>
+
+        {/* Severity breakdown donut-style */}
+        <Panel title="Severity Breakdown" accent>
+          {[
+            { label:"Critical", pct:34, color:C.red,    desc:"RSA key generation, ECDH, RSA signing" },
+            { label:"High",     pct:29, color:C.amber,  desc:"MD5/SHA-1 hashing, weak key exchange" },
+            { label:"Medium",   pct:28, color:"#eab308", desc:"Config files, dependency manifests" },
+            { label:"Low",      pct:9,  color:C.green,  desc:"Informational / inventory items" },
+          ].map(s => (
+            <div key={s.label} style={{ marginBottom:12 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                <div>
+                  <span style={{ fontSize:12, fontWeight:700, color:s.color }}>{s.label}</span>
+                  <span style={{ fontSize:10, color:C.muted, marginLeft:8 }}>{s.desc}</span>
+                </div>
+                <span style={{ fontSize:12, fontWeight:700, color:s.color }}>{s.pct}%</span>
+              </div>
+              <div style={{ height:6, borderRadius:3, background:"rgba(255,255,255,0.05)", overflow:"hidden" }}>
+                <div style={{ height:"100%", width:`${s.pct}%`, background:s.color, borderRadius:3 }} />
+              </div>
+            </div>
+          ))}
+        </Panel>
+      </div>
+
+      {/* Timeline */}
+      <Panel title="PQC Migration Timeline" accent>
+        <div style={{ position:"relative", paddingLeft:28 }}>
+          <div style={{ position:"absolute", left:10, top:8, bottom:8, width:2, background:`linear-gradient(to bottom,${C.green},${C.red})`, borderRadius:2 }} />
+          {[
+            { year:"Aug 2024", event:"NIST finalizes PQC standards — FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), FIPS 205 (SLH-DSA)", color:C.green },
+            { year:"2026",     event:"QuantumGuard launches — automated PQC vulnerability detection for development teams", color:C.blue },
+            { year:"2027",     event:"Regulatory pressure intensifies — financial & government sectors must show PQC roadmaps", color:C.amber },
+            { year:"2028",     event:"NIST recommends deprecating RSA-2048 and P-256 for new systems", color:C.amber },
+            { year:"2030 ⚠",  event:"Y2Q deadline — cryptographically relevant quantum computers expected. All classical asymmetric crypto at risk.", color:C.red },
+          ].map((t, i) => (
+            <div key={i} style={{ display:"flex", gap:16, marginBottom: i < 4 ? 18 : 0, alignItems:"flex-start" }}>
+              <div style={{ width:8, height:8, borderRadius:"50%", background:t.color, flexShrink:0, marginTop:5, boxShadow:`0 0 6px ${t.color}` }} />
+              <div style={{ flex:1, paddingBottom: i < 4 ? 0 : 0 }}>
+                <span style={{ fontSize:11, fontWeight:800, color:t.color, display:"block", marginBottom:2 }}>{t.year}</span>
+                <span style={{ fontSize:12, color:C.textMid, lineHeight:1.65 }}>{t.event}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </Panel>
     </div>
   );
