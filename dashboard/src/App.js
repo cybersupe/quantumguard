@@ -8,6 +8,17 @@ import { AuthProvider, useAuth } from "./AuthContext";
 
 const API = "https://quantumguard-api.onrender.com";
 
+// Sanitise errors before showing to users — never leak DB/stack/internal details
+const safeErr = (e, fallback = "Something went wrong. Please try again.") => {
+  const msg = (typeof e === "string" ? e : e?.message) || "";
+  if (!msg) return fallback;
+  if (/sql|psycopg|traceback|exception|stack trace|undefined|null pointer/i.test(msg)) return fallback;
+  if (e?.name === "TypeError" || /failed to fetch|networkerror|load failed|network request/i.test(msg)) return "Unable to connect. Please check your connection and try again.";
+  if (/50[2-9]|server error|internal server/i.test(msg)) return "A server error occurred. Please retry in a few moments.";
+  if (msg.length > 200 || /^\s*[\[{]/.test(msg)) return fallback;
+  return msg;
+};
+
 const C = {
   bg:           "#0a0e1a",
   sidebar:      "#0d1120",
@@ -878,12 +889,14 @@ function ScannerPage({ user, onUpgrade = () => {}, runDemo = false }) {
           throw Object.assign(new Error(`Server unavailable (${res.status})`), { isColdStart: true });
         }
         const data = await res.json();
-        if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail) || "Scan failed");
+        if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Unable to complete scan");
         retryAttemptsRef.current = 0;
         stopProgress(); setResult(data);
         if (user) {
-          await addDoc(collection(db,"scans"), { userId:user.uid, userEmail:user.email, filename:file?.name||input||"scan", score:data.quantum_readiness_score, findings:data.total_findings, createdAt:new Date() });
-          await incrementScanCount(user.uid); setSaved(true);
+          try {
+            await addDoc(collection(db,"scans"), { userId:user.uid, userEmail:user.email, filename:file?.name||input||"scan", score:data.quantum_readiness_score, findings:data.total_findings, createdAt:new Date() });
+            await incrementScanCount(user.uid); setSaved(true);
+          } catch { /* history save failed silently — scan result is still valid */ }
         }
       } catch (e) {
         const isColdStart = e.isColdStart || e.name === "TypeError" || /failed to fetch|network|503|502|504/i.test(e.message || "");
@@ -903,9 +916,9 @@ function ScannerPage({ user, onUpgrade = () => {}, runDemo = false }) {
         retryAttemptsRef.current = 0;
         stopProgress();
         if (isColdStart && !isInputError) {
-          setError("The API is starting up (cold start). Please wait a moment and try again, or the next retry should succeed automatically.");
+          setError("The API is warming up. Please wait a moment and try again — automatic retries are exhausted.");
         } else {
-          setError(typeof e.message === "string" ? e.message : "Scan failed.");
+          setError(safeErr(e, "Unable to complete scan. Please retry in a few moments."));
         }
       }
     };
@@ -921,9 +934,8 @@ function ScannerPage({ user, onUpgrade = () => {}, runDemo = false }) {
       const res = await fetch(`${API}/create-checkout-session`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user_id: user.uid || String(user.id), user_email: user.email }) });
       const data = await res.json();
       if (data.url) { window.location.href = data.url; return; }
-      const msg = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail) || "Checkout failed";
-      throw new Error(msg);
-    } catch (e) { alert("Checkout failed: " + (e.message || String(e))); setUpgradeLoading(false); }
+      if (!data.url) throw new Error(typeof data.detail === "string" ? data.detail : "Checkout unavailable");
+    } catch (e) { setError(safeErr(e, "Unable to start checkout. Please try again or contact support.")); setUpgradeLoading(false); }
   };
 
   const handleEmail = async () => {
@@ -931,7 +943,7 @@ function ScannerPage({ user, onUpgrade = () => {}, runDemo = false }) {
     try {
       await emailjs.send("service_vy8yxbq","template_mgydwpx",{ to_email:emailInput, score:result.quantum_readiness_score, total:result.total_findings, filename:file?.name||input||"scan" },"vATUvI1IlAtH0ooKaQlY9");
       setEmailSent(true); setTimeout(()=>setEmailSent(false),3000);
-    } catch(e) { alert("Email failed."); }
+    } catch { setEmailSent(false); setSendingEmail(false); setError("Unable to send email report. Please try again."); return; }
     setSendingEmail(false);
   };
 
@@ -941,7 +953,7 @@ function ScannerPage({ user, onUpgrade = () => {}, runDemo = false }) {
       const res = await fetch(`${API}/ai-fix`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ finding }) });
       const data = await res.json();
       setAiResult(data.fix || "Could not generate fix.");
-    } catch(e) { setAiResult("Error calling AI. Please try again."); }
+    } catch { setAiResult("Unable to generate fix suggestions. Please try again in a few moments."); }
     setAiLoading(false);
   };
 
@@ -1726,7 +1738,7 @@ function AgilityPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail||"Check failed");
       setResult(data);
-    } catch(e) { setError(typeof e.message==="string"?e.message:"Check failed."); }
+    } catch(e) { setError(safeErr(e, "Unable to run agility check. Please retry in a few moments.")); }
     setLoading(false);
   };
   const agilityColor = result?(result.agility_score>=70?C.green:result.agility_score>=40?C.amber:C.red):C.muted;
@@ -1775,7 +1787,7 @@ function TLSPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail||"Analysis failed");
       setResult(data);
-    } catch(e) { setError(typeof e.message==="string"?e.message:"Analysis failed."); }
+    } catch(e) { setError(safeErr(e, "Unable to analyze TLS configuration. Please retry in a few moments.")); }
     setLoading(false);
   };
   const scoreColor = result?(result.tls_score>=70?C.green:result.tls_score>=40?C.amber:C.red):C.muted;
@@ -1979,8 +1991,8 @@ function OrgPage({ user }) {
     try {
       const r = await fetch(`${API}/org/create`, { method: "POST", headers: { ...authH, "Content-Type": "application/json" }, body: JSON.stringify({ name: createName.trim() }) });
       const d = await r.json();
-      if (!r.ok) { flash("err", d.detail || "Failed to create org"); } else { flash("ok", d.message); loadOrg(); }
-    } catch { flash("err", "Network error"); }
+      if (!r.ok) { flash("err", d.detail || "Unable to create organization. Please try again."); } else { flash("ok", d.message); loadOrg(); }
+    } catch { flash("err", "Unable to connect. Please check your connection and try again."); }
     setCreating(false);
   };
 
@@ -1990,8 +2002,8 @@ function OrgPage({ user }) {
     try {
       const r = await fetch(`${API}/org/invite`, { method: "POST", headers: { ...authH, "Content-Type": "application/json" }, body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }) });
       const d = await r.json();
-      if (!r.ok) { flash("err", d.detail || "Invite failed"); } else { flash("ok", d.message); setInviteEmail(""); loadOrg(); }
-    } catch { flash("err", "Network error"); }
+      if (!r.ok) { flash("err", d.detail || "Unable to send invite. Please try again."); } else { flash("ok", d.message); setInviteEmail(""); loadOrg(); }
+    } catch { flash("err", "Unable to connect. Please check your connection and try again."); }
     setInviting(false);
   };
 
@@ -2000,8 +2012,8 @@ function OrgPage({ user }) {
     try {
       const r = await fetch(`${API}/org/member/${encodeURIComponent(email)}`, { method: "DELETE", headers: authH });
       const d = await r.json();
-      if (!r.ok) { flash("err", d.detail || "Remove failed"); } else { flash("ok", d.message); loadOrg(); }
-    } catch { flash("err", "Network error"); }
+      if (!r.ok) { flash("err", d.detail || "Unable to remove member. Please try again."); } else { flash("ok", d.message); loadOrg(); }
+    } catch { flash("err", "Unable to connect. Please check your connection and try again."); }
     setRemoving(null);
   };
 
@@ -2344,7 +2356,7 @@ function UnifiedRiskPage() {
   const sevColor=(sev)=>sev==="CRITICAL"?C.critical:sev==="HIGH"?C.amber:C.medium;
   const sevBg=(sev)=>SEV_BG[sev]||SEV_BG.MEDIUM;
   const ctrlStyle=(status)=>({PASS:{bg:"rgba(34,197,94,0.1)",color:C.green,dot:C.green,border:"rgba(34,197,94,0.3)"},WARN:{bg:"rgba(245,158,11,0.1)",color:C.amber,dot:C.amber,border:"rgba(245,158,11,0.3)"},FAIL:{bg:"rgba(239,68,68,0.1)",color:C.red,dot:C.critical,border:"rgba(239,68,68,0.3)"}}[status]);
-  const handleScan = async () => { if(!github||!domain) return; setLoading(true); setError(null); setData(null); startProgress(); try { const res = await fetch(`${API}/unified-risk`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({github_url:github,domain})}); const json = await res.json(); if(!res.ok) throw new Error(json.detail||"Scan failed"); stopProgress(); setData(json); } catch(e) { stopProgress(); setError(typeof e.message==="string"?e.message:"Scan failed."); } setLoading(false); };
+  const handleScan = async () => { if(!github||!domain) return; setLoading(true); setError(null); setData(null); startProgress(); try { const res = await fetch(`${API}/unified-risk`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({github_url:github,domain})}); const json = await res.json(); if(!res.ok) throw new Error(json.detail||"Unable to complete scan"); stopProgress(); setData(json); } catch(e) { stopProgress(); setError(safeErr(e,"Unable to complete unified risk scan. Please retry in a few moments.")); } setLoading(false); };
   const handleCSV = () => { if(!data) return; const ur=data.unified_risk||{}; const cs=ur.component_scores||{}; const ss=data.finding_summary?.severity_summary||{}; const rows=["Metric,Value",`Unified Risk Score,${Math.round(ur.quantum_risk_score||0)}`,`Risk Level,${ur.risk_level||""}`,`Code Crypto Score,${Math.round(cs.code_crypto_score||0)}`,`Crypto Agility Score,${Math.round(cs.crypto_agility_score||0)}`,`TLS Score,${Math.round(cs.tls_score||0)}`,`Critical Findings,${ss.CRITICAL||0}`,`High Findings,${ss.HIGH||0}`,`Medium Findings,${ss.MEDIUM||0}`].join("\n"); const blob=new Blob([rows],{type:"text/csv"}); const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="unified-risk.csv";a.click(); };
   const ur=data?.unified_risk||{}; const cs=ur.component_scores||{}; const fs=data?.finding_summary||{}; const ss=fs.severity_summary||{}; const topFindings=data?.top_findings||[];
   const score=Math.round(ur.quantum_risk_score||0); const codeScore=Math.round(cs.code_crypto_score||0); const agilityScore=Math.round(cs.crypto_agility_score||0); const tlsScore=Math.round(cs.tls_score||0);
@@ -4266,6 +4278,7 @@ function BillingPage({ user, plan, onUpgrade, onManageBilling }) {
   const [loading, setLoading] = useState(true);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [portalError, setPortalError] = useState(null);
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
@@ -4282,7 +4295,7 @@ function BillingPage({ user, plan, onUpgrade, onManageBilling }) {
   }, [user]);
 
   const handleCancelConfirm = async () => {
-    setPortalLoading(true);
+    setPortalLoading(true); setPortalError(null);
     try {
       const uid = user.uid || String(user.id);
       const res = await fetch(`${API}/customer-portal`, {
@@ -4292,8 +4305,9 @@ function BillingPage({ user, plan, onUpgrade, onManageBilling }) {
       });
       const data = await res.json();
       if (data.url) { window.location.href = data.url; }
+      else throw new Error("Portal unavailable");
     } catch (e) {
-      alert("Could not open billing portal: " + e.message);
+      setPortalError(safeErr(e, "Unable to open billing portal. Please try again or contact support@quantumguard.site."));
       setPortalLoading(false);
       setShowCancelModal(false);
     }
@@ -4325,6 +4339,12 @@ function BillingPage({ user, plan, onUpgrade, onManageBilling }) {
         <div style={{ fontSize:20, fontWeight:700, color:C.text, marginBottom:4 }}>Billing & Plan</div>
         <div style={{ fontSize:13, color:C.muted }}>Manage your subscription, usage, and billing details.</div>
       </div>
+      {portalError && (
+        <div style={{ marginBottom:16, background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.3)", borderRadius:10, padding:"10px 16px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <span style={{ fontSize:12, color:C.red }}>⚠ {portalError}</span>
+          <button onClick={()=>setPortalError(null)} style={{ background:"transparent", border:"none", color:C.red, cursor:"pointer", fontSize:16 }}>×</button>
+        </div>
+      )}
 
       {!user ? (
         <div style={{ background:C.panel, border:`1px solid ${C.panelBorder}`, borderRadius:12, padding:"36px 24px", textAlign:"center" }}>
@@ -4458,6 +4478,7 @@ function AppInner() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [checkoutBanner, setCheckoutBanner] = useState(null);
+  const [checkoutError, setCheckoutError] = useState(null);
   const [pendingPlanRefresh, setPendingPlanRefresh] = useState(false);
 
   useEffect(() => {
@@ -4500,22 +4521,23 @@ function AppInner() {
   const handleUpgrade = () => setShowUpgradeModal(true);
   const handleUpgradeCheckout = async () => {
     if (!user) { setAuthModal("login"); return; }
-    setUpgradeLoading(true);
+    setUpgradeLoading(true); setCheckoutError(null);
     try {
       const res = await fetch(`${API}/create-checkout-session`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ user_id: user.uid || String(user.id), user_email: user.email }) });
       const data = await res.json();
       if (data.url) { window.location.href = data.url; return; }
-      const msg = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail) || "Checkout failed";
-      throw new Error(msg);
-    } catch(e) { alert("Checkout failed: " + (e.message || String(e))); setUpgradeLoading(false); }
+      throw new Error(typeof data.detail === "string" ? data.detail : "Checkout unavailable");
+    } catch(e) { setCheckoutError(safeErr(e, "Unable to start checkout. Please try again or contact support@quantumguard.site.")); setUpgradeLoading(false); }
   };
   const handleManageBilling = async () => {
     if (!user) return;
+    setCheckoutError(null);
     try {
       const res = await fetch(`${API}/customer-portal`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ user_id: user.uid || String(user.id), user_email: user.email }) });
       const data = await res.json();
       if (data.url) { window.location.href = data.url; }
-    } catch(e) { alert("Could not open billing portal: " + e.message); }
+      else throw new Error("Portal unavailable");
+    } catch(e) { setCheckoutError(safeErr(e, "Unable to open billing portal. Please try again or contact support@quantumguard.site.")); }
   };
   const handleLogout = async () => { jwtLogout(); try { await signOut(auth); setGoogleUser(null); setPlan("free"); } catch(e) {} };
   const handleLogin = () => setAuthModal("login");
@@ -4542,6 +4564,12 @@ function AppInner() {
             <div style={{ background:"rgba(245,158,11,0.1)", border:"1px solid rgba(245,158,11,0.3)", padding:"10px 20px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
               <span style={{ color:C.amber, fontWeight:600, fontSize:13 }}>Checkout cancelled — you're still on the Free plan.</span>
               <button onClick={()=>setCheckoutBanner(null)} style={{ background:"transparent", border:"none", color:C.amber, cursor:"pointer", fontSize:18 }}>×</button>
+            </div>
+          )}
+          {checkoutError && (
+            <div style={{ background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.3)", padding:"10px 20px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <span style={{ color:C.red, fontWeight:600, fontSize:13 }}>⚠ {checkoutError}</span>
+              <button onClick={()=>setCheckoutError(null)} style={{ background:"transparent", border:"none", color:C.red, cursor:"pointer", fontSize:18 }}>×</button>
             </div>
           )}
           <div style={{ flex:1, overflowY:"auto" }}>
