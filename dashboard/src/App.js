@@ -2665,22 +2665,51 @@ function SecurityPage() {
         </div>
       </div>
 
-      <div style={{ maxWidth:760, margin:"0 auto", padding:"48px 32px 80px" }}>
+      {/* ── Key Security Commitments ── */}
+      <div style={{ maxWidth:760, margin:"0 auto", padding:"40px 32px 0" }}>
+        <div style={{ marginBottom:16, fontSize:11, fontWeight:700, color:"#22c55e", letterSpacing:".08em", textTransform:"uppercase" }}>Key Security Commitments</div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))", gap:14, marginBottom:48 }}>
+          {[
+            { icon:"🗑️", title:"No persistent code storage",
+              body:"Your source code is never written to disk, a database, or any long-term storage. Every scan runs in a temporary in-memory context and is discarded the moment the result is returned." },
+            { icon:"💾", title:"Scanned entirely in memory",
+              body:"Repository content is loaded into RAM for analysis only. No temp files containing your code are written to the server filesystem. The process is stateless from your code's perspective." },
+            { icon:"🔒", title:"Token redaction in logs",
+              body:"A log-scrubbing filter strips GitHub personal access tokens, OAuth tokens, and API keys before any line is written to application logs. Tokens match GHP, GHSA, and GitHub fine-grained PAT patterns." },
+            { icon:"🛡️", title:"SSRF protections",
+              body:"Repository URLs are validated against an allowlist of GitHub.com domains. HTTP redirect following is disabled. Private IP ranges, loopback, and link-local addresses are blocked at the HTTP client level." },
+            { icon:"📦", title:"Secure ZIP extraction",
+              body:"Uploaded ZIPs are extracted in an isolated temp directory with path traversal prevention: absolute paths, backslash tricks, and symlinks are rejected before any file is written. Archive size is capped." },
+            { icon:"🌐", title:"TLS 1.3 in transit",
+              body:"All communication between the browser and the API is encrypted via HTTPS with TLS 1.3. The API is served through Render's edge, which enforces HSTS and modern cipher suites." },
+          ].map((c,i)=>(
+            <div key={i} style={{ background:"#0d1220", border:`1px solid ${bdr}`, borderRadius:14, padding:"22px 20px", transition:"border-color .2s" }}
+              onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(34,197,94,0.35)"}
+              onMouseLeave={e=>e.currentTarget.style.borderColor=bdr}>
+              <div style={{ fontSize:26, marginBottom:12 }}>{c.icon}</div>
+              <div style={{ fontSize:13, fontWeight:700, color:text, marginBottom:8, lineHeight:1.3 }}>{c.title}</div>
+              <div style={{ fontSize:12, color:mid, lineHeight:1.75 }}>{c.body}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ maxWidth:760, margin:"0 auto", padding:"0 32px 80px" }}>
 
         <Section title="Infrastructure Security">
           <Item>All data in transit is encrypted via HTTPS / TLS 1.3.</Item>
           <Item>API is hosted on Render.com with automatic HTTPS and DDoS protection.</Item>
           <Item>PostgreSQL database uses encrypted connections and parameterised queries — no SQL injection surface.</Item>
           <Item>JWT authentication tokens expire after 24 hours.</Item>
-          <Item>Rate limiting per IP and per user on all endpoints.</Item>
+          <Item>Rate limiting per IP and per user on all API endpoints.</Item>
         </Section>
 
         <Section title="Scanner Security">
-          <Item>SSRF protection — repo URLs are validated against an allowlist of GitHub domains. Redirect following is disabled.</Item>
-          <Item>ZIP path traversal prevention — no absolute paths, no symlinks, no directory escape.</Item>
-          <Item>Sandboxed execution — every scan runs in an isolated temporary directory.</Item>
-          <Item>Token scrubbing — GitHub tokens are never written to application logs.</Item>
-          <Item>Repository content is never written to a database or persistent storage.</Item>
+          <Item>SSRF protection — repo URLs are validated against an allowlist of GitHub domains. HTTP redirect following is disabled. Private IP ranges are blocked.</Item>
+          <Item>ZIP path traversal prevention — absolute paths, backslash tricks, and symlinks are rejected before extraction. Archive size is capped.</Item>
+          <Item>Sandboxed execution — every scan runs in an isolated temporary directory that is deleted after the scan completes.</Item>
+          <Item>Token scrubbing — GitHub tokens (ghp_*, github_pat_*) are stripped from application logs by a pre-write filter before any log entry is persisted.</Item>
+          <Item>Repository content is never written to a database or persistent storage. All analysis is performed in-process and in-memory.</Item>
         </Section>
 
         <Section title="Open Source Auditability">
