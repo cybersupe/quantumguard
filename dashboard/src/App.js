@@ -3254,6 +3254,7 @@ function AppInner() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [checkoutBanner, setCheckoutBanner] = useState(null);
+  const [pendingPlanRefresh, setPendingPlanRefresh] = useState(false);
 
   useEffect(() => {
     if (user?.uid) { getUserPlan(user.uid).then(p => setPlan(p)); }
@@ -3262,9 +3263,26 @@ function AppInner() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("checkout") === "success") { setCheckoutBanner("success"); window.history.replaceState({}, "", window.location.pathname); }
-    else if (params.get("checkout") === "cancel") { setCheckoutBanner("cancel"); window.history.replaceState({}, "", window.location.pathname); }
+    if (params.get("checkout") === "success") {
+      setCheckoutBanner("success");
+      setPendingPlanRefresh(true);
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (params.get("checkout") === "cancel") {
+      setCheckoutBanner("cancel");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
   }, []);
+
+  useEffect(() => {
+    if (!pendingPlanRefresh) return;
+    const uid = user?.uid || (user?.id ? String(user.id) : null);
+    if (!uid) return;
+    const t = setTimeout(() => {
+      getUserPlan(uid).then(p => setPlan(p));
+      setPendingPlanRefresh(false);
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [pendingPlanRefresh, user]);
 
   const handleUpgrade = () => setShowUpgradeModal(true);
   const handleUpgradeCheckout = async () => {
