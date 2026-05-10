@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import "./App.css";
 import emailjs from "@emailjs/browser";
 import { auth, db, signInWithGoogle, canUserScan, incrementScanCount, getUserPlan } from "./firebase";
@@ -92,13 +92,9 @@ const SCAN_LOG_PHASES = [
 ];
 
 // ── Sidebar ──────────────────────────────────────────────────
-<<<<<<< HEAD
-function Sidebar({ active, setActive, user, onLogin, onLogout, open, onClose }) {
+function Sidebar({ active, setActive, user, plan, onLogin, onLogout, onUpgrade, onManageBilling, open, onClose }) {
   const { jwtUser } = useAuth();
   const displayUser = jwtUser || user;
-=======
-function Sidebar({ active, setActive, user, plan, onLogin, onLogout, onUpgrade, onManageBilling, open, onClose }) {
->>>>>>> c99d0b6 (Add Stripe billing, plan gating, and vuln dedup)
   const navItems = [
     { id: "scan",      icon: "⚡", label: "Scanner" },
     { id: "agility",   icon: "🔬", label: "Agility Checker" },
@@ -164,31 +160,19 @@ function Sidebar({ active, setActive, user, plan, onLogin, onLogout, onUpgrade, 
                   </div>
                 )}
                 <div>
-<<<<<<< HEAD
                   <div style={{ fontSize:12,color:C.text,fontWeight:600 }}>
                     {(displayUser.name||displayUser.displayName||displayUser.email||"User").split(" ")[0]}
                   </div>
                   <div style={{ fontSize:10,color:C.green }}>{displayUser.plan||"Free Plan"}</div>
                 </div>
               </div>
+              {(!displayUser.plan||displayUser.plan!=="pro") && onUpgrade && (
+                <button onClick={onUpgrade} style={{ width:"100%",padding:"7px",borderRadius:8,background:C.green,border:"none",color:C.white,cursor:"pointer",fontSize:11,fontWeight:600,marginBottom:6 }}>Upgrade to Pro</button>
+              )}
+              {displayUser.plan==="pro" && onManageBilling && (
+                <button onClick={onManageBilling} style={{ width:"100%",padding:"6px",borderRadius:8,background:"transparent",border:`1px solid ${C.greenMid}`,color:C.green,cursor:"pointer",fontSize:11,marginBottom:6 }}>Manage Billing</button>
+              )}
               <button onClick={onLogout} style={{ width:"100%",padding:"6px",borderRadius:8,background:"transparent",border:`1px solid ${C.sidebarBorder}`,color:C.muted,cursor:"pointer",fontSize:11 }}>Sign Out</button>
-=======
-                  <div style={{ fontSize: 12, color: C.text, fontWeight: 600 }}>{user.displayName?.split(" ")[0]}</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <div style={{ fontSize: 10, color: plan === "pro" ? C.green : C.muted, fontWeight: plan === "pro" ? 700 : 400 }}>
-                    {plan === "pro" ? "⚡ Pro Plan" : "Free Plan"}
-                  </div>
-                </div>
-                </div>
-              </div>
-              {plan !== "pro" && (
-                <button onClick={onUpgrade} style={{ width: "100%", padding: "7px", borderRadius: 8, background: C.green, border: "none", color: C.white, cursor: "pointer", fontSize: 11, fontWeight: 600, marginBottom: 6 }}>Upgrade to Pro</button>
-              )}
-              {plan === "pro" && (
-                <button onClick={onManageBilling} style={{ width: "100%", padding: "6px", borderRadius: 8, background: "transparent", border: `1px solid ${C.greenMid}`, color: C.green, cursor: "pointer", fontSize: 11, marginBottom: 6 }}>Manage Billing</button>
-              )}
-              <button onClick={onLogout} style={{ width: "100%", padding: "6px", borderRadius: 8, background: "transparent", border: `1px solid ${C.panelBorder}`, color: C.muted, cursor: "pointer", fontSize: 11 }}>Sign Out</button>
->>>>>>> c99d0b6 (Add Stripe billing, plan gating, and vuln dedup)
             </div>
           ) : (
             <div style={{ display:"flex",flexDirection:"column",gap:6 }}>
@@ -413,7 +397,6 @@ function GroupedFindingsPanel({ groups }) {
 }
 
 // ══════════════════════════════════════════════════════════════
-<<<<<<< HEAD
 // NIST REPORT PAGE — unchanged
 // ══════════════════════════════════════════════════════════════
 const NIST_FINDINGS = [
@@ -639,39 +622,6 @@ function TeamPage() {
         <div style={{ display:"inline-block", background:"rgba(34,197,94,0.06)", border:"1px solid rgba(34,197,94,0.2)", borderRadius:12, padding:"14px 28px" }}>
           <div style={{ fontSize:13, color:C.green, fontWeight:700, marginBottom:4 }}>⚛ Mangsri QuantumGuard LLC</div>
           <div style={{ fontSize:12, color:C.muted }}>Montgomery, AL · Founded April 27, 2026 · EIN 42-2185776</div>
-=======
-// UPGRADE MODAL
-// ══════════════════════════════════════════════════════════════
-function UpgradeModal({ onClose, onUpgrade, loading }) {
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div style={{ background: C.white, borderRadius: 16, width: "100%", maxWidth: 480, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", overflow: "hidden" }}>
-        <div style={{ background: C.green, padding: "20px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ color: C.white, fontWeight: 800, fontSize: 18 }}>⚡ Upgrade to Pro</div>
-          <button onClick={onClose} style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.7)", fontSize: 20, cursor: "pointer", lineHeight: 1 }}>×</button>
-        </div>
-        <div style={{ padding: 24 }}>
-          <p style={{ color: C.muted, fontSize: 13, marginBottom: 20, lineHeight: 1.7 }}>
-            You've reached the <strong>10 scans/day</strong> limit on the Free plan, or this feature requires Pro.
-          </p>
-          <div style={{ background: C.greenLighter, border: `1px solid ${C.greenMid}`, borderRadius: 10, padding: "16px 20px", marginBottom: 20 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 10 }}>Pro Plan — $29/month</div>
-            {["Unlimited scans", "AI-powered fix suggestions", "Team members (5 seats)", "API access", "Priority support", "Migration tracker"].map((f, i) => (
-              <div key={i} style={{ display: "flex", gap: 8, marginBottom: 6, alignItems: "center" }}>
-                <span style={{ color: C.green, fontWeight: 700, fontSize: 13 }}>✓</span>
-                <span style={{ fontSize: 12, color: C.textMid }}>{f}</span>
-              </div>
-            ))}
-          </div>
-          <button
-            onClick={onUpgrade}
-            disabled={loading}
-            style={{ width: "100%", padding: "12px", borderRadius: 10, background: loading ? C.greenMid : C.green, border: "none", color: C.white, cursor: loading ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 700, boxShadow: "0 4px 12px rgba(22,163,74,0.3)" }}
-          >
-            {loading ? "Redirecting to checkout..." : "Upgrade Now — $29/month"}
-          </button>
-          <p style={{ textAlign: "center", fontSize: 11, color: C.muted, marginTop: 10 }}>Secure checkout via Stripe · Cancel anytime</p>
->>>>>>> c99d0b6 (Add Stripe billing, plan gating, and vuln dedup)
         </div>
       </div>
     </div>
@@ -679,16 +629,44 @@ function UpgradeModal({ onClose, onUpgrade, loading }) {
 }
 
 // ══════════════════════════════════════════════════════════════
-<<<<<<< HEAD
+// UPGRADE MODAL
+// ══════════════════════════════════════════════════════════════
+function UpgradeModal({ onClose, onUpgrade, loading }) {
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:16, backdropFilter:"blur(4px)" }}>
+      <div style={{ background:C.panel, borderRadius:16, width:"100%", maxWidth:480, boxShadow:"0 24px 80px rgba(0,0,0,0.6)", border:`1px solid ${C.panelBorder}`, overflow:"hidden" }}>
+        <div style={{ background:"linear-gradient(135deg,#22c55e,#16a34a)", padding:"20px 24px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div style={{ color:C.white, fontWeight:800, fontSize:18 }}>⚡ Upgrade to Pro</div>
+          <button onClick={onClose} style={{ background:"transparent", border:"none", color:"rgba(255,255,255,0.7)", fontSize:20, cursor:"pointer", lineHeight:1 }}>×</button>
+        </div>
+        <div style={{ padding:24 }}>
+          <p style={{ color:C.textMid, fontSize:13, marginBottom:20, lineHeight:1.7 }}>
+            You've reached the <strong style={{ color:C.text }}>10 scans/day</strong> limit on the Free plan, or this feature requires Pro.
+          </p>
+          <div style={{ background:"rgba(34,197,94,0.06)", border:`1px solid ${C.greenMid}`, borderRadius:10, padding:"16px 20px", marginBottom:20 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:C.text, marginBottom:10 }}>Pro Plan — $29/month</div>
+            {["Unlimited scans","AI-powered fix suggestions","Team members (5 seats)","API access","Priority support","Migration tracker"].map((f,i)=>(
+              <div key={i} style={{ display:"flex", gap:8, marginBottom:6, alignItems:"center" }}>
+                <span style={{ color:C.green, fontWeight:700, fontSize:13 }}>✓</span>
+                <span style={{ fontSize:12, color:C.textMid }}>{f}</span>
+              </div>
+            ))}
+          </div>
+          <button onClick={onUpgrade} disabled={loading} style={{ width:"100%", padding:"12px", borderRadius:10, background:loading?"#166534":C.green, border:"none", color:C.white, cursor:loading?"not-allowed":"pointer", fontSize:14, fontWeight:700, boxShadow:"0 4px 12px rgba(34,197,94,0.3)" }}>
+            {loading?"Redirecting to checkout...":"Upgrade Now — $29/month"}
+          </button>
+          <p style={{ textAlign:"center", fontSize:11, color:C.muted, marginTop:10 }}>Secure checkout via Stripe · Cancel anytime</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
 // SCANNER PAGE — enterprise fields added
 // ══════════════════════════════════════════════════════════════
 function ScannerPage({ user }) {
   const { jwtToken } = useAuth();
-=======
-// SCANNER PAGE
-// ══════════════════════════════════════════════════════════════
-function ScannerPage({ user, plan, onUpgrade }) {
->>>>>>> c99d0b6 (Add Stripe billing, plan gating, and vuln dedup)
   const [mode, setMode] = useState("github");
   const [input, setInput] = useState("");
   const [githubToken, setGithubToken] = useState("");
@@ -709,15 +687,8 @@ function ScannerPage({ user, plan, onUpgrade }) {
   const [aiModal, setAiModal] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState(null);
-<<<<<<< HEAD
   // NEW: grouped findings view toggle
   const [viewMode, setViewMode] = useState("flat"); // "flat" | "grouped"
-=======
-  const [expandedSnippets, setExpandedSnippets] = useState({});
-  const [showUpgrade, setShowUpgrade] = useState(false);
-  const [upgradeLoading, setUpgradeLoading] = useState(false);
-  const [dedupByVuln, setDedupByVuln] = useState(false);
->>>>>>> c99d0b6 (Add Stripe billing, plan gating, and vuln dedup)
   const intervalRef = useRef(null);
   const logTimers = useRef([]);
   const logEndRef = useRef(null);
@@ -825,32 +796,10 @@ function ScannerPage({ user, plan, onUpgrade }) {
     setAiLoading(false);
   };
 
-<<<<<<< HEAD
   const scoreColor = result ? (result.quantum_readiness_score>=70?C.green:result.quantum_readiness_score>=40?C.amber:C.red) : C.muted;
   const sev = result ? { CRITICAL:result.findings.filter(f=>f.severity==="CRITICAL").length, HIGH:result.findings.filter(f=>f.severity==="HIGH").length, MEDIUM:result.findings.filter(f=>f.severity==="MEDIUM").length } : null;
   const filtered = result ? result.findings.filter(f=>(filter==="ALL"||f.severity===filter)&&(search===""||f.file.toLowerCase().includes(search.toLowerCase())||f.code.toLowerCase().includes(search.toLowerCase()))) : [];
   const grouped = filtered.reduce((a,f)=>{ if(!a[f.file])a[f.file]=[]; a[f.file].push(f); return a; },{});
-=======
-  const scoreColor = result ? (result.quantum_readiness_score >= 70 ? C.green : result.quantum_readiness_score >= 40 ? C.amber : C.red) : C.muted;
-  const sev = result ? {
-    CRITICAL: result.findings.filter(f => f.severity === "CRITICAL").length,
-    HIGH: result.findings.filter(f => f.severity === "HIGH").length,
-    MEDIUM: result.findings.filter(f => f.severity === "MEDIUM").length,
-  } : null;
-  const conf = result ? {
-    HIGH: result.findings.filter(f => f.confidence === "HIGH").length,
-    MEDIUM: result.findings.filter(f => f.confidence === "MEDIUM").length,
-    LOW: result.findings.filter(f => f.confidence === "LOW").length,
-  } : null;
-
-  const filtered = result ? result.findings.filter(f =>
-    (sevFilter === "ALL" || f.severity === sevFilter) &&
-    (confFilter === "ALL" || f.confidence === confFilter) &&
-    (search === "" || f.file?.toLowerCase().includes(search.toLowerCase()) || f.code?.toLowerCase().includes(search.toLowerCase()))
-  ) : [];
-  const grouped = filtered.reduce((a, f) => { if (!a[f.file]) a[f.file] = []; a[f.file].push(f); return a; }, {});
-  const groupedByVuln = filtered.reduce((a, f) => { const k = f.vulnerability || "Unknown"; if (!a[k]) a[k] = []; a[k].push(f); return a; }, {});
->>>>>>> c99d0b6 (Add Stripe billing, plan gating, and vuln dedup)
 
   const handleNIST = () => {
     if (!result) return;
@@ -1084,7 +1033,6 @@ function ScannerPage({ user, plan, onUpgrade }) {
             </div>
           </Panel>
 
-<<<<<<< HEAD
           {/* ── NEW: Grouped findings panel ── */}
           {result.grouped_findings && result.grouped_findings.length > 0 && (
             <GroupedFindingsPanel groups={result.grouped_findings} />
@@ -1131,91 +1079,6 @@ function ScannerPage({ user, plan, onUpgrade }) {
                         <div style={{ flex:1, background:"rgba(59,130,246,0.08)", border:"1px solid rgba(59,130,246,0.2)", borderRadius:6, padding:"7px 12px", display:"flex", alignItems:"center", gap:8 }}>
                           <span style={{ fontSize:10, fontWeight:700, color:"#60a5fa", textTransform:"uppercase", letterSpacing:"0.05em", flexShrink:0 }}>Fix</span>
                           <span style={{ color:"#93c5fd", fontWeight:600, fontSize:12 }}>✦ {f.replacement}</span>
-=======
-          {/* Threat Intelligence — with confidence + severity filters */}
-          <Panel title={`Threat Intelligence — ${result.total_findings} findings`} accent>
-            <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <span style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>SEVERITY:</span>
-              {["ALL", "CRITICAL", "HIGH", "MEDIUM"].map(f => (
-                <button key={f} onClick={() => setSevFilter(f)} style={{ padding: "4px 12px", borderRadius: 20, border: `1.5px solid ${sevFilter === f ? C.green : C.panelBorder}`, background: sevFilter === f ? C.greenLight : C.white, color: sevFilter === f ? C.green : C.muted, cursor: "pointer", fontSize: 11, fontWeight: sevFilter === f ? 600 : 400 }}>
-                  {f} {f !== "ALL" && sev ? `(${sev[f]})` : ""}
-                </button>
-              ))}
-            </div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
-              <span style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>CONFIDENCE:</span>
-              {["ALL", "HIGH", "MEDIUM", "LOW"].map(f => (
-                <button key={f} onClick={() => setConfFilter(f)} style={{ padding: "4px 12px", borderRadius: 20, border: `1.5px solid ${confFilter === f ? C.blue : C.panelBorder}`, background: confFilter === f ? C.blueLight : C.white, color: confFilter === f ? C.blue : C.muted, cursor: "pointer", fontSize: 11, fontWeight: confFilter === f ? 600 : 400 }}>
-                  {f} {f !== "ALL" && conf ? `(${conf[f]})` : ""}
-                </button>
-              ))}
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search files..." style={{ padding: "4px 12px", borderRadius: 20, border: `1px solid ${C.panelBorder}`, background: C.input, color: C.text, fontSize: 11, width: 130, marginLeft: "auto" }} />
-              <button onClick={() => setDedupByVuln(v => !v)} style={{ padding: "4px 12px", borderRadius: 20, border: `1.5px solid ${dedupByVuln ? C.blue : C.panelBorder}`, background: dedupByVuln ? C.blueLight : C.white, color: dedupByVuln ? C.blue : C.muted, cursor: "pointer", fontSize: 11, fontWeight: dedupByVuln ? 600 : 400 }}>
-                {dedupByVuln ? "By Vuln ✓" : "By Vuln"}
-              </button>
-            </div>
-
-            {dedupByVuln && Object.entries(groupedByVuln).map(([vuln, instances], gi) => {
-              const worstSev = instances.find(f => f.severity === "CRITICAL") ? "CRITICAL" : instances.find(f => f.severity === "HIGH") ? "HIGH" : "MEDIUM";
-              const sevColor = worstSev === "CRITICAL" ? C.critical : worstSev === "HIGH" ? C.amber : C.medium;
-              return (
-                <div key={gi} style={{ marginBottom: 10, border: `1px solid ${C.panelBorder}`, borderRadius: 10, overflow: "hidden" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", background: "#fff8f0", borderBottom: `1px solid ${C.panelBorder}`, flexWrap: "wrap", gap: 4 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <Badge text={worstSev} color={sevColor} bg={worstSev === "CRITICAL" ? C.redLight : worstSev === "HIGH" ? C.amberLight : "#fef9c3"} />
-                      <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{vuln}</span>
-                    </div>
-                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                      <Badge text={`${instances.length} instance${instances.length !== 1 ? "s" : ""}`} color={C.red} bg={C.redLight} />
-                    </div>
-                  </div>
-                  <div style={{ padding: "10px 16px" }}>
-                    <div style={{ fontSize: 11, color: C.green, fontWeight: 500, marginBottom: 6 }}>Fix: {instances[0]?.recommended_fix || instances[0]?.replacement || "See NIST PQC standards"}</div>
-                    {instances[0]?.risk_explanation && <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>{instances[0].risk_explanation}</div>}
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                      {instances.slice(0, 8).map((f, i) => (
-                        <span key={i} title={`${f.file}:${f.line}`} style={{ fontSize: 10, fontFamily: "monospace", background: C.input, padding: "2px 8px", borderRadius: 4, color: C.muted }}>{f.file.split("/").pop()}:{f.line}</span>
-                      ))}
-                      {instances.length > 8 && <span style={{ fontSize: 10, color: C.muted, padding: "2px 8px" }}>+{instances.length - 8} more</span>}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-
-            {!dedupByVuln && Object.entries(grouped).map(([file, findings], gi) => (
-              <div key={gi} style={{ marginBottom: 12, border: `1px solid ${C.panelBorder}`, borderRadius: 10, overflow: "hidden" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", background: C.greenLighter, borderBottom: `1px solid ${C.panelBorder}`, flexWrap: "wrap", gap: 4 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ color: C.green }}>📄</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{file.split("/").pop()}</span>
-                    <span style={{ fontSize: 10, color: C.muted }}>{file}</span>
-                  </div>
-                  <Badge text={`${findings.length} threats`} color={C.red} bg={C.redLight} />
-                </div>
-                <div style={{ padding: 14 }}>
-                  {findings.map((f, i) => {
-                    const key = `${f.file}:${f.line}`;
-                    const sevColor = f.severity === "CRITICAL" ? C.critical : f.severity === "HIGH" ? C.amber : C.medium;
-                    const sevBg = f.severity === "CRITICAL" ? C.redLight : f.severity === "HIGH" ? C.amberLight : "#fef9c3";
-                    const showSnippet = expandedSnippets[key];
-                    return (
-                      <div key={i} style={{ borderLeft: `3px solid ${sevColor}`, paddingLeft: 14, marginBottom: i < findings.length - 1 ? 18 : 0, opacity: checklist[key] ? 0.4 : 1 }}>
-                        {/* Header row */}
-                        <div style={{ display: "flex", gap: 8, marginBottom: 6, alignItems: "center", flexWrap: "wrap" }}>
-                          <input type="checkbox" checked={!!checklist[key]} onChange={() => setChecklist(p => ({ ...p, [key]: !p[key] }))} style={{ cursor: "pointer" }} />
-                          <Badge text={f.severity} color={sevColor} bg={sevBg} />
-                          <ConfidenceBadge confidence={f.confidence || "MEDIUM"} />
-                          <span style={{ color: C.muted, fontSize: 11 }}>Line {f.line}</span>
-                          {f.detection_method && <span style={{ fontSize: 10, color: C.blue, background: C.blueLight, padding: "1px 6px", borderRadius: 4 }}>{f.detection_method}</span>}
-                          {f.is_test_file && <span style={{ fontSize: 10, color: C.muted, background: C.input, padding: "1px 6px", borderRadius: 4 }}>TEST FILE</span>}
-                          {checklist[key] && <Badge text="✓ Remediated" color={C.green} bg={C.greenLight} />}
-                          {plan === "pro" ? (
-                            <button onClick={() => handleAiFix(f)} style={{ marginLeft: "auto", padding: "2px 10px", borderRadius: 6, background: C.greenLight, border: `1px solid ${C.greenMid}`, color: C.green, cursor: "pointer", fontSize: 10, fontWeight: 600 }}>⚡ AI Fix</button>
-                          ) : (
-                            <button onClick={() => setShowUpgrade(true)} style={{ marginLeft: "auto", padding: "2px 10px", borderRadius: 6, background: C.amberLight, border: `1px solid #fcd34d`, color: C.amber, cursor: "pointer", fontSize: 10, fontWeight: 600 }}>⚡ AI Fix — Pro</button>
-                          )}
->>>>>>> c99d0b6 (Add Stripe billing, plan gating, and vuln dedup)
                         </div>
                         {/* NEW: Business impact + exploitability */}
                         {(f.business_impact || f.exploitability) && (
@@ -1238,37 +1101,17 @@ function ScannerPage({ user, plan, onUpgrade }) {
                 </div>
               </div>
             ))}
-<<<<<<< HEAD
             {filtered.length===0&&<div style={{ textAlign:"center", padding:24, color:C.muted }}>No findings match filter.</div>}
-=======
-            {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: C.muted }}>No findings match filter.</div>}
-            {filtered.length > 0 && dedupByVuln && Object.keys(groupedByVuln).length === 0 && <div style={{ textAlign: "center", padding: 24, color: C.muted }}>No findings match filter.</div>}
->>>>>>> c99d0b6 (Add Stripe billing, plan gating, and vuln dedup)
           </Panel>
         </>
       )}
 
-<<<<<<< HEAD
       {aiModal&&(
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center", padding:16, backdropFilter:"blur(4px)" }}>
           <div style={{ background:C.panel, borderRadius:16, width:"100%", maxWidth:640, maxHeight:"80vh", display:"flex", flexDirection:"column", boxShadow:"0 24px 80px rgba(0,0,0,0.6)", border:`1px solid ${C.panelBorder}` }}>
             <div style={{ padding:"14px 18px", borderBottom:`1px solid ${C.panelBorder}`, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
               <span style={{ fontSize:14, fontWeight:700, color:C.text }}>⚡ AI Migration Assistant</span>
               <button onClick={()=>{setAiModal(null);setAiResult(null);}} style={{ background:"transparent", border:"none", color:C.muted, cursor:"pointer", fontSize:20 }}>✕</button>
-=======
-      {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} onUpgrade={handleUpgradeCheckout} loading={upgradeLoading} />}
-
-      {/* AI Fix Modal */}
-      {aiModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div style={{ background: C.white, borderRadius: 16, width: "100%", maxWidth: 640, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
-            <div style={{ padding: "14px 18px", borderBottom: `1px solid ${C.panelBorder}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: C.green, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>⚡</div>
-                <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>AI Migration Assistant</span>
-              </div>
-              <button onClick={() => { setAiModal(null); setAiResult(null); }} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 20 }}>✕</button>
->>>>>>> c99d0b6 (Add Stripe billing, plan gating, and vuln dedup)
             </div>
             <div style={{ padding:16, borderBottom:`1px solid ${C.panelBorder}`, background:"rgba(239,68,68,0.05)" }}>
               <div style={{ fontFamily:"monospace", fontSize:12, color:C.red, background:C.input, padding:"8px 12px", borderRadius:8, border:"1px solid rgba(239,68,68,0.3)" }}>{aiModal.code}</div>
@@ -2180,7 +2023,6 @@ function PrivacyPage() {
   );
 }
 
-<<<<<<< HEAD
 function TermsPage() {
   const bg    = "#0a0e1a";
   const card  = "#0d1220";
@@ -2211,58 +2053,6 @@ function TermsPage() {
   );
 
   const P = ({ children }) => <p style={{ marginBottom:14 }}>{children}</p>;
-=======
-// ══════════════════════════════════════════════════════════════
-// APP ROOT
-// ══════════════════════════════════════════════════════════════
-export default function App() {
-  const [user, setUser] = useState(null);
-  const [plan, setPlan] = useState("free");
-  const [active, setActive] = useState("home");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [checkoutBanner, setCheckoutBanner] = useState(null);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [upgradeLoading, setUpgradeLoading] = useState(false);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("checkout") === "success") { setCheckoutBanner("success"); window.history.replaceState({}, "", window.location.pathname); }
-    else if (params.get("checkout") === "cancel") { setCheckoutBanner("cancel"); window.history.replaceState({}, "", window.location.pathname); }
-  }, []);
-
-  useEffect(() => {
-    onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      if (u) { const p = await getUserPlan(u.uid); setPlan(p); }
-      else setPlan("free");
-    });
-  }, []);
-
-  const handleLogin = async () => { try { await signInWithGoogle(); } catch (e) { console.error(e); } };
-  const handleLogout = async () => { try { await signOut(auth); setUser(null); setPlan("free"); } catch (e) { console.error(e); } };
-
-  const handleUpgrade = () => setShowUpgradeModal(true);
-
-  const handleUpgradeCheckout = async () => {
-    if (!user) { handleLogin(); return; }
-    setUpgradeLoading(true);
-    try {
-      const res = await fetch(`${API}/create-checkout-session`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user_id: user.uid, user_email: user.email }) });
-      const data = await res.json();
-      if (data.url) { window.location.href = data.url; }
-      else { throw new Error(data.detail || "Checkout failed"); }
-    } catch (e) { alert("Checkout failed: " + e.message); setUpgradeLoading(false); }
-  };
-
-  const handleManageBilling = async () => {
-    if (!user) return;
-    try {
-      const res = await fetch(`${API}/customer-portal`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user_id: user.uid, user_email: user.email }) });
-      const data = await res.json();
-      if (data.url) { window.location.href = data.url; }
-    } catch (e) { alert("Could not open billing portal: " + e.message); }
-  };
->>>>>>> c99d0b6 (Add Stripe billing, plan gating, and vuln dedup)
 
   const Callout = ({ icon, title, body, color=green, bgc=gdim, bdrc=gbdr }) => (
     <div style={{ background:bgc, border:`1px solid ${bdrc}`, borderLeft:`3px solid ${color}`,
@@ -2283,7 +2073,6 @@ export default function App() {
   );
 
   return (
-<<<<<<< HEAD
     <div style={{ background:bg, minHeight:"100vh", fontFamily:"'DM Sans','Segoe UI',sans-serif" }}>
       {/* Hero */}
       <div style={{ background:`linear-gradient(135deg,${card},#0f1929)`,
@@ -2401,35 +2190,6 @@ export default function App() {
 
         <div style={{ borderTop:`1px solid ${bdr}`, paddingTop:32, fontSize:12, color:muted, lineHeight:1.7 }}>
           Last updated: May 5, 2026. Mangsri QuantumGuard LLC, Montgomery, Alabama, USA.
-=======
-    <div style={{ display: "flex", minHeight: "100vh", background: C.bg }}>
-      {showUpgradeModal && <UpgradeModal onClose={() => setShowUpgradeModal(false)} onUpgrade={handleUpgradeCheckout} loading={upgradeLoading} />}
-      <button className="hamburger" onClick={() => setSidebarOpen(!sidebarOpen)}>☰</button>
-      {sidebarOpen && <div className="sidebar-overlay open" onClick={() => setSidebarOpen(false)} />}
-      <Sidebar active={active} setActive={setActive} user={user} plan={plan} onLogin={handleLogin} onLogout={handleLogout} onUpgrade={handleUpgrade} onManageBilling={handleManageBilling} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="main-content" style={{ marginLeft: 240, flex: 1, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        <TopBar title={pageTitle[active] || active} user={user} onLogin={handleLogin} onLogout={handleLogout} onHamburger={() => setSidebarOpen(!sidebarOpen)} />
-        {checkoutBanner === "success" && (
-          <div style={{ background: C.greenLighter, border: `1px solid ${C.greenMid}`, padding: "10px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ color: C.green, fontWeight: 600, fontSize: 13 }}>⚡ Welcome to Pro! Your plan is now active. Enjoy unlimited scans and AI fixes.</span>
-            <button onClick={() => setCheckoutBanner(null)} style={{ background: "transparent", border: "none", color: C.green, cursor: "pointer", fontSize: 18 }}>×</button>
-          </div>
-        )}
-        {checkoutBanner === "cancel" && (
-          <div style={{ background: C.amberLight, border: "1px solid #fcd34d", padding: "10px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ color: C.amber, fontWeight: 600, fontSize: 13 }}>Checkout cancelled — you're still on the Free plan.</span>
-            <button onClick={() => setCheckoutBanner(null)} style={{ background: "transparent", border: "none", color: C.amber, cursor: "pointer", fontSize: 18 }}>×</button>
-          </div>
-        )}
-        <div style={{ flex: 1, overflowY: "auto" }}>
-          {active === "scan" && <ScannerPage user={user} plan={plan} onUpgrade={handleUpgrade} />}
-          {active === "agility" && <AgilityPage />}
-          {active === "tls" && <TLSPage />}
-          {active === "history" && <HistoryPage user={user} />}
-          {active === "migration" && <MigrationPage user={user} />}
-          {active === "dashboard" && <AnalyticsPage />}
-          {active === "docs" && <DocsPage />}
->>>>>>> c99d0b6 (Add Stripe billing, plan gating, and vuln dedup)
         </div>
       </div>
     </div>
@@ -3485,7 +3245,42 @@ function AppInner() {
   const [active, setActive] = useState("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [authModal, setAuthModal] = useState(null);
-  const handleLogout = async () => { jwtLogout(); try { await signOut(auth); setGoogleUser(null); } catch(e) {} };
+  const [plan, setPlan] = useState("free");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [checkoutBanner, setCheckoutBanner] = useState(null);
+
+  useEffect(() => {
+    if (user?.uid) { getUserPlan(user.uid).then(p => setPlan(p)); }
+    else setPlan("free");
+  }, [user]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("checkout") === "success") { setCheckoutBanner("success"); window.history.replaceState({}, "", window.location.pathname); }
+    else if (params.get("checkout") === "cancel") { setCheckoutBanner("cancel"); window.history.replaceState({}, "", window.location.pathname); }
+  }, []);
+
+  const handleUpgrade = () => setShowUpgradeModal(true);
+  const handleUpgradeCheckout = async () => {
+    if (!user) { setAuthModal("login"); return; }
+    setUpgradeLoading(true);
+    try {
+      const res = await fetch(`${API}/create-checkout-session`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ user_id: user.uid, user_email: user.email }) });
+      const data = await res.json();
+      if (data.url) { window.location.href = data.url; }
+      else { throw new Error(data.detail || "Checkout failed"); }
+    } catch(e) { alert("Checkout failed: " + e.message); setUpgradeLoading(false); }
+  };
+  const handleManageBilling = async () => {
+    if (!user) return;
+    try {
+      const res = await fetch(`${API}/customer-portal`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ user_id: user.uid, user_email: user.email }) });
+      const data = await res.json();
+      if (data.url) { window.location.href = data.url; }
+    } catch(e) { alert("Could not open billing portal: " + e.message); }
+  };
+  const handleLogout = async () => { jwtLogout(); try { await signOut(auth); setGoogleUser(null); setPlan("free"); } catch(e) {} };
   const handleLogin = () => setAuthModal("login");
   if (jwtLoading) return (<div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg }}><div style={{ textAlign:"center" }}><div style={{ width:40,height:40,borderRadius:10,background:"linear-gradient(135deg,#22c55e,#15803d)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,margin:"0 auto 12px" }}>⚛</div><div style={{ color:C.green,fontSize:13,fontWeight:600 }}>Loading QuantumGuard...</div></div></div>);
   if (active === "home") return (<><Homepage onGetStarted={(tab) => setActive(tab || "scan")} onOpenAuth={setAuthModal} />{authModal && <AuthModal mode={authModal} onClose={()=>setAuthModal(null)} onSuccess={()=>setActive("scan")} />}</>);
@@ -3493,12 +3288,25 @@ function AppInner() {
   return (
     <>
       <style>{`@keyframes pulse-ring{0%{box-shadow:0 0 0 0 rgba(34,197,94,0.5);}70%{box-shadow:0 0 0 8px rgba(34,197,94,0);}100%{box-shadow:0 0 0 0 rgba(34,197,94,0);}}`}</style>
+      {showUpgradeModal && <UpgradeModal onClose={()=>setShowUpgradeModal(false)} onUpgrade={handleUpgradeCheckout} loading={upgradeLoading} />}
       <div style={{ display:"flex", minHeight:"100vh", background:C.bg }}>
         <button className="hamburger" onClick={()=>setSidebarOpen(!sidebarOpen)}>☰</button>
         {sidebarOpen&&<div className="sidebar-overlay open" onClick={()=>setSidebarOpen(false)} />}
-        <Sidebar active={active} setActive={setActive} user={user} onLogin={handleLogin} onLogout={handleLogout} open={sidebarOpen} onClose={()=>setSidebarOpen(false)} />
+        <Sidebar active={active} setActive={setActive} user={user} plan={plan} onLogin={handleLogin} onLogout={handleLogout} onUpgrade={handleUpgrade} onManageBilling={handleManageBilling} open={sidebarOpen} onClose={()=>setSidebarOpen(false)} />
         <div className="main-content" style={{ flex:1, minHeight:"100vh", display:"flex", flexDirection:"column" }}>
           <TopBar title={pageTitle[active]||active} user={user} onLogin={handleLogin} onLogout={handleLogout} onHamburger={()=>setSidebarOpen(!sidebarOpen)} />
+          {checkoutBanner==="success" && (
+            <div style={{ background:"rgba(34,197,94,0.1)", border:"1px solid rgba(34,197,94,0.3)", padding:"10px 20px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <span style={{ color:C.green, fontWeight:600, fontSize:13 }}>⚡ Welcome to Pro! Your plan is now active. Enjoy unlimited scans and AI fixes.</span>
+              <button onClick={()=>setCheckoutBanner(null)} style={{ background:"transparent", border:"none", color:C.green, cursor:"pointer", fontSize:18 }}>×</button>
+            </div>
+          )}
+          {checkoutBanner==="cancel" && (
+            <div style={{ background:"rgba(245,158,11,0.1)", border:"1px solid rgba(245,158,11,0.3)", padding:"10px 20px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <span style={{ color:C.amber, fontWeight:600, fontSize:13 }}>Checkout cancelled — you're still on the Free plan.</span>
+              <button onClick={()=>setCheckoutBanner(null)} style={{ background:"transparent", border:"none", color:C.amber, cursor:"pointer", fontSize:18 }}>×</button>
+            </div>
+          )}
           <div style={{ flex:1, overflowY:"auto" }}>
             {active==="scan"      && <ScannerPage user={user} />}
             {active==="agility"   && <AgilityPage />}
