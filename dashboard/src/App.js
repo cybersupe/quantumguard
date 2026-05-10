@@ -101,6 +101,7 @@ function Sidebar({ active, setActive, user, plan, onLogin, onLogout, onUpgrade, 
     { id: "tls",       icon: "🔐", label: "TLS Analyzer" },
     { id: "unified",   icon: "🧠", label: "Unified Risk" },
     { id: "history",   icon: "🗂", label: "Scan History" },
+    { id: "org",       icon: "🏢", label: "Organization" },
     { id: "migration", icon: "🔄", label: "Migration" },
     { id: "dashboard", icon: "📊", label: "Analytics" },
     { id: "docs",      icon: "📖", label: "Docs" },
@@ -1357,6 +1358,272 @@ function HistoryPage({ user }) {
           </>
         )}
       </Panel>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+// ORG PAGE
+// ══════════════════════════════════════════════════════════════
+function OrgPage({ user }) {
+  const { jwtToken } = useAuth();
+  const [org, setOrg]               = useState(null);
+  const [members, setMembers]       = useState([]);
+  const [scans, setScans]           = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [tab, setTab]               = useState("members");
+  const [createName, setCreateName] = useState("");
+  const [creating, setCreating]     = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole]   = useState("member");
+  const [inviting, setInviting]       = useState(false);
+  const [removing, setRemoving]       = useState(null);
+  const [msg, setMsg]               = useState(null); // { type: "ok"|"err", text }
+
+  const authH = jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {};
+
+  const flash = (type, text) => { setMsg({ type, text }); setTimeout(() => setMsg(null), 4000); };
+
+  const loadOrg = () => {
+    if (!jwtToken) { setLoading(false); return; }
+    setLoading(true);
+    fetch(`${API}/org/me`, { headers: authH })
+      .then(r => r.json())
+      .then(d => {
+        if (d.org) {
+          setOrg(d.org); setMembers(d.members || []);
+          fetch(`${API}/org/scans`, { headers: authH })
+            .then(r => r.json()).then(s => setScans(s.scans || [])).catch(() => {});
+        } else {
+          setOrg(null);
+        }
+      })
+      .catch(() => setOrg(null))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(loadOrg, [jwtToken]);
+
+  const handleCreate = async () => {
+    if (!createName.trim()) return;
+    setCreating(true);
+    try {
+      const r = await fetch(`${API}/org/create`, { method: "POST", headers: { ...authH, "Content-Type": "application/json" }, body: JSON.stringify({ name: createName.trim() }) });
+      const d = await r.json();
+      if (!r.ok) { flash("err", d.detail || "Failed to create org"); } else { flash("ok", d.message); loadOrg(); }
+    } catch { flash("err", "Network error"); }
+    setCreating(false);
+  };
+
+  const handleInvite = async () => {
+    if (!inviteEmail.trim()) return;
+    setInviting(true);
+    try {
+      const r = await fetch(`${API}/org/invite`, { method: "POST", headers: { ...authH, "Content-Type": "application/json" }, body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }) });
+      const d = await r.json();
+      if (!r.ok) { flash("err", d.detail || "Invite failed"); } else { flash("ok", d.message); setInviteEmail(""); loadOrg(); }
+    } catch { flash("err", "Network error"); }
+    setInviting(false);
+  };
+
+  const handleRemove = async (email) => {
+    setRemoving(email);
+    try {
+      const r = await fetch(`${API}/org/member/${encodeURIComponent(email)}`, { method: "DELETE", headers: authH });
+      const d = await r.json();
+      if (!r.ok) { flash("err", d.detail || "Remove failed"); } else { flash("ok", d.message); loadOrg(); }
+    } catch { flash("err", "Network error"); }
+    setRemoving(null);
+  };
+
+  const isOwner = org && user && (org.owner?.id === (user.id || user.uid) || String(org.owner?.id) === String(user.id || user.uid));
+
+  const scoreBg = s => s >= 70 ? "rgba(34,197,94,0.15)" : s >= 40 ? "rgba(245,158,11,0.15)" : "rgba(239,68,68,0.15)";
+  const scoreCol = s => s >= 70 ? C.green : s >= 40 ? C.amber : C.red;
+
+  if (!jwtToken) return (
+    <div style={{ padding: 20 }}>
+      <Panel title="Organization">
+        <div style={{ textAlign: "center", padding: 48 }}>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>🏢</div>
+          <div style={{ fontSize: 15, color: C.text, fontWeight: 600, marginBottom: 8 }}>Sign in with email to use org features</div>
+          <div style={{ fontSize: 13, color: C.muted }}>Organization management requires a QuantumGuard account (email + password).</div>
+        </div>
+      </Panel>
+    </div>
+  );
+
+  if (loading) return (
+    <div style={{ padding: 20, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 300 }}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ width: 10, height: 10, borderRadius: "50%", background: C.green, margin: "0 auto 12px", animation: "pulse-ring 1.2s ease-in-out infinite" }} />
+        <div style={{ color: C.muted, fontSize: 13 }}>Loading organization...</div>
+      </div>
+    </div>
+  );
+
+  if (!org) return (
+    <div style={{ padding: 20, maxWidth: 520 }}>
+      <Panel title="Create Organization">
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 13, color: C.muted, marginBottom: 16, lineHeight: 1.6 }}>
+            Create an organization to manage team members, share scan history, and collaborate on post-quantum migration.
+          </div>
+          {msg && <div style={{ padding: "9px 14px", borderRadius: 8, marginBottom: 14, background: msg.type === "ok" ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)", border: `1px solid ${msg.type === "ok" ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`, color: msg.type === "ok" ? C.green : C.red, fontSize: 12 }}>{msg.text}</div>}
+          <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".05em", display: "block", marginBottom: 6 }}>Organization Name</label>
+          <input
+            value={createName} onChange={e => setCreateName(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleCreate()}
+            placeholder="e.g. Acme Security Team"
+            style={{ width: "100%", padding: "10px 14px", borderRadius: 8, border: `1px solid ${C.panelBorder}`, background: C.input, color: C.text, fontSize: 13, boxSizing: "border-box", marginBottom: 12, outline: "none" }}
+          />
+          <button onClick={handleCreate} disabled={creating || !createName.trim()} style={{ padding: "10px 24px", borderRadius: 8, background: creating ? C.greenDark : C.green, border: "none", color: C.white, cursor: creating ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 700 }}>
+            {creating ? "Creating..." : "Create Organization"}
+          </button>
+        </div>
+      </Panel>
+    </div>
+  );
+
+  return (
+    <div style={{ padding: 20 }}>
+      {/* Org header */}
+      <Panel>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 9, background: "linear-gradient(135deg,#22c55e,#16a34a)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🏢</div>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: C.text, letterSpacing: "-.02em" }}>{org.name}</div>
+                <div style={{ fontSize: 11, color: C.muted, fontFamily: "monospace" }}>@{org.slug}</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Owner: <span style={{ color: C.textMid }}>{org.owner?.name || org.owner?.email}</span></div>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{ background: org.plan === "pro" ? "rgba(34,197,94,0.15)" : "rgba(75,85,99,0.2)", border: `1px solid ${org.plan === "pro" ? "rgba(34,197,94,0.4)" : C.panelBorder}`, color: org.plan === "pro" ? C.green : C.muted, fontSize: 11, fontWeight: 700, padding: "4px 12px", borderRadius: 100, textTransform: "uppercase" }}>
+              {org.plan === "pro" ? "⚡ Pro" : "Free"}
+            </span>
+            <span style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${C.panelBorder}`, color: C.muted, fontSize: 11, padding: "4px 12px", borderRadius: 100 }}>
+              {members.length} member{members.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+        </div>
+      </Panel>
+
+      {msg && <div style={{ padding: "9px 14px", borderRadius: 8, marginBottom: 14, background: msg.type === "ok" ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)", border: `1px solid ${msg.type === "ok" ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`, color: msg.type === "ok" ? C.green : C.red, fontSize: 12 }}>{msg.text}</div>}
+
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
+        {[["members", "👥 Members"], ["scans", "🗂 Scan History"]].map(([id, label]) => (
+          <button key={id} onClick={() => setTab(id)} style={{ padding: "7px 18px", borderRadius: 8, border: `1.5px solid ${tab === id ? C.green : C.panelBorder}`, background: tab === id ? "rgba(34,197,94,0.12)" : "transparent", color: tab === id ? C.green : C.muted, cursor: "pointer", fontSize: 12, fontWeight: tab === id ? 700 : 400, transition: "all 0.2s" }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "members" && (
+        <>
+          <Panel title={`Members (${members.length})`} accent>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: "rgba(34,197,94,0.05)" }}>
+                    {["Name", "Email", "Role", "Scans", isOwner ? "Action" : null].filter(Boolean).map(h => (
+                      <th key={h} style={{ padding: "9px 14px", textAlign: "left", fontSize: 10, textTransform: "uppercase", letterSpacing: 1, color: C.muted, fontWeight: 700, borderBottom: `1px solid ${C.panelBorder}`, whiteSpace: "nowrap" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {members.map((m, i) => (
+                    <tr key={m.user_email} style={{ borderBottom: `1px solid ${C.panelBorder}` }}
+                      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
+                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                      <td style={{ padding: "10px 14px", color: C.textMid, fontWeight: 500 }}>{m.name || "—"}</td>
+                      <td style={{ padding: "10px 14px", color: C.muted, fontFamily: "monospace", fontSize: 11 }}>{m.user_email}</td>
+                      <td style={{ padding: "10px 14px" }}>
+                        <span style={{ background: m.role === "owner" ? "rgba(34,197,94,0.12)" : m.role === "admin" ? "rgba(59,130,246,0.12)" : "rgba(255,255,255,0.05)", color: m.role === "owner" ? C.green : m.role === "admin" ? C.blue : C.muted, border: `1px solid ${m.role === "owner" ? "rgba(34,197,94,0.3)" : m.role === "admin" ? "rgba(59,130,246,0.3)" : C.panelBorder}`, fontSize: 10, fontWeight: 700, padding: "2px 10px", borderRadius: 100, textTransform: "uppercase" }}>{m.role}</span>
+                      </td>
+                      <td style={{ padding: "10px 14px", color: C.muted }}>{m.scan_count ?? "—"}</td>
+                      {isOwner && (
+                        <td style={{ padding: "10px 14px" }}>
+                          {m.role !== "owner" && (
+                            <button onClick={() => handleRemove(m.user_email)} disabled={removing === m.user_email} style={{ padding: "3px 10px", borderRadius: 6, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: C.red, cursor: removing === m.user_email ? "not-allowed" : "pointer", fontSize: 10, fontWeight: 600 }}>
+                              {removing === m.user_email ? "Removing..." : "Remove"}
+                            </button>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                  {members.length === 0 && (
+                    <tr><td colSpan={isOwner ? 5 : 4} style={{ padding: 24, textAlign: "center", color: C.muted }}>No members yet.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+
+          {/* Invite form — admins and owners only */}
+          {(isOwner || members.find(m => m.user_email === user?.email && ["admin","owner"].includes(m.role))) && (
+            <Panel title="Invite Member" accent>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+                <div style={{ flex: 2, minWidth: 200 }}>
+                  <label style={{ fontSize: 10, color: C.muted, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".05em", display: "block", marginBottom: 5 }}>Email address</label>
+                  <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleInvite()} placeholder="colleague@company.com" style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: `1px solid ${C.panelBorder}`, background: C.input, color: C.text, fontSize: 12, boxSizing: "border-box", outline: "none" }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 120 }}>
+                  <label style={{ fontSize: 10, color: C.muted, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".05em", display: "block", marginBottom: 5 }}>Role</label>
+                  <select value={inviteRole} onChange={e => setInviteRole(e.target.value)} style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: `1px solid ${C.panelBorder}`, background: C.input, color: C.text, fontSize: 12, outline: "none", cursor: "pointer" }}>
+                    <option value="member">Member</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+                <button onClick={handleInvite} disabled={inviting || !inviteEmail.trim()} style={{ padding: "9px 20px", borderRadius: 8, background: inviting ? C.greenDark : C.green, border: "none", color: C.white, cursor: inviting ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>
+                  {inviting ? "Inviting..." : "Invite"}
+                </button>
+              </div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 10 }}>The user must already have a QuantumGuard account.</div>
+            </Panel>
+          )}
+        </>
+      )}
+
+      {tab === "scans" && (
+        <Panel title={`Org Scan History (${scans.length})`} accent>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: "rgba(34,197,94,0.05)" }}>
+                  {["Member", "Target", "Score", "Findings", "Date"].map(h => (
+                    <th key={h} style={{ padding: "9px 14px", textAlign: "left", fontSize: 10, textTransform: "uppercase", letterSpacing: 1, color: C.muted, fontWeight: 700, borderBottom: `1px solid ${C.panelBorder}`, whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {scans.map((s, i) => (
+                  <tr key={s.id || i} style={{ borderBottom: `1px solid ${C.panelBorder}` }}
+                    onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                    <td style={{ padding: "10px 14px", color: C.muted, fontSize: 11 }}>{s.user_name || s.user_email || "—"}</td>
+                    <td style={{ padding: "10px 14px", color: C.textMid, fontFamily: "monospace", fontSize: 11, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.filename || s.target || "—"}</td>
+                    <td style={{ padding: "10px 14px" }}>
+                      {s.score != null ? (
+                        <span style={{ background: scoreBg(s.score), color: scoreCol(s.score), fontWeight: 700, fontSize: 12, padding: "2px 10px", borderRadius: 6 }}>{s.score}</span>
+                      ) : "—"}
+                    </td>
+                    <td style={{ padding: "10px 14px", color: s.findings > 0 ? C.red : C.green, fontWeight: 600 }}>{s.findings ?? "—"}</td>
+                    <td style={{ padding: "10px 14px", color: C.muted, fontSize: 11, whiteSpace: "nowrap" }}>{s.created_at ? new Date(s.created_at).toLocaleDateString() : "—"}</td>
+                  </tr>
+                ))}
+                {scans.length === 0 && (
+                  <tr><td colSpan={5} style={{ padding: 24, textAlign: "center", color: C.muted }}>No scans recorded for this organization yet.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      )}
     </div>
   );
 }
@@ -3317,7 +3584,7 @@ function AppInner() {
   const handleLogin = () => setAuthModal("login");
   if (jwtLoading) return (<div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg }}><div style={{ textAlign:"center" }}><div style={{ width:40,height:40,borderRadius:10,background:"linear-gradient(135deg,#22c55e,#15803d)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,margin:"0 auto 12px" }}>⚛</div><div style={{ color:C.green,fontSize:13,fontWeight:600 }}>Loading QuantumGuard...</div></div></div>);
   if (active === "home") return (<><Homepage onGetStarted={(tab) => setActive(tab || "scan")} onOpenAuth={setAuthModal} />{authModal && <AuthModal mode={authModal} onClose={()=>setAuthModal(null)} onSuccess={()=>setActive("scan")} />}</>);
-  const pageTitle = { scan:"Threat Scanner", agility:"Agility Checker", tls:"TLS Analyzer", history:"Scan History", migration:"Migration Tracker", dashboard:"Analytics", nist:"NIST Report", docs:"Documentation", team:"Our Team", unified:"Unified Risk" };
+  const pageTitle = { scan:"Threat Scanner", agility:"Agility Checker", tls:"TLS Analyzer", history:"Scan History", org:"Organization", migration:"Migration Tracker", dashboard:"Analytics", nist:"NIST Report", docs:"Documentation", team:"Our Team", unified:"Unified Risk" };
   return (
     <>
       <style>{`@keyframes pulse-ring{0%{box-shadow:0 0 0 0 rgba(34,197,94,0.5);}70%{box-shadow:0 0 0 8px rgba(34,197,94,0);}100%{box-shadow:0 0 0 0 rgba(34,197,94,0);}}`}</style>
@@ -3346,6 +3613,7 @@ function AppInner() {
             {active==="tls"       && <TLSPage />}
             {active==="unified"   && <UnifiedRiskPage />}
             {active==="history"   && <HistoryPage user={user} />}
+            {active==="org"       && <OrgPage user={user} />}
             {active==="migration" && <MigrationPage user={user} />}
             {active==="dashboard" && <AnalyticsPage />}
             {active==="nist"      && <NISTReportPage />}
