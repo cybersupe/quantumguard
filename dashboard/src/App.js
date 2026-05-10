@@ -1391,11 +1391,34 @@ code{font-family:"JetBrains Mono",monospace;font-size:10px;background:#091428;pa
       </Panel>
 
       {!result && !loading && !error && (
-        <div style={{ textAlign:"center", padding:"36px 24px", color:C.muted }}>
-          <div style={{ fontSize:38, marginBottom:14 }}>🔍</div>
-          <div style={{ fontSize:14, fontWeight:600, color:C.textMid, marginBottom:6 }}>No scan results yet</div>
-          <div style={{ fontSize:12, lineHeight:1.7, maxWidth:340, margin:"0 auto" }}>
-            Paste a GitHub URL, upload a ZIP, or enter a local path above and click <strong style={{ color:C.green }}>Scan</strong> to analyse your codebase for quantum-vulnerable cryptography.
+        <div style={{ padding:"24px 4px" }}>
+          {/* 3-step onboarding checklist */}
+          <div style={{ marginBottom:20 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:C.text, marginBottom:4 }}>Your first scan — 3 steps</div>
+            <div style={{ fontSize:11, color:C.muted, marginBottom:16 }}>No sign-up required for public GitHub repositories.</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {[
+                { n:1, title:"Paste a GitHub URL", desc:"Enter any public repo — e.g. github.com/OWASP/WebGoat", done: input.trim().length > 0 || mode !== "github" },
+                { n:2, title:"Run the scan", desc:"Click Run Scan — QuantumGuard analyses your code in ~15s", done: false },
+                { n:3, title:"Download your report", desc:"Export a board-ready PDF, CSV, or CBOM JSON from the results panel", done: false },
+              ].map(({ n, title, desc, done }) => (
+                <div key={n} style={{ display:"flex", gap:14, alignItems:"flex-start", padding:"12px 16px", borderRadius:10, background: done ? "rgba(34,197,94,0.06)" : "rgba(255,255,255,0.02)", border:`1px solid ${done?"rgba(34,197,94,0.2)":C.panelBorder}`, transition:"all 0.2s" }}>
+                  <div style={{ width:28, height:28, borderRadius:"50%", background: done ? "linear-gradient(135deg,#22c55e,#16a34a)" : "rgba(255,255,255,0.06)", border: done ? "none" : `1px solid ${C.panelBorder}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:done?14:12, fontWeight:700, color: done ? "#fff" : C.muted }}>{done ? "✓" : n}</div>
+                  <div>
+                    <div style={{ fontSize:12, fontWeight:600, color: done ? C.green : C.text, marginBottom:2 }}>{title}</div>
+                    <div style={{ fontSize:11, color:C.muted, lineHeight:1.6 }}>{desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Demo shortcut */}
+          <div style={{ background:"rgba(99,102,241,0.06)", border:"1px solid rgba(99,102,241,0.2)", borderRadius:12, padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:12 }}>
+            <div>
+              <div style={{ fontSize:12, fontWeight:700, color:"#a5b4fc", marginBottom:3 }}>Not sure where to start?</div>
+              <div style={{ fontSize:11, color:"#64748b", lineHeight:1.6 }}>Try our interactive demo — pre-loaded scan of OWASP WebGoat with 14 real findings.</div>
+            </div>
+            <button onClick={handleDemo} style={{ padding:"9px 20px", borderRadius:9, background:"linear-gradient(135deg,rgba(99,102,241,0.25),rgba(59,130,246,0.18))", border:"1px solid rgba(99,102,241,0.4)", color:"#a5b4fc", cursor:"pointer", fontSize:12, fontWeight:700, fontFamily:"inherit", whiteSpace:"nowrap" }}>▶ Try Demo</button>
           </div>
         </div>
       )}
