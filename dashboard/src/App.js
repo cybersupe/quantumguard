@@ -627,7 +627,7 @@ function NISTReportPage() {
           <div style={{ fontSize:44, fontWeight:900, color:C.red, lineHeight:1 }}>0</div>
           <div style={{ fontSize:10, color:C.muted, textTransform:"uppercase", letterSpacing:1, marginTop:2 }}>Quantum Score</div>
           <div style={{ display:"inline-flex", alignItems:"center", gap:5, background:"rgba(239,68,68,0.15)", border:"1px solid rgba(239,68,68,0.3)", color:C.red, fontSize:10, fontWeight:700, padding:"3px 10px", borderRadius:100, marginTop:8 }}>
-            <span style={{ width:5, height:5, borderRadius:"50%", background:C.red, display:"inline-block" }} /> Not Quantum Safe
+            <span style={{ width:5, height:5, borderRadius:"50%", background:C.red, display:"inline-block" }} /> Classical Cryptography Detected
           </div>
         </div>
       </div>
@@ -994,7 +994,7 @@ function ScannerPage({ user, onUpgrade = () => {}, runDemo = false }) {
     const win = window.open("","_blank");
     const score = result.quantum_readiness_score;
     const sc = score>=70?"#22c55e":score>=40?"#f59e0b":"#ef4444";
-    const status = score>=70?"QUANTUM SAFE":score>=40?"AT RISK":"CRITICAL RISK";
+    const status = score>=70?"PQC-READY PROFILE":score>=40?"MIGRATION RECOMMENDED":"CRITICAL RISK";
     const critical = result.findings.filter(f=>f.severity==="CRITICAL").length;
     const high     = result.findings.filter(f=>f.severity==="HIGH").length;
     const medium   = result.findings.filter(f=>f.severity==="MEDIUM").length;
@@ -1148,7 +1148,7 @@ code{font-family:"JetBrains Mono",monospace;font-size:10px;background:#091428;pa
     ${sevHtml("Critical",critical,"#ef4444","#fff")}
     ${sevHtml("High",high,"#f59e0b","#1a1a1a")}
     ${sevHtml("Medium",medium,"#eab308","#1a1a1a")}
-    ${!critical&&!high&&!medium?`<div style="color:#22c55e;font-weight:600;font-size:13px">✓ No significant findings — codebase appears quantum-safe</div>`:""}
+    ${!critical&&!high&&!medium?`<div style="color:#22c55e;font-weight:600;font-size:13px">✓ No classical cryptography detected — proceed with PQC migration planning</div>`:""}
   </div>
 </div>
 
@@ -1417,7 +1417,7 @@ code{font-family:"JetBrains Mono",monospace;font-size:10px;background:#091428;pa
                   <div style={{ height:10, background:"rgba(255,255,255,0.07)", borderRadius:6, overflow:"hidden", marginBottom:6 }}>
                     <div style={{ height:"100%", width:`${result.quantum_readiness_score}%`, background:scoreColor, borderRadius:6, transition:"width .5s ease" }} />
                   </div>
-                  <div style={{ fontSize:12, fontWeight:700, color:scoreColor }}>{result.quantum_readiness_score>=70?"Quantum-Ready":"Risk Detected — Migration Recommended"}</div>
+                  <div style={{ fontSize:12, fontWeight:700, color:scoreColor }}>{result.quantum_readiness_score>=70?"Modern Cryptography Posture":"Classical Cryptography Detected — Migration Recommended"}</div>
                   <div style={{ fontSize:11, color:C.muted, marginTop:2 }}>Starts at 100 · penalties applied per finding severity</div>
                 </div>
               </div>
@@ -1816,16 +1816,16 @@ function TLSPage() {
               <div style={{ fontSize:16, fontWeight:700, color:C.text, marginBottom:6 }}>{result.grade_description}</div>
               <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:8 }}>
                 <span style={{ background:result.tls_version==="TLSv1.3"?"rgba(34,197,94,0.15)":"rgba(245,158,11,0.15)", color:result.tls_version==="TLSv1.3"?C.green:C.amber, fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:100, border:`1px solid ${result.tls_version==="TLSv1.3"?"rgba(34,197,94,0.3)":"rgba(245,158,11,0.3)"}` }}>{result.tls_version}</span>
-                <span style={{ background:result.quantum_safe?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.15)", color:result.quantum_safe?C.green:C.red, fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:100, border:`1px solid ${result.quantum_safe?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"}` }}>{result.quantum_safe?"✦ Post-Quantum Safe":"⚠ Not Quantum Safe"}</span>
+                <span style={{ background:result.quantum_safe?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.15)", color:result.quantum_safe?C.green:C.red, fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:100, border:`1px solid ${result.quantum_safe?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"}` }}>{result.quantum_safe?"✦ Modern Cryptography Posture":"⚠ Classical Cryptography Detected"}</span>
                 <span style={{ background:"rgba(34,197,94,0.1)", color:C.green, fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:100, border:"1px solid rgba(34,197,94,0.3)" }}>Score: {result.tls_score}/100</span>
               </div>
               {result.pqc_note&&<div style={{ fontSize:12, color:C.amber, background:"rgba(245,158,11,0.1)", padding:"6px 12px", borderRadius:8, border:"1px solid rgba(245,158,11,0.3)" }}>⚠ {result.pqc_note}</div>}
             </div>
           </div>
           <div className="stats-grid" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:16 }}>
-            <Metric label="TLS Score" value={result.tls_score} suffix="/100" color={scoreColor} icon="🎯" desc={result.tls_score>=70?"Quantum Ready":"Needs Improvement"} />
+            <Metric label="TLS Score" value={result.tls_score} suffix="/100" color={scoreColor} icon="🎯" desc={result.tls_score>=70?"Modern Cryptography Posture":"PQC Migration Recommended"} />
             <Metric label="TLS Version" value={result.tls_version} color={result.tls_version==="TLSv1.3"?C.green:C.amber} icon="🔒" desc={result.tls_version==="TLSv1.3"?"Latest":"Upgrade Needed"} />
-            <Metric label="Post-Quantum Readiness" value={result?.quantum_safe?"YES":result?.tls_version==="TLSv1.3"?"PARTIAL":"NO"} color={result?.quantum_safe?C.green:result?.tls_version==="TLSv1.3"?C.amber:C.red} icon={result?.quantum_safe?"✅":result?.tls_version==="TLSv1.3"?"⚠️":"❌"} desc={result?.quantum_safe?"Post-quantum detected":result?.tls_version==="TLSv1.3"?"Secure today, not quantum-resistant":"Not post-quantum yet"} />
+            <Metric label="PQC Migration Status" value={result?.quantum_safe?"ALIGNED":result?.tls_version==="TLSv1.3"?"PARTIAL":"REVIEW"} color={result?.quantum_safe?C.green:result?.tls_version==="TLSv1.3"?C.amber:C.red} icon={result?.quantum_safe?"✅":result?.tls_version==="TLSv1.3"?"⚠️":"❌"} desc={result?.quantum_safe?"Modern cryptography posture":result?.tls_version==="TLSv1.3"?"Hybrid migration recommended":"Classical cryptography detected"} />
             <Metric label="Key Size" value={result.cipher_bits} suffix=" bit" color={result.cipher_bits>=256?C.green:C.amber} icon="🔑" desc={result.cipher_bits>=256?"Strong":"Upgrade Needed"} />
           </div>
           <Panel title="Cipher Suite Details" accent>
@@ -3939,7 +3939,7 @@ function Homepage({ onGetStarted, onOpenAuth, onTryDemo }) {
         <div className="qg-wrap">
           <div style={{ textAlign:"center",marginBottom:48 }}>
             <div className="qg-label">Features</div>
-            <h2 style={{ fontSize:"clamp(24px,3.2vw,40px)",fontWeight:800,letterSpacing:"-.03em" }}>Everything you need to go quantum-safe</h2>
+            <h2 style={{ fontSize:"clamp(24px,3.2vw,40px)",fontWeight:800,letterSpacing:"-.03em" }}>Everything you need to achieve PQC readiness</h2>
           </div>
           <div className="qg-g3">
             {[
