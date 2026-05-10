@@ -163,13 +163,13 @@ function Sidebar({ active, setActive, user, plan, onLogin, onLogout, onUpgrade, 
                   <div style={{ fontSize:12,color:C.text,fontWeight:600 }}>
                     {(displayUser.name||displayUser.displayName||displayUser.email||"User").split(" ")[0]}
                   </div>
-                  <div style={{ fontSize:10,color:C.green }}>{displayUser.plan||"Free Plan"}</div>
+                  <div style={{ fontSize:10,color:plan==="pro"?C.green:C.muted,fontWeight:plan==="pro"?700:400 }}>{plan==="pro"?"⚡ Pro Plan":"Free Plan"}</div>
                 </div>
               </div>
-              {(!displayUser.plan||displayUser.plan!=="pro") && onUpgrade && (
+              {plan!=="pro" && (
                 <button onClick={onUpgrade} style={{ width:"100%",padding:"7px",borderRadius:8,background:C.green,border:"none",color:C.white,cursor:"pointer",fontSize:11,fontWeight:600,marginBottom:6 }}>Upgrade to Pro</button>
               )}
-              {displayUser.plan==="pro" && onManageBilling && (
+              {plan==="pro" && (
                 <button onClick={onManageBilling} style={{ width:"100%",padding:"6px",borderRadius:8,background:"transparent",border:`1px solid ${C.greenMid}`,color:C.green,cursor:"pointer",fontSize:11,marginBottom:6 }}>Manage Billing</button>
               )}
               <button onClick={onLogout} style={{ width:"100%",padding:"6px",borderRadius:8,background:"transparent",border:`1px solid ${C.sidebarBorder}`,color:C.muted,cursor:"pointer",fontSize:11 }}>Sign Out</button>
