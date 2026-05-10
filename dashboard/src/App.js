@@ -1573,59 +1573,124 @@ code{font-family:"JetBrains Mono",monospace;font-size:10px;background:#091428;pa
                           </div>
                         )}
                       </div>
-                      {isExpanded && (
-                        <div style={{ background:"rgba(15,23,42,0.6)", border:`1px solid rgba(59,130,246,0.2)`, borderRadius:10, padding:"14px 16px", marginTop:4, display:"flex", flexDirection:"column", gap:12 }}>
-                          {/* Severity + Confidence row */}
-                          <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
-                            <div style={{ flex:1, minWidth:120 }}>
-                              <div style={{ fontSize:9, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:".07em", marginBottom:4 }}>Severity</div>
-                              <span style={{ background:fSevBg, color:fSevColor, padding:"4px 12px", borderRadius:6, fontSize:12, fontWeight:800, border:`1px solid ${fSevColor}44` }}>{f.severity}</span>
-                            </div>
-                            {confPct!==null && (
-                              <div style={{ flex:1, minWidth:120 }}>
-                                <div style={{ fontSize:9, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:".07em", marginBottom:4 }}>Detection Confidence</div>
-                                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                                  <div style={{ flex:1, height:6, background:"rgba(255,255,255,0.08)", borderRadius:4, overflow:"hidden" }}>
-                                    <div style={{ height:"100%", width:`${confPct}%`, background:confPct>=80?C.green:confPct>=50?C.amber:C.red, borderRadius:4 }} />
-                                  </div>
-                                  <span style={{ fontSize:12, fontWeight:700, color:confPct>=80?C.green:confPct>=50?C.amber:C.red, minWidth:34 }}>{confPct}%</span>
-                                </div>
-                              </div>
-                            )}
+                      {isExpanded && (() => {
+                        // Detection method derived from confidence + context
+                        const detMethod = f.usage_context === "dependency"
+                          ? "Dependency manifest scan — vulnerable package identified in lockfile"
+                          : f.usage_context === "config"
+                          ? "Configuration analysis — insecure algorithm string found in config file"
+                          : confPct !== null && confPct >= 90
+                          ? "AST pattern match — direct cryptographic API call identified in source"
+                          : confPct !== null && confPct >= 75
+                          ? "Static analysis — algorithm identifier or parameter pattern matched"
+                          : "Heuristic detection — contextual pattern analysis with moderate certainty";
+                        // Confidence explanation
+                        const confExplain = confPct === null ? null
+                          : confPct >= 90 ? "High confidence: the algorithm name or API was found verbatim with clear cryptographic context."
+                          : confPct >= 75 ? "Moderate-high confidence: pattern matched with supporting context clues (imports, parameters, variable names)."
+                          : confPct >= 60 ? "Moderate confidence: pattern matched but context is ambiguous — manual review recommended."
+                          : "Lower confidence: heuristic match. Verify manually before prioritising migration.";
+                        // Business impact description
+                        const impactDesc = f.business_impact === "HIGH"
+                          ? "Data encrypted with this algorithm is at risk of decryption by a cryptographically relevant quantum computer (CRQC). Adversaries may already be capturing encrypted traffic for future decryption (Harvest Now, Decrypt Later)."
+                          : f.business_impact === "MEDIUM"
+                          ? "Algorithm has known weaknesses or insufficient security margin for post-2030 requirements. Migration should be planned before the NIST Y2Q deadline."
+                          : f.business_impact === "LOW"
+                          ? "Limited direct exposure. Flagged for cryptographic inventory and proactive future-proofing."
+                          : null;
+                        // Exploitability description
+                        const exploitDesc = !f.exploitability ? null
+                          : /quantum computer/i.test(f.exploitability)
+                          ? "Theoretical risk today; becomes exploitable with a ~4,000 logical-qubit CRQC (estimated 2030–2035). 'Harvest Now, Decrypt Later' attacks may already be capturing encrypted data."
+                          : /classical.*quantum|quantum.*classical/i.test(f.exploitability)
+                          ? "Dual-vector risk: vulnerable to both classical cryptanalysis today and quantum attacks in the future. Immediate migration is recommended."
+                          : /classical attack/i.test(f.exploitability)
+                          ? "Active classical cryptanalysis attacks exist. Migration is urgent regardless of quantum timelines."
+                          : /quantum.weakened|grover/i.test(f.exploitability)
+                          ? "Grover's algorithm halves the effective security bits of symmetric primitives and hash functions. Insufficient for post-quantum security requirements."
+                          : f.exploitability;
+                        const LabelRow = ({ label, children }) => (
+                          <div>
+                            <div style={{ fontSize:9, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:".07em", marginBottom:5 }}>{label}</div>
+                            {children}
                           </div>
-                          {/* Why detected */}
-                          {details && (
-                            <div>
-                              <div style={{ fontSize:9, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:".07em", marginBottom:6 }}>Why This Is Flagged</div>
-                              <div style={{ fontSize:12, color:"#cbd5e1", lineHeight:1.75 }}>{details.why}</div>
-                            </div>
-                          )}
-                          {/* NIST Mapping */}
-                          {details && (
-                            <div>
-                              <div style={{ fontSize:9, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:".07em", marginBottom:6 }}>NIST Mapping</div>
-                              <div style={{ background:"rgba(59,130,246,0.08)", border:"1px solid rgba(59,130,246,0.2)", borderRadius:7, padding:"8px 12px", fontSize:12, color:"#93c5fd", lineHeight:1.65 }}>{details.nist}</div>
-                            </div>
-                          )}
-                          {/* Remediation */}
-                          {details && (
-                            <div>
-                              <div style={{ fontSize:9, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:".07em", marginBottom:6 }}>Remediation Steps</div>
-                              <div style={{ fontSize:12, color:"#86efac", lineHeight:1.75 }}>{details.remediation.split(" · ").map((step,si)=>(
-                                <div key={si} style={{ display:"flex", gap:8, marginBottom:si<details.remediation.split(" · ").length-1?5:0 }}>
-                                  <span style={{ color:C.green, flexShrink:0 }}>→</span>
-                                  <span>{step.replace(/^\d+\.\s*/,"")}</span>
+                        );
+                        return (
+                          <div style={{ background:"rgba(15,23,42,0.6)", border:"1px solid rgba(59,130,246,0.2)", borderRadius:10, padding:"14px 16px", marginTop:4, display:"flex", flexDirection:"column", gap:13 }}>
+                            {/* Severity + Confidence + Detection Method row */}
+                            <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+                              <div style={{ flex:"0 0 auto" }}>
+                                <div style={{ fontSize:9, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:".07em", marginBottom:4 }}>Severity</div>
+                                <span style={{ background:fSevBg, color:fSevColor, padding:"4px 12px", borderRadius:6, fontSize:12, fontWeight:800, border:`1px solid ${fSevColor}44` }}>{f.severity}</span>
+                              </div>
+                              {confPct !== null && (
+                                <div style={{ flex:1, minWidth:140 }}>
+                                  <div style={{ fontSize:9, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:".07em", marginBottom:4 }}>Detection Confidence</div>
+                                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                                    <div style={{ flex:1, height:6, background:"rgba(255,255,255,0.08)", borderRadius:4, overflow:"hidden" }}>
+                                      <div style={{ height:"100%", width:`${confPct}%`, background:confPct>=80?C.green:confPct>=50?C.amber:C.red, borderRadius:4 }} />
+                                    </div>
+                                    <span style={{ fontSize:12, fontWeight:700, color:confPct>=80?C.green:confPct>=50?C.amber:C.red, minWidth:34 }}>{confPct}%</span>
+                                  </div>
                                 </div>
-                              ))}</div>
+                              )}
                             </div>
-                          )}
-                          {!details && (
-                            <div style={{ fontSize:12, color:C.muted }}>
-                              Consult NIST FIPS 203/204/205 for migration guidance specific to {f.vulnerability} usage. Replace with the recommended algorithm shown in the Fix field above.
-                            </div>
-                          )}
-                        </div>
-                      )}
+                            {/* Detection method */}
+                            <LabelRow label="Detection Method">
+                              <div style={{ fontSize:12, color:"#94a3b8", lineHeight:1.65 }}>{detMethod}</div>
+                            </LabelRow>
+                            {/* Confidence explanation */}
+                            {confExplain && (
+                              <LabelRow label="Confidence Reasoning">
+                                <div style={{ fontSize:12, color:"#cbd5e1", lineHeight:1.65, background:"rgba(255,255,255,0.03)", borderRadius:6, padding:"7px 10px" }}>{confExplain}</div>
+                              </LabelRow>
+                            )}
+                            {/* Why flagged */}
+                            <LabelRow label="Why This Is Flagged">
+                              <div style={{ fontSize:12, color:"#cbd5e1", lineHeight:1.75 }}>
+                                {details ? details.why : `${f.vulnerability} is flagged because it uses classical mathematical hardness assumptions (integer factoring, discrete logarithm, or elliptic curve) that are broken by Shor's algorithm on a sufficiently large quantum computer. All algorithms of this class must be replaced before the NIST 2030 deadline.`}
+                              </div>
+                            </LabelRow>
+                            {/* Business impact */}
+                            {(impactDesc || f.business_impact) && (
+                              <LabelRow label="Business Impact">
+                                <div style={{ fontSize:12, color: f.business_impact==="HIGH"?"#fca5a5":f.business_impact==="MEDIUM"?"#fcd34d":"#94a3b8", lineHeight:1.65 }}>
+                                  {impactDesc || `${f.business_impact} business impact.`}
+                                </div>
+                              </LabelRow>
+                            )}
+                            {/* Exploitability */}
+                            {exploitDesc && (
+                              <LabelRow label="Exploitability Timeline">
+                                <div style={{ fontSize:12, color:"#e2e8f0", lineHeight:1.65, background:"rgba(239,68,68,0.05)", border:"1px solid rgba(239,68,68,0.12)", borderRadius:6, padding:"7px 10px" }}>{exploitDesc}</div>
+                              </LabelRow>
+                            )}
+                            {/* NIST Mapping */}
+                            <LabelRow label="NIST Migration Mapping">
+                              <div style={{ background:"rgba(59,130,246,0.08)", border:"1px solid rgba(59,130,246,0.2)", borderRadius:7, padding:"8px 12px", fontSize:12, color:"#93c5fd", lineHeight:1.65 }}>
+                                {details ? details.nist : `Replacement: ${f.replacement} — consult NIST FIPS 203/204/205 for implementation guidance.`}
+                              </div>
+                            </LabelRow>
+                            {/* Remediation */}
+                            <LabelRow label="Remediation Steps">
+                              <div style={{ fontSize:12, color:"#86efac", lineHeight:1.75 }}>
+                                {details ? details.remediation.split(" · ").map((step, si, arr) => (
+                                  <div key={si} style={{ display:"flex", gap:8, marginBottom:si<arr.length-1?5:0 }}>
+                                    <span style={{ color:C.green, flexShrink:0 }}>→</span>
+                                    <span>{step.replace(/^\d+\.\s*/, "")}</span>
+                                  </div>
+                                )) : (
+                                  <>
+                                    <div style={{ display:"flex", gap:8, marginBottom:5 }}><span style={{ color:C.green, flexShrink:0 }}>→</span><span>Identify all call sites using {f.vulnerability} in your codebase</span></div>
+                                    <div style={{ display:"flex", gap:8, marginBottom:5 }}><span style={{ color:C.green, flexShrink:0 }}>→</span><span>Replace with: {f.replacement}</span></div>
+                                    <div style={{ display:"flex", gap:8 }}><span style={{ color:C.green, flexShrink:0 }}>→</span><span>Validate with NIST FIPS 203/204/205 compliance checklist before deploying</span></div>
+                                  </>
+                                )}
+                              </div>
+                            </LabelRow>
+                          </div>
+                        );
+                      })()}
                     </div>);
                   })}
                 </div>
