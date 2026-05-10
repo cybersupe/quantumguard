@@ -773,7 +773,7 @@ function ScannerPage({ user, onUpgrade = () => {} }) {
     if (!user) { setShowUpgrade(false); onUpgrade(); return; }
     setUpgradeLoading(true);
     try {
-      const res = await fetch(`${API}/create-checkout-session`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user_id: user.uid, user_email: user.email }) });
+      const res = await fetch(`${API}/create-checkout-session`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user_id: user.uid || String(user.id), user_email: user.email }) });
       const data = await res.json();
       if (data.url) { window.location.href = data.url; return; }
       const msg = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail) || "Checkout failed";
@@ -3271,7 +3271,7 @@ function AppInner() {
     if (!user) { setAuthModal("login"); return; }
     setUpgradeLoading(true);
     try {
-      const res = await fetch(`${API}/create-checkout-session`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ user_id: user.uid, user_email: user.email }) });
+      const res = await fetch(`${API}/create-checkout-session`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ user_id: user.uid || String(user.id), user_email: user.email }) });
       const data = await res.json();
       if (data.url) { window.location.href = data.url; return; }
       const msg = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail) || "Checkout failed";
@@ -3281,7 +3281,7 @@ function AppInner() {
   const handleManageBilling = async () => {
     if (!user) return;
     try {
-      const res = await fetch(`${API}/customer-portal`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ user_id: user.uid, user_email: user.email }) });
+      const res = await fetch(`${API}/customer-portal`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ user_id: user.uid || String(user.id), user_email: user.email }) });
       const data = await res.json();
       if (data.url) { window.location.href = data.url; }
     } catch(e) { alert("Could not open billing portal: " + e.message); }
