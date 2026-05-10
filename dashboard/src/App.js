@@ -751,6 +751,7 @@ function ScannerPage({ user, onUpgrade = () => {} }) {
   const logTimers = useRef([]);
   const logEndRef = useRef(null);
   const [scanLogs, setScanLogs] = useState([]);
+  const retryAttemptsRef = useRef(0);
   const [filesScanned, setFilesScanned] = useState(0);
   const [issuesFound, setIssuesFound] = useState(0);
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -799,29 +800,61 @@ function ScannerPage({ user, onUpgrade = () => {} }) {
       if (!allowed) { setShowUpgrade(true); return; }
     }
     setLoading(true); setError(null); setResult(null); setChecklist({}); setSaved(false);
+    retryAttemptsRef.current = 0;
     startProgress();
-    try {
-      let res;
-      const authHeader = jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {};
-      if (mode === "zip") {
-        if (!file) throw new Error("Please select a ZIP file");
-        const fd = new FormData(); fd.append("file", file);
-        res = await fetch(`${API}/public-scan-zip`, { method:"POST", headers:authHeader, body:fd });
-      } else if (mode === "github") {
-        if (!input) throw new Error("Please enter a GitHub URL");
-        res = await fetch(`${API}/scan-github`, { method:"POST", headers:{...authHeader,"Content-Type":"application/json"}, body:JSON.stringify({ github_url:input, ...(githubToken?{github_token:githubToken}:{}) }) });
-      } else {
-        if (!input) throw new Error("Please enter a path");
-        res = await fetch(`${API}/scan`, { method:"POST", headers:{...authHeader,"Content-Type":"application/json","x-api-key":"quantumguard-secret-2026"}, body:JSON.stringify({ directory:input }) });
+
+    const doFetch = async () => {
+      try {
+        let res;
+        const authHeader = jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {};
+        if (mode === "zip") {
+          if (!file) throw new Error("Please select a ZIP file");
+          const fd = new FormData(); fd.append("file", file);
+          res = await fetch(`${API}/public-scan-zip`, { method:"POST", headers:authHeader, body:fd });
+        } else if (mode === "github") {
+          if (!input) throw new Error("Please enter a GitHub URL");
+          res = await fetch(`${API}/scan-github`, { method:"POST", headers:{...authHeader,"Content-Type":"application/json"}, body:JSON.stringify({ github_url:input, ...(githubToken?{github_token:githubToken}:{}) }) });
+        } else {
+          if (!input) throw new Error("Please enter a path");
+          res = await fetch(`${API}/scan`, { method:"POST", headers:{...authHeader,"Content-Type":"application/json","x-api-key":"quantumguard-secret-2026"}, body:JSON.stringify({ directory:input }) });
+        }
+        if (res.status === 502 || res.status === 503 || res.status === 504) {
+          throw Object.assign(new Error(`Server unavailable (${res.status})`), { isColdStart: true });
+        }
+        const data = await res.json();
+        if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail) || "Scan failed");
+        retryAttemptsRef.current = 0;
+        stopProgress(); setResult(data);
+        if (user) {
+          await addDoc(collection(db,"scans"), { userId:user.uid, userEmail:user.email, filename:file?.name||input||"scan", score:data.quantum_readiness_score, findings:data.total_findings, createdAt:new Date() });
+          await incrementScanCount(user.uid); setSaved(true);
+        }
+      } catch (e) {
+        const isColdStart = e.isColdStart || e.name === "TypeError" || /failed to fetch|network|503|502|504/i.test(e.message || "");
+        const isInputError = /please select|please enter/i.test(e.message || "");
+        if (isColdStart && !isInputError && retryAttemptsRef.current < 2) {
+          retryAttemptsRef.current++;
+          const attempt = retryAttemptsRef.current;
+          const waitSec = attempt === 1 ? 6 : 10;
+          setScanLogs(prev => [...prev, {
+            id: Date.now(), type: "warn",
+            text: `API is warming up — retrying in ${waitSec}s (attempt ${attempt}/2)...`
+          }]);
+          await new Promise(r => setTimeout(r, waitSec * 1000));
+          setScanLogs(prev => [...prev, { id: Date.now()+1, type: "info", text: "Retrying scan now..." }]);
+          return doFetch();
+        }
+        retryAttemptsRef.current = 0;
+        stopProgress();
+        if (isColdStart && !isInputError) {
+          setError("The API is starting up (cold start). Please wait a moment and try again, or the next retry should succeed automatically.");
+        } else {
+          setError(typeof e.message === "string" ? e.message : "Scan failed.");
+        }
       }
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Scan failed");
-      stopProgress(); setResult(data);
-      if (user) {
-        await addDoc(collection(db,"scans"), { userId:user.uid, userEmail:user.email, filename:file?.name||input||"scan", score:data.quantum_readiness_score, findings:data.total_findings, createdAt:new Date() });
-        await incrementScanCount(user.uid); setSaved(true);
-      }
-    } catch (e) { stopProgress(); setError(typeof e.message==="string"?e.message:"Scan failed."); }
+    };
+
+    await doFetch();
     setLoading(false);
   };
 
@@ -998,9 +1031,32 @@ function ScannerPage({ user, onUpgrade = () => {} }) {
             <style>{`@keyframes cursor-blink{0%,100%{opacity:1}50%{opacity:0}}`}</style>
           </div>
         )}
-        {error&&<div style={{ marginTop:12, background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.3)", borderRadius:8, padding:"10px 14px", color:C.red, fontSize:13 }}>⚠ {error}</div>}
+        {error && (
+          <div style={{ marginTop:12, background: error.includes("warming up") || error.includes("cold start") ? "rgba(245,158,11,0.08)" : "rgba(239,68,68,0.1)", border: `1px solid ${error.includes("warming up") || error.includes("cold start") ? "rgba(245,158,11,0.35)" : "rgba(239,68,68,0.3)"}`, borderRadius:10, padding:"12px 16px", fontSize:13, display:"flex", gap:12, alignItems:"flex-start" }}>
+            <span style={{ fontSize:18, flexShrink:0 }}>{error.includes("warming up") || error.includes("cold start") ? "⏳" : "⚠️"}</span>
+            <div>
+              <div style={{ fontWeight:600, color: error.includes("warming up") || error.includes("cold start") ? C.amber : C.red, marginBottom:3 }}>
+                {error.includes("warming up") || error.includes("cold start") ? "API warming up" : "Scan error"}
+              </div>
+              <div style={{ color:C.muted, lineHeight:1.6 }}>{error}</div>
+              {(error.includes("warming up") || error.includes("cold start") || error.includes("starting up")) && (
+                <button onClick={handleScan} style={{ marginTop:10, padding:"5px 14px", borderRadius:7, background:"rgba(245,158,11,0.15)", border:"1px solid rgba(245,158,11,0.4)", color:C.amber, cursor:"pointer", fontSize:11, fontWeight:700, fontFamily:"inherit" }}>↺ Retry now</button>
+              )}
+            </div>
+          </div>
+        )}
         {saved&&<div style={{ marginTop:10, background:"rgba(34,197,94,0.1)", border:"1px solid rgba(34,197,94,0.3)", borderRadius:8, padding:"8px 14px", color:C.green, fontSize:12, fontWeight:500 }}>✓ Scan saved to history</div>}
       </Panel>
+
+      {!result && !loading && !error && (
+        <div style={{ textAlign:"center", padding:"36px 24px", color:C.muted }}>
+          <div style={{ fontSize:38, marginBottom:14 }}>🔍</div>
+          <div style={{ fontSize:14, fontWeight:600, color:C.textMid, marginBottom:6 }}>No scan results yet</div>
+          <div style={{ fontSize:12, lineHeight:1.7, maxWidth:340, margin:"0 auto" }}>
+            Paste a GitHub URL, upload a ZIP, or enter a local path above and click <strong style={{ color:C.green }}>Scan</strong> to analyse your codebase for quantum-vulnerable cryptography.
+          </div>
+        </div>
+      )}
 
       {result && (
         <>
