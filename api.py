@@ -309,6 +309,17 @@ def init_db():
                 );
             """)
 
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS scan_ratings (
+                    id         TEXT PRIMARY KEY,
+                    user_id    TEXT,
+                    scan_id    TEXT,
+                    rating     INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+                    comment    TEXT,
+                    created_at TIMESTAMP DEFAULT NOW()
+                );
+            """)
+
             # Safe migration — add org_id column if missing
             cur.execute("""
                 DO $$
@@ -704,6 +715,13 @@ class OrgInviteRequest(BaseModel):
 class CheckoutBody(BaseModel):
     user_id: str
     user_email: str
+
+
+class RateRequest(BaseModel):
+    scan_id: Optional[str] = None
+    user_id: Optional[str] = None
+    rating: int
+    comment: Optional[str] = None
 
 
 def verify_key(key: str):
@@ -1801,5 +1819,62 @@ async def billing_info(request: Request, body: CheckoutBody):
         except Exception as e:
             logger.warning("billing_info stripe error: %s", e)
     return result
+
+
+# ── In-memory ratings fallback (no DB) ───────────────────────
+_ratings_memory: list = []
+
+
+@app.post("/rate")
+@limiter.limit("20/minute")
+async def submit_rating(request: Request, body: RateRequest):
+    if body.rating < 1 or body.rating > 5:
+        raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
+    record_id = str(uuid.uuid4())
+    if db_pool is not None:
+        try:
+            conn = db_pool.getconn()
+            try:
+                cur = conn.cursor()
+                cur.execute(
+                    "INSERT INTO scan_ratings (id, user_id, scan_id, rating, comment) VALUES (%s, %s, %s, %s, %s)",
+                    (record_id, body.user_id or None, body.scan_id or None, body.rating, body.comment or None),
+                )
+                conn.commit()
+                cur.close()
+            finally:
+                db_pool.putconn(conn)
+        except Exception as e:
+            logger.error("submit_rating db error: %s", e)
+            raise HTTPException(status_code=500, detail="Failed to save rating")
+    else:
+        _ratings_memory.append({"id": record_id, "rating": body.rating})
+    return {"ok": True, "id": record_id}
+
+
+@app.get("/ratings/summary")
+@limiter.limit("60/minute")
+async def ratings_summary(request: Request):
+    if db_pool is not None:
+        try:
+            conn = db_pool.getconn()
+            try:
+                cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                cur.execute("SELECT ROUND(AVG(rating)::numeric, 1) AS avg_rating, COUNT(*) AS total FROM scan_ratings")
+                row = cur.fetchone()
+                cur.close()
+                avg = float(row["avg_rating"]) if row["avg_rating"] else 0.0
+                total = int(row["total"]) if row["total"] else 0
+                return {"avg_rating": avg, "total": total}
+            finally:
+                db_pool.putconn(conn)
+        except Exception as e:
+            logger.error("ratings_summary db error: %s", e)
+            return {"avg_rating": 0.0, "total": 0}
+    # In-memory fallback
+    if not _ratings_memory:
+        return {"avg_rating": 0.0, "total": 0}
+    avg = round(sum(r["rating"] for r in _ratings_memory) / len(_ratings_memory), 1)
+    return {"avg_rating": avg, "total": len(_ratings_memory)}
 
 

@@ -779,6 +779,11 @@ function ScannerPage({ user, onUpgrade = () => {}, runDemo = false }) {
   const [search, setSearch] = useState("");
   const [checklist, setChecklist] = useState({});
   const [saved, setSaved] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [ratingHover, setRatingHover] = useState(0);
+  const [ratingComment, setRatingComment] = useState("");
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [ratingLoading, setRatingLoading] = useState(false);
   const [emailInput, setEmailInput] = useState("");
   const [emailSent, setEmailSent] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -839,6 +844,7 @@ function ScannerPage({ user, onUpgrade = () => {}, runDemo = false }) {
 
   const handleDemo = () => {
     setError(null); setResult(null); setChecklist({}); setSaved(false);
+    setRating(0); setRatingComment(""); setRatingSubmitted(false);
     setResult(DEMO_RESULT);
   };
 
@@ -849,7 +855,7 @@ function ScannerPage({ user, onUpgrade = () => {}, runDemo = false }) {
       const { allowed } = await canUserScan(user.uid);
       if (!allowed) { setShowUpgrade(true); return; }
     }
-    setLoading(true); setError(null); setResult(null); setChecklist({}); setSaved(false);
+    setLoading(true); setError(null); setResult(null); setChecklist({}); setSaved(false); setRating(0); setRatingComment(""); setRatingSubmitted(false);
     retryAttemptsRef.current = 0;
     startProgress();
 
@@ -1615,6 +1621,62 @@ code{font-family:"JetBrains Mono",monospace;font-size:10px;background:#091428;pa
             ))}
             {filtered.length===0&&<div style={{ textAlign:"center", padding:24, color:C.muted }}>No findings match filter.</div>}
           </Panel>
+
+          {/* ── Rating Widget ── */}
+          {!result._isDemo && (
+            <div style={{ marginTop:16, background:C.panel, border:`1px solid ${C.panelBorder}`, borderRadius:14, padding:"20px 24px" }}>
+              {ratingSubmitted ? (
+                <div style={{ textAlign:"center", padding:"8px 0" }}>
+                  <div style={{ fontSize:28, marginBottom:8 }}>🎉</div>
+                  <div style={{ fontSize:14, fontWeight:700, color:C.green, marginBottom:4 }}>Thanks for your feedback!</div>
+                  <div style={{ fontSize:12, color:C.muted }}>Your rating helps us improve QuantumGuard.</div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontSize:13, fontWeight:600, color:C.text, marginBottom:12 }}>How was this scan?</div>
+                  <div style={{ display:"flex", gap:6, marginBottom:12 }}>
+                    {[1,2,3,4,5].map(star => (
+                      <button
+                        key={star}
+                        onClick={() => setRating(star)}
+                        onMouseEnter={() => setRatingHover(star)}
+                        onMouseLeave={() => setRatingHover(0)}
+                        style={{ background:"transparent", border:"none", cursor:"pointer", fontSize:28, lineHeight:1, padding:"2px 3px", transition:"transform 0.1s", transform: (ratingHover||rating)>=star ? "scale(1.15)" : "scale(1)", filter: (ratingHover||rating)>=star ? "none" : "grayscale(1) opacity(0.35)" }}
+                      >⭐</button>
+                    ))}
+                    {rating > 0 && <span style={{ fontSize:12, color:C.textMid, alignSelf:"center", marginLeft:6 }}>{["","Poor","Fair","Good","Great","Excellent"][rating]}</span>}
+                  </div>
+                  {rating > 0 && (
+                    <>
+                      <textarea
+                        placeholder="Optional comment — what worked well or could be better?"
+                        value={ratingComment}
+                        onChange={e => setRatingComment(e.target.value)}
+                        rows={2}
+                        style={{ width:"100%", background:C.input, border:`1px solid ${C.panelBorder}`, borderRadius:8, color:C.text, fontSize:12, padding:"8px 12px", resize:"vertical", fontFamily:"inherit", marginBottom:10, boxSizing:"border-box" }}
+                      />
+                      <button
+                        disabled={ratingLoading}
+                        onClick={async () => {
+                          setRatingLoading(true);
+                          try {
+                            await fetch(`${API}/rate`, {
+                              method:"POST",
+                              headers:{"Content-Type":"application/json"},
+                              body: JSON.stringify({ rating, comment: ratingComment || null, user_id: user?.uid || (user?.id ? String(user.id) : null), scan_id: null }),
+                            });
+                          } catch(_) {}
+                          setRatingLoading(false);
+                          setRatingSubmitted(true);
+                        }}
+                        style={{ padding:"8px 22px", borderRadius:8, background:"linear-gradient(135deg,#22c55e,#16a34a)", border:"none", color:"#fff", cursor:ratingLoading?"not-allowed":"pointer", fontSize:12, fontWeight:700, opacity:ratingLoading?0.6:1 }}
+                      >{ratingLoading ? "Submitting..." : "Submit Rating"}</button>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </>
       )}
 
@@ -3418,6 +3480,11 @@ function Homepage({ onGetStarted, onOpenAuth, onTryDemo }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openNav, setOpenNav] = useState(null);
   const [openFaq, setOpenFaq] = useState(null);
+  const [ratingSummary, setRatingSummary] = useState(null);
+
+  useEffect(() => {
+    fetch(`${API}/ratings/summary`).then(r => r.json()).then(setRatingSummary).catch(() => {});
+  }, []);
 
   const handleNavItem = title => { const tab = NAV_MAP[title]; if (tab) onGetStarted(tab); };
 
@@ -3641,13 +3708,20 @@ function Homepage({ onGetStarted, onOpenAuth, onTryDemo }) {
               </div>
 
               {/* Micro trust */}
-              <div style={{ display:"flex",gap:16,flexWrap:"wrap" }}>
+              <div style={{ display:"flex",gap:16,flexWrap:"wrap",alignItems:"center" }}>
                 {["No signup required","Instant results","Built for security teams","Open source AGPL v3"].map(t => (
                   <span key={t} style={{ fontSize:12,color:"#6b7280",display:"flex",alignItems:"center",gap:5 }}>
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M3 8l3.5 3.5L13 4" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     {t}
                   </span>
                 ))}
+                {ratingSummary && ratingSummary.total > 0 && (
+                  <span style={{ fontSize:12,color:"#6b7280",display:"flex",alignItems:"center",gap:5 }}>
+                    <span style={{ letterSpacing:"-1px" }}>{"⭐".repeat(Math.round(ratingSummary.avg_rating))}</span>
+                    <strong style={{ color:"#374151" }}>{ratingSummary.avg_rating.toFixed(1)}</strong>
+                    <span>/ 5 from {ratingSummary.total} scan{ratingSummary.total !== 1 ? "s" : ""}</span>
+                  </span>
+                )}
               </div>
             </div>
 
