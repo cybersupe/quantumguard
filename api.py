@@ -49,8 +49,11 @@ from starlette.requests import Request as StarletteRequest
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-import stripe
 import json
+try:
+    import stripe
+except ImportError:
+    stripe = None  # noqa: N816
 
 from scanner.scan import (
     scan_directory, calculate_score, check_crypto_agility,
@@ -128,7 +131,8 @@ ALGORITHM                   = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
 ENVIRONMENT                 = os.getenv("ENVIRONMENT", "production")
 
-stripe.api_key        = os.getenv("STRIPE_SECRET_KEY", "")
+if stripe is not None:
+    stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_PRO_PRICE_ID   = os.getenv("STRIPE_PRO_PRICE_ID", "")
 FRONTEND_URL          = os.getenv("FRONTEND_URL", "https://quantumguard.site")
@@ -1634,7 +1638,7 @@ async def export_cbom_zip(request: Request, file: UploadFile = File(...)):
 @app.post("/create-checkout-session")
 @limiter.limit("5/minute")
 async def create_checkout_session(request: Request, body: CheckoutBody):
-    if not stripe.api_key:
+    if stripe is None or not stripe.api_key:
         raise HTTPException(status_code=503, detail="Billing not configured")
     if not body.user_id or not body.user_email:
         raise HTTPException(status_code=400, detail="user_id and user_email required")
@@ -1656,6 +1660,8 @@ async def create_checkout_session(request: Request, body: CheckoutBody):
 
 @app.post("/stripe-webhook")
 async def stripe_webhook(request: Request):
+    if stripe is None:
+        raise HTTPException(status_code=503, detail="Billing not configured")
     payload = await request.body()
     sig = request.headers.get("stripe-signature", "")
     try:
@@ -1694,7 +1700,7 @@ async def stripe_webhook(request: Request):
 @app.post("/customer-portal")
 @limiter.limit("5/minute")
 async def customer_portal(request: Request, body: CheckoutBody):
-    if not stripe.api_key:
+    if stripe is None or not stripe.api_key:
         raise HTTPException(status_code=503, detail="Billing not configured")
     if not _firebase_ready:
         raise HTTPException(status_code=503, detail="Firebase not configured")
