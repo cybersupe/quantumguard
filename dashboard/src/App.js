@@ -3257,7 +3257,8 @@ function AppInner() {
   const [pendingPlanRefresh, setPendingPlanRefresh] = useState(false);
 
   useEffect(() => {
-    if (user?.uid) { getUserPlan(user.uid).then(p => setPlan(p)); }
+    const uid = user?.uid || (user?.id ? String(user.id) : null);
+    if (uid) { getUserPlan(uid).then(p => setPlan(p)); }
     else setPlan("free");
   }, [user]);
 
@@ -3277,11 +3278,19 @@ function AppInner() {
     if (!pendingPlanRefresh) return;
     const uid = user?.uid || (user?.id ? String(user.id) : null);
     if (!uid) return;
-    const t = setTimeout(() => {
-      getUserPlan(uid).then(p => setPlan(p));
-      setPendingPlanRefresh(false);
-    }, 3000);
-    return () => clearTimeout(t);
+    setPendingPlanRefresh(false);
+    // Query Stripe directly — doesn't depend on webhook being configured
+    fetch(`${API}/refresh-plan`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: uid, user_email: user.email }),
+    })
+      .then(r => r.json())
+      .then(d => { if (d.plan === "pro") setPlan("pro"); })
+      .catch(() => {
+        // Fallback: poll Firestore after 4s in case webhook wrote it
+        setTimeout(() => getUserPlan(uid).then(p => setPlan(p)), 4000);
+      });
   }, [pendingPlanRefresh, user]);
 
   const handleUpgrade = () => setShowUpgradeModal(true);

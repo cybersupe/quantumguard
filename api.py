@@ -1672,30 +1672,68 @@ async def stripe_webhook(request: Request):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+    event_type = event["type"]
+    data = event["data"]["object"]
+    logger.info("Stripe webhook received: %s", event_type)
+
     if not _firebase_ready:
+        logger.warning("Stripe webhook %s received but Firebase not configured — plan not updated", event_type)
         return {"received": True, "note": "firebase not configured — plan not updated"}
 
     db_admin = fb_firestore.client()
-    event_type = event["type"]
-    data = event["data"]["object"]
 
     if event_type == "checkout.session.completed":
         user_id = data.get("metadata", {}).get("user_id")
         customer_id = data.get("customer")
+        logger.info("checkout.session.completed: user_id=%s customer=%s", user_id, customer_id)
         if user_id:
             db_admin.collection("users").document(user_id).set(
                 {"plan": "pro", "stripeCustomerId": customer_id},
                 merge=True,
             )
+            logger.info("Firestore updated: users/%s -> plan=pro", user_id)
+        else:
+            logger.warning("checkout.session.completed: no user_id in session metadata")
     elif event_type in ("customer.subscription.deleted", "customer.subscription.paused"):
         user_id = data.get("metadata", {}).get("user_id")
+        logger.info("%s: user_id=%s", event_type, user_id)
         if user_id:
             db_admin.collection("users").document(user_id).set(
                 {"plan": "free"},
                 merge=True,
             )
+            logger.info("Firestore updated: users/%s -> plan=free", user_id)
 
     return {"received": True}
+
+
+@app.post("/refresh-plan")
+@limiter.limit("10/minute")
+async def refresh_plan(request: Request, body: CheckoutBody):
+    """Frontend calls this after checkout success to confirm plan via Stripe directly."""
+    if stripe is None or not stripe.api_key:
+        return {"plan": "free", "source": "stripe_not_configured"}
+    if not body.user_id or not body.user_email:
+        raise HTTPException(status_code=400, detail="user_id and user_email required")
+    try:
+        customers = stripe.Customer.list(email=body.user_email, limit=1)
+        if not customers.data:
+            return {"plan": "free", "source": "no_stripe_customer"}
+        customer = customers.data[0]
+        subs = stripe.Subscription.list(customer=customer.id, status="active", limit=1)
+        if not subs.data:
+            return {"plan": "free", "source": "no_active_subscription"}
+        # Active subscription found — write plan to Firestore so Firestore stays in sync
+        if _firebase_ready:
+            db_admin = fb_firestore.client()
+            db_admin.collection("users").document(body.user_id).set(
+                {"plan": "pro", "stripeCustomerId": customer.id},
+                merge=True,
+            )
+        return {"plan": "pro", "source": "stripe"}
+    except Exception as e:
+        logger.error("refresh_plan error: %s", e, exc_info=True)
+        return {"plan": "free", "source": "error", "error": str(e)}
 
 
 @app.post("/customer-portal")
