@@ -444,6 +444,60 @@ const VULN_INFO = {
 
 const SEV_COLOR = { CRITICAL:"#ef4444", HIGH:"#f59e0b", MEDIUM:"#eab308" };
 const SEV_BG    = { CRITICAL:"rgba(239,68,68,0.15)", HIGH:"rgba(245,158,11,0.15)", MEDIUM:"rgba(234,179,8,0.15)" };
+
+const VULN_DETAILS = {
+  RSA: {
+    why: "RSA relies on the hardness of integer factorization. Shor's algorithm running on a cryptographically-relevant quantum computer solves this in polynomial time, breaking RSA key exchange and signatures regardless of key size.",
+    nist: "NIST FIPS 203 — ML-KEM (CRYSTALS-Kyber) for key encapsulation / NIST FIPS 204 — ML-DSA (CRYSTALS-Dilithium) for signatures",
+    remediation: "1. Replace RSA key exchange with ML-KEM (FIPS 203) · 2. Replace RSA signatures with ML-DSA (FIPS 204) · 3. Update certificate issuance pipelines · 4. Adopt hybrid schemes (X25519+ML-KEM) during transition",
+  },
+  ECC: {
+    why: "Elliptic-curve cryptography relies on the elliptic-curve discrete logarithm problem (ECDLP). Shor's algorithm solves ECDLP in polynomial time, breaking ECDH key exchange and ECDSA signatures.",
+    nist: "NIST FIPS 204 — ML-DSA (CRYSTALS-Dilithium) for signatures / NIST FIPS 203 — ML-KEM for key exchange",
+    remediation: "1. Replace ECDH with ML-KEM (FIPS 203) · 2. Replace ECDSA with ML-DSA (FIPS 204) · 3. Use hybrid P-256+ML-KEM during transition · 4. Rotate TLS certificates to post-quantum enabled CAs",
+  },
+  DH: {
+    why: "Diffie-Hellman key exchange relies on the discrete logarithm problem. Shor's algorithm solves DLP in polynomial time. DHE ciphersuites in TLS are vulnerable to quantum adversaries.",
+    nist: "NIST FIPS 203 — ML-KEM (CRYSTALS-Kyber) replaces DH/DHE for key encapsulation",
+    remediation: "1. Disable DHE cipher suites in TLS configuration · 2. Enable ML-KEM or X25519+ML-KEM hybrid ciphersuites · 3. Update server TLS library (OpenSSL 3.2+ or BoringSSL)",
+  },
+  DSA: {
+    why: "DSA signatures rely on the discrete logarithm problem. Shor's algorithm breaks DSA, making historical signatures forgeable once a quantum computer is available.",
+    nist: "NIST FIPS 204 — ML-DSA (CRYSTALS-Dilithium) is the direct FIPS replacement for DSA",
+    remediation: "1. Replace DSA key generation with ML-DSA key generation · 2. Re-sign all artifacts with ML-DSA keys · 3. Update verification code to accept ML-DSA signatures",
+  },
+  MD5: {
+    why: "MD5 produces a 128-bit hash. Grover's algorithm reduces collision-finding complexity to ~2^64 operations. MD5 is already broken classically (collisions found in seconds). Quantum makes it categorically unsafe.",
+    nist: "NIST recommends SHA-3-256 (FIPS 202) for collision resistance. BLAKE3 is an acceptable alternative for non-FIPS contexts.",
+    remediation: "1. Replace hashlib.md5() with hashlib.sha3_256() · 2. If used for HMAC, switch to HMAC-SHA3-256 · 3. If used for content addressing, migrate to BLAKE3 · 4. Never use MD5 for password hashing",
+  },
+  SHA1: {
+    why: "SHA-1 produces a 160-bit hash. Grover's algorithm reduces its effective collision resistance to 80 bits. SHA-1 is already broken classically (SHAttered attack, 2017). Quantum makes this worse.",
+    nist: "NIST SP 800-131A Rev 2 deprecated SHA-1 for most uses. NIST FIPS 202 defines SHA-3-256 as replacement.",
+    remediation: "1. Replace hashlib.sha1() with hashlib.sha3_256() · 2. For HMAC: switch to HMAC-SHA-256 or HMAC-SHA3-256 · 3. For certificate fingerprints: migrate to SHA-256 · 4. For Git: SHA-256 object format available in Git 2.29+",
+  },
+  SHA256_SIGNED: {
+    why: "SHA-256 is quantum-weakened when used in signature schemes with RSA or DSA. Grover's algorithm reduces the preimage resistance from 2^256 to 2^128, which combined with Shor's attack on the signature scheme creates a combined vulnerability.",
+    nist: "NIST FIPS 204 — ML-DSA uses SHAKE-256 internally. Use SHA-3 family for hash-then-sign constructions.",
+    remediation: "1. Migrate from RSA+SHA256 to ML-DSA (FIPS 204) · 2. If SHA-256 is used standalone (not with RSA), it remains acceptable for non-signature use · 3. Use SHA-3-256 for new signature constructions",
+  },
+  RC4: {
+    why: "RC4 is a stream cipher broken by classical attacks (biases in keystream). No quantum mitigation exists because it is already cryptographically broken. RC4 must not be used in any new or existing system.",
+    nist: "NIST SP 800-175B Rev 1 explicitly prohibits RC4. Replace with AES-256-GCM (NIST FIPS 197) or ChaCha20-Poly1305.",
+    remediation: "1. Replace RC4 immediately with AES-256-GCM or ChaCha20-Poly1305 · 2. Disable RC4 in all TLS configurations · 3. Rotate any keys or session tokens that were protected by RC4",
+  },
+  DES: {
+    why: "DES has a 56-bit key, broken by brute force in 1998. 3DES (TDEA) has 112-bit effective security and is deprecated by NIST. Grover's algorithm further halves the effective key search space.",
+    nist: "NIST SP 800-67 Rev 2 deprecated 3DES for new applications. NIST FIPS 197 AES-256-GCM is the required replacement.",
+    remediation: "1. Replace DES/3DES with AES-256-GCM · 2. Update CBC mode usage to GCM (provides authentication) · 3. Rotate any data encrypted under DES/3DES keys",
+  },
+  ECB_MODE: {
+    why: "AES-ECB (Electronic Codebook) mode encrypts identical plaintext blocks to identical ciphertext blocks, leaking block structure. This is a classical cryptographic weakness not related to quantum — it should never be used.",
+    nist: "NIST SP 800-38A recommends authenticated modes: AES-256-GCM (NIST FIPS 197) or AES-256-CCM.",
+    remediation: "1. Replace AES.MODE_ECB with AES.MODE_GCM · 2. Add authentication tag verification · 3. Generate a fresh random IV per encryption · 4. Never use ECB for data with repeated structure",
+  },
+};
+
 const STAT_CTRL = {
   PASS: { color:C.green,   bg:"rgba(34,197,94,0.1)",  border:"rgba(34,197,94,0.3)",  dot:C.green   },
   WARN: { color:"#f59e0b", bg:"rgba(245,158,11,0.1)", border:"rgba(245,158,11,0.3)", dot:"#f59e0b" },
@@ -690,6 +744,7 @@ function ScannerPage({ user, onUpgrade = () => {} }) {
   const [aiResult, setAiResult] = useState(null);
   // NEW: grouped findings view toggle
   const [viewMode, setViewMode] = useState("flat"); // "flat" | "grouped"
+  const [expandedFindings, setExpandedFindings] = useState({});
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const intervalRef = useRef(null);
@@ -1062,30 +1117,32 @@ function ScannerPage({ user, onUpgrade = () => {} }) {
                 </div>
                 <div style={{ padding:14 }}>
                   {findings.map((f,i)=>{
-                    const key=`${f.file}:${f.line}`;
+                    const key=`${f.file}:${f.line}:${i}`;
                     const fSevColor=f.severity==="CRITICAL"?C.critical:f.severity==="HIGH"?C.amber:C.medium;
                     const fSevBg=SEV_BG[f.severity]||SEV_BG.MEDIUM;
+                    const isExpanded=!!expandedFindings[key];
+                    const details=VULN_DETAILS[f.vulnerability]||null;
+                    const confPct=f.confidence_score!==undefined?Math.round(f.confidence_score*100):null;
                     return (<div key={i} style={{ borderLeft:`3px solid ${fSevColor}`, paddingLeft:14, marginBottom:i<findings.length-1?16:0, opacity:checklist[key]?0.4:1, paddingBottom:i<findings.length-1?16:0, borderBottom:i<findings.length-1?`1px solid ${C.panelBorder}`:"none" }}>
                       <div style={{ display:"flex", gap:8, marginBottom:8, alignItems:"center", flexWrap:"wrap" }}>
                         <input type="checkbox" checked={!!checklist[key]} onChange={()=>setChecklist(p=>({...p,[key]:!p[key]}))} style={{ cursor:"pointer", accentColor:C.green }} />
                         <span style={{ background:fSevBg, color:fSevColor, padding:"3px 10px", borderRadius:6, fontSize:11, fontWeight:800, border:`1px solid ${fSevColor}44`, letterSpacing:"0.03em", textTransform:"uppercase" }}>{f.severity}</span>
                         <span style={{ background:"rgba(255,255,255,0.06)", color:C.muted, fontSize:10, fontWeight:600, padding:"2px 8px", borderRadius:4 }}>{f.vulnerability}</span>
                         <span style={{ color:C.muted, fontSize:11 }}>Line {f.line}</span>
-                        {/* NEW: Priority badge */}
                         {f.priority && <PriorityBadge priority={f.priority} />}
-                        {/* NEW: Context badge */}
                         {f.usage_context && f.usage_context !== "unknown" && <ContextBadge context={f.usage_context} />}
-                        {/* NEW: Confidence score */}
                         {f.confidence_score !== undefined && <ConfidencePill score={f.confidence_score} label={f.confidence} />}
                         <button onClick={()=>handleAiFix(f)} style={{ marginLeft:"auto", padding:"3px 12px", borderRadius:6, background:"rgba(34,197,94,0.1)", border:"1px solid rgba(34,197,94,0.3)", color:C.green, cursor:"pointer", fontSize:10, fontWeight:700, transition:"all 0.2s" }}>⚡ AI Fix</button>
+                        <button onClick={()=>setExpandedFindings(p=>({...p,[key]:!p[key]}))} style={{ padding:"3px 10px", borderRadius:6, background:isExpanded?"rgba(59,130,246,0.15)":"rgba(255,255,255,0.05)", border:`1px solid ${isExpanded?"rgba(59,130,246,0.4)":C.panelBorder}`, color:isExpanded?"#60a5fa":C.muted, cursor:"pointer", fontSize:10, fontWeight:600, transition:"all 0.2s" }}>
+                          {isExpanded?"▲ Hide":"▼ Details"}
+                        </button>
                       </div>
                       <div style={{ fontFamily:"monospace", background:C.input, padding:"8px 12px", borderRadius:6, fontSize:11, marginBottom:8, color:C.green, overflowX:"auto", border:`1px solid ${C.panelBorder}` }}>{f.code}</div>
-                      <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"stretch" }}>
+                      <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"stretch", marginBottom:isExpanded?10:0 }}>
                         <div style={{ flex:1, background:"rgba(59,130,246,0.08)", border:"1px solid rgba(59,130,246,0.2)", borderRadius:6, padding:"7px 12px", display:"flex", alignItems:"center", gap:8 }}>
                           <span style={{ fontSize:10, fontWeight:700, color:"#60a5fa", textTransform:"uppercase", letterSpacing:"0.05em", flexShrink:0 }}>Fix</span>
                           <span style={{ color:"#93c5fd", fontWeight:600, fontSize:12 }}>✦ {f.replacement}</span>
                         </div>
-                        {/* NEW: Business impact + exploitability */}
                         {(f.business_impact || f.exploitability) && (
                           <div style={{ display:"flex", gap:6, alignItems:"center" }}>
                             {f.business_impact && (
@@ -1101,6 +1158,59 @@ function ScannerPage({ user, onUpgrade = () => {} }) {
                           </div>
                         )}
                       </div>
+                      {isExpanded && (
+                        <div style={{ background:"rgba(15,23,42,0.6)", border:`1px solid rgba(59,130,246,0.2)`, borderRadius:10, padding:"14px 16px", marginTop:4, display:"flex", flexDirection:"column", gap:12 }}>
+                          {/* Severity + Confidence row */}
+                          <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+                            <div style={{ flex:1, minWidth:120 }}>
+                              <div style={{ fontSize:9, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:".07em", marginBottom:4 }}>Severity</div>
+                              <span style={{ background:fSevBg, color:fSevColor, padding:"4px 12px", borderRadius:6, fontSize:12, fontWeight:800, border:`1px solid ${fSevColor}44` }}>{f.severity}</span>
+                            </div>
+                            {confPct!==null && (
+                              <div style={{ flex:1, minWidth:120 }}>
+                                <div style={{ fontSize:9, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:".07em", marginBottom:4 }}>Detection Confidence</div>
+                                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                                  <div style={{ flex:1, height:6, background:"rgba(255,255,255,0.08)", borderRadius:4, overflow:"hidden" }}>
+                                    <div style={{ height:"100%", width:`${confPct}%`, background:confPct>=80?C.green:confPct>=50?C.amber:C.red, borderRadius:4 }} />
+                                  </div>
+                                  <span style={{ fontSize:12, fontWeight:700, color:confPct>=80?C.green:confPct>=50?C.amber:C.red, minWidth:34 }}>{confPct}%</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          {/* Why detected */}
+                          {details && (
+                            <div>
+                              <div style={{ fontSize:9, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:".07em", marginBottom:6 }}>Why This Is Flagged</div>
+                              <div style={{ fontSize:12, color:"#cbd5e1", lineHeight:1.75 }}>{details.why}</div>
+                            </div>
+                          )}
+                          {/* NIST Mapping */}
+                          {details && (
+                            <div>
+                              <div style={{ fontSize:9, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:".07em", marginBottom:6 }}>NIST Mapping</div>
+                              <div style={{ background:"rgba(59,130,246,0.08)", border:"1px solid rgba(59,130,246,0.2)", borderRadius:7, padding:"8px 12px", fontSize:12, color:"#93c5fd", lineHeight:1.65 }}>{details.nist}</div>
+                            </div>
+                          )}
+                          {/* Remediation */}
+                          {details && (
+                            <div>
+                              <div style={{ fontSize:9, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:".07em", marginBottom:6 }}>Remediation Steps</div>
+                              <div style={{ fontSize:12, color:"#86efac", lineHeight:1.75 }}>{details.remediation.split(" · ").map((step,si)=>(
+                                <div key={si} style={{ display:"flex", gap:8, marginBottom:si<details.remediation.split(" · ").length-1?5:0 }}>
+                                  <span style={{ color:C.green, flexShrink:0 }}>→</span>
+                                  <span>{step.replace(/^\d+\.\s*/,"")}</span>
+                                </div>
+                              ))}</div>
+                            </div>
+                          )}
+                          {!details && (
+                            <div style={{ fontSize:12, color:C.muted }}>
+                              Consult NIST FIPS 203/204/205 for migration guidance specific to {f.vulnerability} usage. Replace with the recommended algorithm shown in the Fix field above.
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>);
                   })}
                 </div>
