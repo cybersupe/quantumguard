@@ -1655,6 +1655,7 @@ async def create_checkout_session(request: Request, body: CheckoutBody):
         )
         return {"url": session.url}
     except Exception as e:
+        logger.error("Stripe checkout error: %s", e, exc_info=True)
         raise HTTPException(status_code=400, detail=str(e))
 
 

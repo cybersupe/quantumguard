@@ -775,8 +775,10 @@ function ScannerPage({ user, onUpgrade = () => {} }) {
     try {
       const res = await fetch(`${API}/create-checkout-session`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user_id: user.uid, user_email: user.email }) });
       const data = await res.json();
-      if (data.url) { window.location.href = data.url; } else { throw new Error(data.detail || "Checkout failed"); }
-    } catch (e) { alert("Checkout failed: " + e.message); setUpgradeLoading(false); }
+      if (data.url) { window.location.href = data.url; return; }
+      const msg = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail) || "Checkout failed";
+      throw new Error(msg);
+    } catch (e) { alert("Checkout failed: " + (e.message || String(e))); setUpgradeLoading(false); }
   };
 
   const handleEmail = async () => {
@@ -3271,9 +3273,10 @@ function AppInner() {
     try {
       const res = await fetch(`${API}/create-checkout-session`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ user_id: user.uid, user_email: user.email }) });
       const data = await res.json();
-      if (data.url) { window.location.href = data.url; }
-      else { throw new Error(data.detail || "Checkout failed"); }
-    } catch(e) { alert("Checkout failed: " + e.message); setUpgradeLoading(false); }
+      if (data.url) { window.location.href = data.url; return; }
+      const msg = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail) || "Checkout failed";
+      throw new Error(msg);
+    } catch(e) { alert("Checkout failed: " + (e.message || String(e))); setUpgradeLoading(false); }
   };
   const handleManageBilling = async () => {
     if (!user) return;
