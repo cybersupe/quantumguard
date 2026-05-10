@@ -665,7 +665,7 @@ function UpgradeModal({ onClose, onUpgrade, loading }) {
 // ══════════════════════════════════════════════════════════════
 // SCANNER PAGE — enterprise fields added
 // ══════════════════════════════════════════════════════════════
-function ScannerPage({ user }) {
+function ScannerPage({ user, onUpgrade = () => {} }) {
   const { jwtToken } = useAuth();
   const [mode, setMode] = useState("github");
   const [input, setInput] = useState("");
@@ -689,6 +689,8 @@ function ScannerPage({ user }) {
   const [aiResult, setAiResult] = useState(null);
   // NEW: grouped findings view toggle
   const [viewMode, setViewMode] = useState("flat"); // "flat" | "grouped"
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
   const intervalRef = useRef(null);
   const logTimers = useRef([]);
   const logEndRef = useRef(null);
@@ -1106,6 +1108,7 @@ function ScannerPage({ user }) {
         </>
       )}
 
+      {showUpgrade&&<UpgradeModal onClose={()=>setShowUpgrade(false)} onUpgrade={handleUpgradeCheckout} loading={upgradeLoading} />}
       {aiModal&&(
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center", padding:16, backdropFilter:"blur(4px)" }}>
           <div style={{ background:C.panel, borderRadius:16, width:"100%", maxWidth:640, maxHeight:"80vh", display:"flex", flexDirection:"column", boxShadow:"0 24px 80px rgba(0,0,0,0.6)", border:`1px solid ${C.panelBorder}` }}>
@@ -3308,7 +3311,7 @@ function AppInner() {
             </div>
           )}
           <div style={{ flex:1, overflowY:"auto" }}>
-            {active==="scan"      && <ScannerPage user={user} />}
+            {active==="scan"      && <ScannerPage user={user} onUpgrade={handleUpgrade} />}
             {active==="agility"   && <AgilityPage />}
             {active==="tls"       && <TLSPage />}
             {active==="unified"   && <UnifiedRiskPage />}
