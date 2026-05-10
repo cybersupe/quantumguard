@@ -445,6 +445,48 @@ const VULN_INFO = {
 const SEV_COLOR = { CRITICAL:"#ef4444", HIGH:"#f59e0b", MEDIUM:"#eab308" };
 const SEV_BG    = { CRITICAL:"rgba(239,68,68,0.15)", HIGH:"rgba(245,158,11,0.15)", MEDIUM:"rgba(234,179,8,0.15)" };
 
+// ── Pre-loaded demo scan of a WebGoat-style vulnerable Java app ──────────────
+const DEMO_RESULT = {
+  _isDemo: true,
+  quantum_readiness_score: 28,
+  total_findings: 14,
+  clean_repo: false,
+  warning: null,
+  scan_summary: {
+    files_scanned: 47,
+    files_with_issues: 9,
+    scan_time: "8.3",
+    overall_confidence: "HIGH",
+    languages_detected: ["Java","JavaScript","XML","Properties"],
+    context_breakdown: { key_generation:2, encryption:3, hashing:4, signing:3, tls_config:2 },
+    library_findings_suppressed: 0,
+    confidence_note: "Demo scan — based on OWASP WebGoat public repository.",
+  },
+  score_explanation: [
+    "🔴 -40: 5 CRITICAL findings — RSA key generation, ECDH key exchange, RSA signing present",
+    "🟡 -20: 4 HIGH findings — MD5 hashing, AES-ECB mode, DHE cipher suites",
+    "🟠 -12: 5 MEDIUM findings — SHA-1 config, DSA signing, md5 npm dependency",
+    "🟢 +0: Crypto agility score low — hardcoded algorithm strings detected throughout",
+  ],
+  grouped_findings: [],
+  findings: [
+    { file:"src/main/java/org/owasp/webgoat/crypto/CryptoUtil.java",  line:23,  vulnerability:"RSA",         severity:"CRITICAL", code:'KeyPairGenerator.getInstance("RSA", 2048)',           replacement:"ML-KEM (CRYSTALS-Kyber / FIPS 203)",         confidence:"HIGH",   confidence_score:0.97, priority:"P1", usage_context:"key_generation",       business_impact:"HIGH",   exploitability:"Requires quantum computer" },
+    { file:"src/main/java/org/owasp/webgoat/crypto/CryptoUtil.java",  line:41,  vulnerability:"RSA",         severity:"CRITICAL", code:'Cipher.getInstance("RSA/ECB/PKCS1Padding")',         replacement:"ML-KEM (CRYSTALS-Kyber / FIPS 203)",         confidence:"HIGH",   confidence_score:0.95, priority:"P1", usage_context:"encryption",           business_impact:"HIGH",   exploitability:"Requires quantum computer" },
+    { file:"src/main/java/org/owasp/webgoat/ssl/SSLUtil.java",        line:67,  vulnerability:"ECC",         severity:"CRITICAL", code:'KeyAgreement.getInstance("ECDH")',                    replacement:"ML-KEM (CRYSTALS-Kyber / FIPS 203)",         confidence:"HIGH",   confidence_score:0.92, priority:"P1", usage_context:"key_exchange",         business_impact:"HIGH",   exploitability:"Requires quantum computer" },
+    { file:"src/main/java/org/owasp/webgoat/auth/JWTUtil.java",       line:18,  vulnerability:"ECC",         severity:"CRITICAL", code:"new ECDSAVerifier(ecKey)",                           replacement:"ML-DSA (CRYSTALS-Dilithium / FIPS 204)",     confidence:"HIGH",   confidence_score:0.94, priority:"P1", usage_context:"signature_verification",business_impact:"HIGH",   exploitability:"Requires quantum computer" },
+    { file:"src/main/java/org/owasp/webgoat/auth/AuthService.java",   line:102, vulnerability:"RSA",         severity:"CRITICAL", code:"new RSASSASigner(privateKey)",                       replacement:"ML-DSA (CRYSTALS-Dilithium / FIPS 204)",     confidence:"HIGH",   confidence_score:0.96, priority:"P1", usage_context:"signing",              business_impact:"HIGH",   exploitability:"Requires quantum computer" },
+    { file:"src/main/java/org/owasp/webgoat/crypto/HashUtil.java",    line:14,  vulnerability:"MD5",         severity:"HIGH",     code:'MessageDigest.getInstance("MD5")',                   replacement:"SHA-3-256 or BLAKE3",                        confidence:"HIGH",   confidence_score:0.99, priority:"P2", usage_context:"hashing",              business_impact:"MEDIUM", exploitability:"Classical + quantum risk" },
+    { file:"src/main/java/org/owasp/webgoat/crypto/HashUtil.java",    line:28,  vulnerability:"SHA1",        severity:"HIGH",     code:'MessageDigest.getInstance("SHA-1")',                 replacement:"SHA-3-256 or BLAKE3",                        confidence:"HIGH",   confidence_score:0.98, priority:"P2", usage_context:"hashing",              business_impact:"MEDIUM", exploitability:"Classical attack feasible" },
+    { file:"src/main/java/org/owasp/webgoat/crypto/CryptoUtil.java",  line:88,  vulnerability:"DH",          severity:"HIGH",     code:'KeyAgreement.getInstance("DH")',                     replacement:"ML-KEM (CRYSTALS-Kyber / FIPS 203)",         confidence:"HIGH",   confidence_score:0.91, priority:"P2", usage_context:"key_exchange",         business_impact:"HIGH",   exploitability:"Requires quantum computer" },
+    { file:"src/main/java/org/owasp/webgoat/crypto/CryptoUtil.java",  line:55,  vulnerability:"ECB_MODE",    severity:"HIGH",     code:'Cipher.getInstance("AES/ECB/PKCS5Padding")',        replacement:"AES-256-GCM or ChaCha20-Poly1305",           confidence:"HIGH",   confidence_score:0.99, priority:"P2", usage_context:"encryption",           business_impact:"HIGH",   exploitability:"Classical attack" },
+    { file:"src/main/resources/crypto.properties",                    line:3,   vulnerability:"SHA1",        severity:"MEDIUM",   code:"digest.algorithm=SHA1",                              replacement:"SHA-3-256 or BLAKE3",                        confidence:"MEDIUM", confidence_score:0.78, priority:"P3", usage_context:"config",               business_impact:"MEDIUM", exploitability:"Classical attack feasible" },
+    { file:"src/main/java/org/owasp/webgoat/ssl/TLSConfig.java",      line:31,  vulnerability:"DH",          severity:"MEDIUM",   code:'"TLS_DHE_RSA_WITH_AES_128_CBC_SHA"',                replacement:"ML-KEM (CRYSTALS-Kyber / FIPS 203)",         confidence:"MEDIUM", confidence_score:0.82, priority:"P3", usage_context:"tls_config",           business_impact:"MEDIUM", exploitability:"Quantum risk" },
+    { file:"src/main/java/org/owasp/webgoat/crypto/SignUtil.java",    line:19,  vulnerability:"DSA",         severity:"MEDIUM",   code:'KeyPairGenerator.getInstance("DSA")',                replacement:"ML-DSA (CRYSTALS-Dilithium / FIPS 204)",     confidence:"MEDIUM", confidence_score:0.86, priority:"P3", usage_context:"signing",              business_impact:"MEDIUM", exploitability:"Requires quantum computer" },
+    { file:"package.json",                                            line:44,  vulnerability:"MD5",         severity:"MEDIUM",   code:'"md5": "^2.3.0"',                                    replacement:"SHA-3-256 or BLAKE3",                        confidence:"MEDIUM", confidence_score:0.71, priority:"P3", usage_context:"dependency",           business_impact:"LOW",    exploitability:"Depends on usage" },
+    { file:"src/main/java/org/owasp/webgoat/crypto/HashUtil.java",    line:44,  vulnerability:"SHA256_SIGNED",severity:"MEDIUM",  code:'Signature.getInstance("SHA256withRSA")',             replacement:"ML-DSA (CRYSTALS-Dilithium / FIPS 204)",     confidence:"MEDIUM", confidence_score:0.83, priority:"P3", usage_context:"signature",            business_impact:"MEDIUM", exploitability:"Quantum-weakened" },
+  ],
+};
+
 const VULN_DETAILS = {
   RSA: {
     why: "RSA relies on the hardness of integer factorization. Shor's algorithm running on a cryptographically-relevant quantum computer solves this in polynomial time, breaking RSA key exchange and signatures regardless of key size.",
@@ -720,7 +762,7 @@ function UpgradeModal({ onClose, onUpgrade, loading }) {
 // ══════════════════════════════════════════════════════════════
 // SCANNER PAGE — enterprise fields added
 // ══════════════════════════════════════════════════════════════
-function ScannerPage({ user, onUpgrade = () => {} }) {
+function ScannerPage({ user, onUpgrade = () => {}, runDemo = false }) {
   const { jwtToken } = useAuth();
   const [mode, setMode] = useState("github");
   const [input, setInput] = useState("");
@@ -793,6 +835,13 @@ function ScannerPage({ user, onUpgrade = () => {} }) {
     logTimers.current.forEach(clearTimeout); logTimers.current = [];
     setProgress(100); setStepIndex(SCAN_STEPS.length - 1);
   };
+
+  const handleDemo = () => {
+    setError(null); setResult(null); setChecklist({}); setSaved(false);
+    setResult(DEMO_RESULT);
+  };
+
+  useEffect(() => { if (runDemo) handleDemo(); }, [runDemo]); // eslint-disable-line
 
   const handleScan = async () => {
     if (user) {
@@ -958,11 +1007,19 @@ function ScannerPage({ user, onUpgrade = () => {} }) {
         </div>
       )}
 
+      {result?._isDemo && (
+        <div style={{ marginBottom:12, background:"rgba(59,130,246,0.08)", border:"1px solid rgba(59,130,246,0.25)", borderRadius:10, padding:"10px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8 }}>
+          <span style={{ fontSize:12, color:"#93c5fd", fontWeight:600 }}>📌 Demo scan — OWASP WebGoat · 47 Java files · 14 findings · Score: 28/100</span>
+          <button onClick={()=>setResult(null)} style={{ fontSize:11, fontWeight:600, color:"#60a5fa", background:"rgba(59,130,246,0.12)", border:"1px solid rgba(59,130,246,0.3)", borderRadius:6, padding:"4px 12px", cursor:"pointer", fontFamily:"inherit" }}>✕ Clear demo</button>
+        </div>
+      )}
+
       <Panel title="Scan Target" accent>
-        <div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap" }}>
+        <div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap", alignItems:"center" }}>
           {[{id:"github",label:"🔗 GitHub URL"},{id:"zip",label:"📁 Upload ZIP"},{id:"path",label:"🖥️ Server Path"}].map(m=>(
             <button key={m.id} onClick={()=>setMode(m.id)} style={btnStyle(mode===m.id)}>{m.label}</button>
           ))}
+          <button onClick={handleDemo} style={{ marginLeft:"auto", padding:"6px 14px", borderRadius:8, background:"rgba(59,130,246,0.1)", border:"1px solid rgba(59,130,246,0.3)", color:"#60a5fa", cursor:"pointer", fontSize:11, fontWeight:700, fontFamily:"inherit", whiteSpace:"nowrap" }}>▶ Try Demo</button>
         </div>
         {mode==="zip" ? (
           <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
@@ -3109,7 +3166,7 @@ function AnimatedDemoCard() {
 }
 
 // ── Main Homepage ────────────────────────────────────────────
-function Homepage({ onGetStarted, onOpenAuth }) {
+function Homepage({ onGetStarted, onOpenAuth, onTryDemo }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openNav, setOpenNav] = useState(null);
   const [openFaq, setOpenFaq] = useState(null);
@@ -3332,7 +3389,7 @@ function Homepage({ onGetStarted, onOpenAuth }) {
               {/* CTA */}
               <div style={{ display:"flex",gap:14,flexWrap:"wrap",marginBottom:24 }}>
                 <button className="qg-btn qg-primary" onClick={() => onGetStarted("scan")}>🛡 Scan Your Code Now — Free</button>
-                <button className="qg-btn qg-outline" onClick={() => onGetStarted("nist")}>▷ View Demo</button>
+                <button className="qg-btn qg-outline" onClick={() => onTryDemo && onTryDemo()}>▶ Try Demo</button>
               </div>
 
               {/* Micro trust */}
@@ -3893,6 +3950,7 @@ function AppInner() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [authModal, setAuthModal] = useState(null);
   const [plan, setPlan] = useState("free");
+  const [runDemo, setRunDemo] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [checkoutBanner, setCheckoutBanner] = useState(null);
@@ -3958,7 +4016,7 @@ function AppInner() {
   const handleLogout = async () => { jwtLogout(); try { await signOut(auth); setGoogleUser(null); setPlan("free"); } catch(e) {} };
   const handleLogin = () => setAuthModal("login");
   if (jwtLoading) return (<div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg }}><div style={{ textAlign:"center" }}><div style={{ width:40,height:40,borderRadius:10,background:"linear-gradient(135deg,#22c55e,#15803d)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,margin:"0 auto 12px" }}>⚛</div><div style={{ color:C.green,fontSize:13,fontWeight:600 }}>Loading QuantumGuard...</div></div></div>);
-  if (active === "home") return (<><Homepage onGetStarted={(tab) => setActive(tab || "scan")} onOpenAuth={setAuthModal} />{authModal && <AuthModal mode={authModal} onClose={()=>setAuthModal(null)} onSuccess={()=>setActive("scan")} />}</>);
+  if (active === "home") return (<><Homepage onGetStarted={(tab) => setActive(tab || "scan")} onOpenAuth={setAuthModal} onTryDemo={() => { setRunDemo(r => !r); setActive("scan"); }} />{authModal && <AuthModal mode={authModal} onClose={()=>setAuthModal(null)} onSuccess={()=>setActive("scan")} />}</>);
   const pageTitle = { scan:"Threat Scanner", agility:"Agility Checker", tls:"TLS Analyzer", history:"Scan History", org:"Organization", migration:"Migration Tracker", dashboard:"Analytics", nist:"NIST Report", docs:"Documentation", team:"Our Team", unified:"Unified Risk" };
   return (
     <>
@@ -3983,7 +4041,7 @@ function AppInner() {
             </div>
           )}
           <div style={{ flex:1, overflowY:"auto" }}>
-            {active==="scan"      && <ScannerPage user={user} onUpgrade={handleUpgrade} />}
+            {active==="scan"      && <ScannerPage user={user} onUpgrade={handleUpgrade} runDemo={runDemo} />}
             {active==="agility"   && <AgilityPage />}
             {active==="tls"       && <TLSPage />}
             {active==="unified"   && <UnifiedRiskPage />}
