@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef, Fragment } from "react";
 import "./App.css";
 import emailjs from "@emailjs/browser";
 import { auth, db, signInWithGoogle, canUserScan, incrementScanCount, getUserPlan } from "./firebase";
@@ -3027,17 +3027,79 @@ function AnimatedDemoCard() {
 function Homepage({ onGetStarted, onOpenAuth }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openNav, setOpenNav] = useState(null);
+  const [openFaq, setOpenFaq] = useState(null);
 
   const handleNavItem = title => { const tab = NAV_MAP[title]; if (tab) onGetStarted(tab); };
 
   const sevColor = s => s === "CRITICAL" ? "#ef4444" : s === "HIGH" ? "#f59e0b" : s === "MEDIUM" ? "#eab308" : "#22c55e";
   const sevBg    = s => s === "CRITICAL" ? "#fef2f2" : s === "HIGH" ? "#fffbeb" : s === "MEDIUM" ? "#fefce8" : "#f0fdf4";
 
+  const COMPARE_ROWS = [
+    { category:"Usage", rows:[
+      { feature:"Daily scans",       free:"10",        pro:"100",       team:"500",       enterprise:"Unlimited" },
+      { feature:"ZIP file size limit",free:"10 MB",    pro:"50 MB",    team:"100 MB",    enterprise:"Custom"    },
+      { feature:"Findings per scan", free:"Unlimited", pro:"Unlimited", team:"Unlimited", enterprise:"Unlimited" },
+    ]},
+    { category:"Scanner", rows:[
+      { feature:"8 languages (Python, JS, Java, Go, Rust, C, C++, TS)", free:true, pro:true, team:true, enterprise:true },
+      { feature:"50+ vulnerability patterns",                             free:true, pro:true, team:true, enterprise:true },
+      { feature:"TLS / cipher analyzer",                                  free:true, pro:true, team:true, enterprise:true },
+      { feature:"Dependency manifest scanner",                            free:true, pro:true, team:true, enterprise:true },
+      { feature:"Crypto agility score",                                   free:true, pro:true, team:true, enterprise:true },
+    ]},
+    { category:"Reports & Export", rows:[
+      { feature:"PDF security report",           free:true,  pro:true, team:true, enterprise:true  },
+      { feature:"CSV export",                    free:true,  pro:true, team:true, enterprise:true  },
+      { feature:"CBOM JSON export",              free:true,  pro:true, team:true, enterprise:true  },
+      { feature:"NIST FIPS 203/204/205 mapping", free:true,  pro:true, team:true, enterprise:true  },
+      { feature:"Scan history (last N scans)",   free:"5",   pro:"90 days", team:"1 year", enterprise:"Unlimited" },
+    ]},
+    { category:"Integrations & API", rows:[
+      { feature:"REST API access",              free:false, pro:true,  team:true,  enterprise:true },
+      { feature:"GitHub Actions CI/CD gate",    free:false, pro:true,  team:true,  enterprise:true },
+      { feature:"Webhook notifications",        free:false, pro:false, team:true,  enterprise:true },
+      { feature:"On-premise / Docker deploy",   free:false, pro:false, team:false, enterprise:true },
+    ]},
+    { category:"Team & Organization", rows:[
+      { feature:"Organization dashboard",        free:false, pro:false, team:true,  enterprise:true },
+      { feature:"Member management & invites",   free:false, pro:false, team:true,  enterprise:true },
+      { feature:"Org-wide scan history",         free:false, pro:false, team:true,  enterprise:true },
+      { feature:"SSO / SAML",                    free:false, pro:false, team:false, enterprise:true },
+      { feature:"Audit logs",                    free:false, pro:false, team:true,  enterprise:true },
+    ]},
+    { category:"Support & SLA", rows:[
+      { feature:"Community support",  free:true,         pro:true,    team:true,       enterprise:true            },
+      { feature:"Email support",      free:false,        pro:true,    team:true,       enterprise:true            },
+      { feature:"Priority support",   free:false,        pro:false,   team:true,       enterprise:true            },
+      { feature:"Dedicated CSM",      free:false,        pro:false,   team:false,      enterprise:true            },
+      { feature:"Uptime SLA",         free:"No SLA",    pro:"No SLA", team:"No SLA",  enterprise:"99.99%"        },
+    ]},
+  ];
+
+  const PRICING_FAQ = [
+    { q:"Is there a free trial for Pro or Team?",
+      a:"Yes — Pro comes with a 14-day free trial. No credit card required to start. Cancel any time before the trial ends and you won't be charged." },
+    { q:"Is my source code stored anywhere?",
+      a:"No. All scans run in-memory on Render's infrastructure and are discarded immediately after results are returned. We do not write your source code to a database or any persistent storage." },
+    { q:"Do you support private GitHub repositories?",
+      a:"Yes. Provide a read-only personal access token when scanning a private repo. The token is used only for the duration of the request — it is never logged, stored, or used for any other purpose." },
+    { q:"What languages are supported?",
+      a:"Python, JavaScript, TypeScript, Java, Go, Rust, C, and C++. Dependency manifests (requirements.txt, package.json, pom.xml, go.mod) are scanned across all plans. Additional language support is on the roadmap." },
+    { q:"What counts as one scan?",
+      a:"Each code ZIP, GitHub URL, or TLS domain submission counts as one scan. Multiple findings within a single submission count only once toward your daily limit." },
+    { q:"How does the GitHub Actions CI/CD gate work?",
+      a:"QuantumGuard publishes a GitHub Action that calls the API on every PR. If findings at or above your configured severity threshold are detected, the check fails and the merge is blocked. Available on Pro and above." },
+    { q:"Can I upgrade, downgrade, or cancel?",
+      a:"Yes — at any time from the billing portal. Upgrades take effect immediately. Downgrades take effect at the end of the current billing period." },
+    { q:"What is a Cryptographic Bill of Materials (CBOM)?",
+      a:"A CBOM is a structured JSON inventory of every cryptographic primitive found in your codebase — algorithm, key size, file, line, and NIST migration recommendation. It follows the CycloneDX schema and is suitable for audits and board reporting." },
+  ];
+
   const PRICING = [
-    { name:"Free",       price:"$0",    period:"",    desc:"For developers exploring PQC",     features:["20 scans/day","RSA, ECC, DH detection","TLS analyzer","PDF report","Dependency scanner"],           cta:"Start Free — No Signup",  highlight:false },
-    { name:"Pro",        price:"$49",   period:"/mo", desc:"For security-conscious teams",     features:["100 scans/day","All 12 vuln types","NIST migration guidance","GitHub Actions gate","API access"],    cta:"Start Free Trial",        highlight:true  },
-    { name:"Team",       price:"$199",  period:"/mo", desc:"Org-wide visibility & compliance", features:["500 scans/day","Everything in Pro","Org dashboard","SSO/SAML","Priority support"],                   cta:"Start Free Trial",        highlight:false },
-    { name:"Enterprise", price:"Custom",period:"",    desc:"Air-gapped or on-premise",        features:["Unlimited scans","On-premise Docker","SLA 99.99%","Dedicated CSM","FedRAMP roadmap"],                cta:"Contact Sales",           highlight:false },
+    { name:"Free",       price:"$0",    period:"",    desc:"For developers exploring PQC",     features:["10 scans/day","RSA, ECC, DH detection","TLS analyzer","PDF + CSV + CBOM export","Dependency scanner"],     cta:"Start Free — No Signup",  highlight:false },
+    { name:"Pro",        price:"$49",   period:"/mo", desc:"For security-conscious teams",     features:["100 scans/day","All 12 vuln types","NIST migration guidance","GitHub Actions CI gate","REST API access"],   cta:"Start Free Trial",        highlight:true  },
+    { name:"Team",       price:"$199",  period:"/mo", desc:"Org-wide visibility & compliance", features:["500 scans/day","Everything in Pro","Organization dashboard","Webhook notifications","Priority support"],     cta:"Start Free Trial",        highlight:false },
+    { name:"Enterprise", price:"Custom",period:"",    desc:"Air-gapped or on-premise",        features:["Unlimited scans","On-premise Docker image","SSO / SAML","SLA 99.99%","Dedicated CSM"],                      cta:"Contact Sales",           highlight:false },
   ];
 
   return (
@@ -3546,7 +3608,7 @@ function Homepage({ onGetStarted, onOpenAuth }) {
             <h2 style={{ fontSize:"clamp(24px,3.2vw,40px)",fontWeight:800,letterSpacing:"-.03em" }}>Start free. Scale when you're ready.</h2>
             <p style={{ color:"#6b7280",marginTop:10,fontSize:15 }}>No credit card required. No hidden limits on the free plan.</p>
           </div>
-          <div className="qg-pricing-g" style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:18 }}>
+          <div className="qg-pricing-g" style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:18,marginBottom:56 }}>
             {PRICING.map(plan => (
               <div key={plan.name} style={{ background:"#fff",border:plan.highlight?"2px solid #22c55e":"1.5px solid #e8edf3",borderRadius:18,padding:"28px 22px",position:"relative",boxShadow:plan.highlight?"0 8px 36px rgba(34,197,94,.14)":"0 2px 12px rgba(0,0,0,.04)",transform:plan.highlight?"scale(1.04)":"none",transition:"all .25s" }}
                 onMouseEnter={e=>{if(!plan.highlight){e.currentTarget.style.borderColor="#22c55e";e.currentTarget.style.transform="translateY(-2px)";}}}
@@ -3573,6 +3635,68 @@ function Homepage({ onGetStarted, onOpenAuth }) {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* ── Comparison Table ── */}
+          <div>
+            <h3 style={{ fontSize:20,fontWeight:800,letterSpacing:"-.02em",marginBottom:28,textAlign:"center",color:"#0f172a" }}>Full feature comparison</h3>
+            <div style={{ overflowX:"auto",borderRadius:16,border:"1.5px solid #e8edf3",background:"#fff",boxShadow:"0 4px 24px rgba(0,0,0,.05)" }}>
+              <table style={{ width:"100%",borderCollapse:"collapse",minWidth:600 }}>
+                <thead>
+                  <tr>
+                    <th style={{ padding:"16px 20px",textAlign:"left",fontSize:11,color:"#9ca3af",fontWeight:700,letterSpacing:".06em",width:"38%",borderBottom:"2px solid #e8edf3" }}>FEATURE</th>
+                    {[{n:"Free",hi:false},{n:"Pro",hi:true},{n:"Team",hi:false},{n:"Enterprise",hi:false}].map(col=>(
+                      <th key={col.n} style={{ padding:"16px 10px",textAlign:"center",fontSize:13,fontWeight:800,color:col.hi?"#22c55e":"#0f172a",background:col.hi?"rgba(34,197,94,.04)":"transparent",borderBottom:"2px solid #e8edf3",minWidth:80 }}>{col.n}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {COMPARE_ROWS.map((group,gi)=>(
+                    <Fragment key={gi}>
+                      <tr>
+                        <td colSpan={5} style={{ padding:"9px 20px",fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:".08em",background:"#f8fafc",borderTop:"1px solid #e8edf3",borderBottom:"1px solid #e8edf3" }}>{group.category}</td>
+                      </tr>
+                      {group.rows.map((row,ri)=>(
+                        <tr key={ri} style={{ borderBottom:ri<group.rows.length-1?"1px solid #f1f5f9":"none" }}
+                          onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
+                          onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                          <td style={{ padding:"11px 20px",fontSize:13,color:"#374151",fontWeight:500 }}>{row.feature}</td>
+                          {["free","pro","team","enterprise"].map((plan,pi)=>{
+                            const v=row[plan];
+                            return (
+                              <td key={plan} style={{ padding:"11px 10px",textAlign:"center",background:pi===1?"rgba(34,197,94,.02)":"transparent" }}>
+                                {v===true ?<span style={{color:"#22c55e",fontWeight:800,fontSize:15}}>✓</span>
+                                :v===false?<span style={{color:"#d1d5db",fontSize:18}}>—</span>
+                                          :<span style={{fontSize:12,fontWeight:600,color:"#374151"}}>{v}</span>}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* ── FAQ ── */}
+          <div style={{ marginTop:64 }}>
+            <h3 style={{ fontSize:20,fontWeight:800,letterSpacing:"-.02em",marginBottom:8,textAlign:"center",color:"#0f172a" }}>Frequently asked questions</h3>
+            <p style={{ textAlign:"center",color:"#6b7280",fontSize:14,marginBottom:32 }}>Still have questions? Email <a href="mailto:support@quantumguard.site" style={{ color:"#22c55e",textDecoration:"none" }}>support@quantumguard.site</a></p>
+            <div style={{ maxWidth:720,margin:"0 auto",display:"flex",flexDirection:"column",gap:6 }}>
+              {PRICING_FAQ.map((item,i)=>(
+                <div key={i} style={{ border:"1.5px solid #e8edf3",borderRadius:12,overflow:"hidden",background:"#fff",transition:"box-shadow .2s" }}>
+                  <button onClick={()=>setOpenFaq(openFaq===i?null:i)} style={{ width:"100%",padding:"16px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left",gap:12 }}>
+                    <span style={{ fontSize:14,fontWeight:600,color:"#0f172a",lineHeight:1.5 }}>{item.q}</span>
+                    <span style={{ color:"#9ca3af",flexShrink:0,fontSize:22,lineHeight:1,display:"inline-block",transition:"transform .2s",transform:openFaq===i?"rotate(45deg)":"none" }}>+</span>
+                  </button>
+                  {openFaq===i&&(
+                    <div style={{ padding:"0 20px 16px",fontSize:13,color:"#6b7280",lineHeight:1.8,borderTop:"1px solid #f1f5f9" }}>{item.a}</div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
