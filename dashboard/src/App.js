@@ -972,18 +972,265 @@ function ScannerPage({ user, onUpgrade = () => {}, runDemo = false }) {
 
   const handlePDF = () => {
     if (!result) return;
-    const win=window.open("","_blank");
-    const sc=result.quantum_readiness_score>=70?"#22c55e":result.quantum_readiness_score>=40?"#f59e0b":"#ef4444";
-    const status=result.quantum_readiness_score>=70?"QUANTUM SAFE":result.quantum_readiness_score>=40?"AT RISK":"NOT QUANTUM SAFE";
-    const critical=result.findings.filter(f=>f.severity==="CRITICAL").length;
-    const high=result.findings.filter(f=>f.severity==="HIGH").length;
-    const medium=result.findings.filter(f=>f.severity==="MEDIUM").length;
-    const total=result.total_findings;
-    const grp=result.findings.reduce((a,f)=>{if(!a[f.file])a[f.file]=[];a[f.file].push(f);return a;},{});
-    const sevColor=s=>s==="CRITICAL"?"#ef4444":s==="HIGH"?"#f59e0b":"#eab308";
-    const sevBg=s=>s==="CRITICAL"?"#fee2e2":s==="HIGH"?"#fef3c7":"#fef9c3";
-    win.document.write(`<!DOCTYPE html><html><head><title>QuantumGuard Report</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Segoe UI",sans-serif;background:#fff;color:#1a1a1a;padding:40px;font-size:13px}@media print{body{padding:20px}.no-print{display:none}}.header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:20px;border-bottom:3px solid #22c55e;margin-bottom:24px}.logo{display:flex;align-items:center;gap:10px}.logo-icon{width:40px;height:40px;background:#22c55e;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff}.logo-name{font-size:22px;font-weight:900}.logo-name span{color:#22c55e}.score-box{text-align:center;background:#f0fdf4;border:2px solid #86efac;border-radius:12px;padding:14px 22px}.score-num{font-size:44px;font-weight:900;color:${sc};line-height:1}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}.stat{background:#f8faf8;border:1px solid #e2f0e2;border-radius:10px;padding:14px;border-top:3px solid var(--c)}.stat-val{font-size:30px;font-weight:900;color:var(--c);line-height:1}.stat-key{font-size:11px;color:#6b7280;margin-top:4px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#f0fdf4;padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;font-weight:700;border-bottom:2px solid #d1fae5}td{padding:9px 12px;border-bottom:1px solid #f0f4f0;vertical-align:top}.sev{font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;display:inline-block}code{font-family:monospace;font-size:11px;background:#f0f7f0;padding:2px 6px;border-radius:4px;color:#15803d;word-break:break-all}.fix{color:#2563eb;font-size:11px;font-weight:600}.footer{margin-top:32px;padding-top:16px;border-top:1px solid #e2f0e2;display:flex;justify-content:space-between;font-size:11px;color:#9ca3af}.print-btn{background:#22c55e;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:20px}</style></head><body><div class="no-print"><button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button></div><div class="header"><div><div class="logo"><div class="logo-icon">⚛</div><span class="logo-name"><span>Quantum</span>Guard</span></div><div style="margin-top:8px;font-size:13px;font-weight:700;color:#374151">NIST SP 800-53 Security Report</div></div><div class="score-box"><div class="score-num">${result.quantum_readiness_score}</div><div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-top:2px">Quantum Score / 100</div><div style="font-size:11px;font-weight:700;color:${sc};margin-top:6px;text-transform:uppercase">${status}</div></div></div><div style="display:flex;gap:24px;margin-bottom:20px;flex-wrap:wrap"><span style="font-size:11px;color:#6b7280">Generated <strong style="color:#374151">${new Date().toLocaleString()}</strong></span><span style="font-size:11px;color:#6b7280">Target <strong style="color:#374151">${file?.name||input||"scan"}</strong></span></div><div class="stats"><div class="stat" style="--c:#22c55e"><div class="stat-val">${total}</div><div class="stat-key">Total Findings</div></div><div class="stat" style="--c:#ef4444"><div class="stat-val">${critical}</div><div class="stat-key">Critical</div></div><div class="stat" style="--c:#f59e0b"><div class="stat-val">${high}</div><div class="stat-key">High</div></div><div class="stat" style="--c:#eab308"><div class="stat-val">${medium}</div><div class="stat-key">Medium</div></div></div><div style="margin-bottom:24px">${Object.entries(grp).map(([fname,findings])=>`<div style="margin-bottom:16px;border:1px solid #e2f0e2;border-radius:10px;overflow:hidden"><div style="background:#f0fdf4;padding:8px 12px;font-weight:700;font-size:12px;color:#14532d;border-bottom:1px solid #d1fae5">📄 ${fname} — ${findings.length} findings</div><table><thead><tr><th>Severity</th><th>Line</th><th>Code</th><th>Vulnerability</th><th>Replacement</th></tr></thead><tbody>${findings.map(f=>`<tr><td><span class="sev" style="background:${sevBg(f.severity)};color:${sevColor(f.severity)}">${f.severity}</span></td><td style="color:#6b7280;font-weight:600">${f.line}</td><td><code>${f.code.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</code></td><td style="font-weight:600;color:#374151">${f.vulnerability}</td><td class="fix">${f.replacement}</td></tr>`).join("")}</tbody></table></div>`).join("")}</div><div class="footer"><span>QuantumGuard · NIST SP 800-53 Rev 5 · Mangsri QuantumGuard LLC · Montgomery, AL</span><span>Generated ${new Date().toLocaleDateString()}</span></div></body></html>`);
-    win.document.close(); setTimeout(()=>win.print(),500);
+    const win = window.open("","_blank");
+    const score = result.quantum_readiness_score;
+    const sc = score>=70?"#22c55e":score>=40?"#f59e0b":"#ef4444";
+    const status = score>=70?"QUANTUM SAFE":score>=40?"AT RISK":"CRITICAL RISK";
+    const critical = result.findings.filter(f=>f.severity==="CRITICAL").length;
+    const high     = result.findings.filter(f=>f.severity==="HIGH").length;
+    const medium   = result.findings.filter(f=>f.severity==="MEDIUM").length;
+    const total    = result.total_findings;
+    const target   = result._isDemo ? "OWASP WebGoat (Demo)" : (file?.name||input||"Scan");
+    const grp      = result.findings.reduce((a,f)=>{if(!a[f.file])a[f.file]=[];a[f.file].push(f);return a;},{});
+    // crypto inventory: unique algorithms + counts
+    const cryptoInv = Object.entries(result.findings.reduce((a,f)=>{a[f.vulnerability]=(a[f.vulnerability]||{count:0,sev:f.severity,fix:f.replacement});a[f.vulnerability].count++;return a;},{}))
+      .sort((a,b)=>["CRITICAL","HIGH","MEDIUM"].indexOf(a[1].sev)-["CRITICAL","HIGH","MEDIUM"].indexOf(b[1].sev));
+    // migration roadmap
+    const p1Findings = result.findings.filter(f=>f.severity==="CRITICAL");
+    const p2Findings = result.findings.filter(f=>f.severity==="HIGH");
+    const p3Findings = result.findings.filter(f=>f.severity==="MEDIUM");
+    // heatmap bar widths
+    const maxH = Math.max(critical,high,medium,1);
+    const sevHtml = (sev,count,color,bg)=>count>0?`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span style="min-width:62px;font-size:10px;font-weight:700;color:${color};text-transform:uppercase">${sev}</span><div style="flex:1;height:20px;background:#1e2d3d;border-radius:4px;overflow:hidden"><div style="height:100%;width:${Math.round(count/maxH*100)}%;background:${color};border-radius:4px;display:flex;align-items:center;padding-left:8px"><span style="font-size:11px;font-weight:800;color:${bg}">${count}</span></div></div></div>`:""
+    win.document.write(`<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>QuantumGuard Executive Report</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+body{font-family:"Inter","Segoe UI",sans-serif;background:#060d1b;color:#e2e8f0;font-size:13px;line-height:1.6}
+@media print{
+  body{background:#060d1b!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .no-print{display:none!important}
+  .page-break{page-break-before:always}
+}
+.wrap{max-width:900px;margin:0 auto;padding:0 40px 60px}
+/* Cover */
+.cover{background:linear-gradient(135deg,#071a2e 0%,#0c1f38 50%,#091428 100%);border-bottom:2px solid #22c55e;padding:52px 40px 44px;position:relative;overflow:hidden}
+.cover::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(34,197,94,.04) 1px,transparent 1px);background-size:28px 28px}
+.cover-inner{max-width:900px;margin:0 auto;position:relative}
+.logo-row{display:flex;align-items:center;gap:12px;margin-bottom:36px}
+.logo-icon{width:44px;height:44px;background:linear-gradient(135deg,#22c55e,#15803d);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;box-shadow:0 4px 16px rgba(34,197,94,.35)}
+.logo-name{font-size:20px;font-weight:800;color:#f1f5f9;letter-spacing:-.03em}.logo-name span{color:#22c55e}
+.logo-sub{font-size:10px;color:#64748b;font-weight:500}
+.cover-title{font-size:32px;font-weight:900;letter-spacing:-.04em;color:#fff;line-height:1.1;margin-bottom:10px}
+.cover-sub{font-size:14px;color:#94a3b8;margin-bottom:28px}
+.cover-meta{display:flex;gap:28px;flex-wrap:wrap}
+.cover-meta span{font-size:12px;color:#64748b}.cover-meta strong{color:#94a3b8}
+/* Score hero */
+.score-hero{background:linear-gradient(135deg,#0d2137,#0a1a2e);border:1px solid #1e3a52;border-radius:16px;padding:32px 36px;margin:32px 40px;display:flex;align-items:center;gap:36px;flex-wrap:wrap}
+.score-ring{text-align:center;flex-shrink:0}
+.score-num{font-size:72px;font-weight:900;color:${sc};line-height:1;letter-spacing:-.04em}
+.score-denom{font-size:18px;color:#475569;font-weight:600}
+.score-label{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-top:4px}
+.score-badge{display:inline-flex;align-items:center;gap:6px;background:${sc}22;border:1.5px solid ${sc}55;color:${sc};font-size:11px;font-weight:800;padding:5px 14px;border-radius:100px;letter-spacing:.05em;text-transform:uppercase;margin-top:10px}
+.score-detail{flex:1;min-width:220px}
+.score-bar-wrap{margin-bottom:8px}
+.score-bar-track{height:8px;background:#1e3a52;border-radius:4px;overflow:hidden;margin-bottom:4px}
+.score-bar-fill{height:100%;background:linear-gradient(90deg,${sc},${sc}cc);border-radius:4px;width:${score}%}
+/* Sections */
+.section{padding:36px 40px;border-bottom:1px solid #0f1e2e}
+.section-label{font-size:10px;font-weight:700;color:#22c55e;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.section-title{font-size:20px;font-weight:800;color:#f1f5f9;letter-spacing:-.02em;margin-bottom:20px}
+/* Stats grid */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+.stat-card{background:#0d1f33;border:1px solid #1e3a52;border-radius:12px;padding:18px 16px;border-top:3px solid var(--ac)}
+.stat-val{font-size:36px;font-weight:900;color:var(--ac);line-height:1;margin-bottom:4px}
+.stat-key{font-size:11px;color:#64748b;font-weight:500}
+/* Heatmap */
+.heatmap{background:#0d1f33;border:1px solid #1e3a52;border-radius:12px;padding:20px 22px}
+/* Crypto inventory table */
+table.inv{width:100%;border-collapse:collapse;font-size:12px}
+table.inv th{background:#0d1f33;padding:9px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#475569;font-weight:700;border-bottom:2px solid #1e3a52}
+table.inv td{padding:10px 14px;border-bottom:1px solid #0f1e2e;color:#94a3b8;vertical-align:top}
+table.inv tr:last-child td{border-bottom:none}
+.sev{font-size:10px;font-weight:800;padding:3px 9px;border-radius:5px;text-transform:uppercase;display:inline-block}
+/* Roadmap */
+.roadmap{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.rm-card{background:#0d1f33;border:1px solid #1e3a52;border-radius:12px;padding:18px 16px}
+.rm-header{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;margin-bottom:6px}
+.rm-title{font-size:14px;font-weight:700;color:#f1f5f9;margin-bottom:10px}
+.rm-item{font-size:11px;color:#64748b;margin-bottom:4px;display:flex;gap:6px}
+/* Findings table */
+.file-block{margin-bottom:18px;background:#0d1f33;border:1px solid #1e3a52;border-radius:12px;overflow:hidden}
+.file-hdr{background:#122236;padding:10px 16px;font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:600;color:#22c55e;border-bottom:1px solid #1e3a52;display:flex;justify-content:space-between;align-items:center}
+table.ft{width:100%;border-collapse:collapse;font-size:11px}
+table.ft th{padding:8px 14px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:#475569;font-weight:700;border-bottom:1px solid #1e3a52;background:#0d1f33}
+table.ft td{padding:9px 14px;border-bottom:1px solid #0f1e2e;color:#94a3b8;vertical-align:top}
+table.ft tr:last-child td{border-bottom:none}
+code{font-family:"JetBrains Mono",monospace;font-size:10px;background:#091428;padding:2px 7px;border-radius:4px;color:#4ade80;word-break:break-all;display:inline-block;max-width:220px}
+/* Business impact */
+.biz-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.biz-card{background:#0d1f33;border:1px solid #1e3a52;border-radius:12px;padding:18px 16px}
+.biz-icon{font-size:24px;margin-bottom:10px}
+.biz-title{font-size:13px;font-weight:700;color:#f1f5f9;margin-bottom:6px}
+.biz-body{font-size:12px;color:#64748b;line-height:1.7}
+/* Footer */
+.footer{background:#030810;border-top:1px solid #0f1e2e;padding:18px 40px;display:flex;justify-content:space-between;font-size:11px;color:#334155;flex-wrap:wrap;gap:8px}
+.no-print button{background:#22c55e;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-right:8px;font-family:inherit}
+.no-print{padding:12px 40px;background:#030810;border-bottom:1px solid #0f1e2e}
+</style></head>
+<body>
+
+<div class="no-print"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-inner">
+    <div class="logo-row">
+      <div class="logo-icon">⚛</div>
+      <div><div class="logo-name"><span>Quantum</span>Guard</div><div class="logo-sub">by Mangsri QuantumGuard LLC</div></div>
+    </div>
+    <div class="cover-title">Post-Quantum Cryptography<br>Executive Risk Report</div>
+    <div class="cover-sub">NIST FIPS 203 · FIPS 204 · FIPS 205 · SP 800-53 Rev 5</div>
+    <div class="cover-meta">
+      <span>Generated <strong>${new Date().toLocaleString()}</strong></span>
+      <span>Target <strong>${target}</strong></span>
+      <span>Classification <strong>CONFIDENTIAL</strong></span>
+    </div>
+  </div>
+</div>
+
+<!-- SCORE HERO -->
+<div class="score-hero">
+  <div class="score-ring">
+    <div class="score-num">${score}</div>
+    <div class="score-denom">/100</div>
+    <div class="score-label">Quantum Readiness Score</div>
+    <div class="score-badge">${status}</div>
+  </div>
+  <div class="score-detail">
+    <div class="score-bar-wrap">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#475569;margin-bottom:4px"><span>Score</span><span style="font-weight:700;color:${sc}">${score}/100</span></div>
+      <div class="score-bar-track"><div class="score-bar-fill"></div></div>
+    </div>
+    <div style="font-size:12px;color:#64748b;line-height:1.75;margin-top:8px">
+      ${score<40?"This codebase contains multiple CRITICAL cryptographic vulnerabilities that are broken by quantum computing. Immediate migration planning is required.":score<70?"This codebase has measurable quantum risk. A structured migration to NIST post-quantum standards is recommended within 12 months.":"This codebase demonstrates strong post-quantum readiness. Continue monitoring for new findings on each release."}
+    </div>
+    <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap">
+      <span style="font-size:11px;color:#64748b">Files scanned: <strong style="color:#94a3b8">${result.scan_summary?.files_scanned||"N/A"}</strong></span>
+      <span style="font-size:11px;color:#64748b">With issues: <strong style="color:#94a3b8">${result.scan_summary?.files_with_issues||"N/A"}</strong></span>
+      <span style="font-size:11px;color:#64748b">Languages: <strong style="color:#94a3b8">${(result.scan_summary?.languages_detected||[]).join(", ")||"N/A"}</strong></span>
+    </div>
+  </div>
+</div>
+
+<!-- SEVERITY OVERVIEW -->
+<div class="section">
+  <div class="section-label">Section 1</div>
+  <div class="section-title">Severity Overview</div>
+  <div class="stat-grid">
+    <div class="stat-card" style="--ac:#94a3b8"><div class="stat-val">${total}</div><div class="stat-key">Total Findings</div></div>
+    <div class="stat-card" style="--ac:#ef4444"><div class="stat-val">${critical}</div><div class="stat-key">Critical</div></div>
+    <div class="stat-card" style="--ac:#f59e0b"><div class="stat-val">${high}</div><div class="stat-key">High</div></div>
+    <div class="stat-card" style="--ac:#eab308"><div class="stat-val">${medium}</div><div class="stat-key">Medium</div></div>
+  </div>
+  <div class="heatmap">
+    <div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px">Severity Heatmap</div>
+    ${sevHtml("Critical",critical,"#ef4444","#fff")}
+    ${sevHtml("High",high,"#f59e0b","#1a1a1a")}
+    ${sevHtml("Medium",medium,"#eab308","#1a1a1a")}
+    ${!critical&&!high&&!medium?`<div style="color:#22c55e;font-weight:600;font-size:13px">✓ No significant findings — codebase appears quantum-safe</div>`:""}
+  </div>
+</div>
+
+<!-- CRYPTO INVENTORY -->
+<div class="section">
+  <div class="section-label">Section 2</div>
+  <div class="section-title">Cryptographic Inventory</div>
+  <p style="font-size:12px;color:#64748b;margin-bottom:16px">Complete inventory of cryptographic algorithms detected. Each entry maps to its NIST post-quantum replacement.</p>
+  <table class="inv">
+    <thead><tr><th>Algorithm</th><th>Instances</th><th>Severity</th><th>NIST Replacement</th><th>FIPS Standard</th></tr></thead>
+    <tbody>
+    ${cryptoInv.map(([vuln,{count,sev,fix}])=>{
+      const sc2=sev==="CRITICAL"?"#ef4444":sev==="HIGH"?"#f59e0b":"#eab308";
+      const sb2=sev==="CRITICAL"?"#3b0f0f":sev==="HIGH"?"#3b2800":"#3b2e00";
+      const fips=fix.includes("203")?"FIPS 203":fix.includes("204")?"FIPS 204":fix.includes("205")?"FIPS 205":"SP 800-131A";
+      return `<tr>
+        <td style="font-weight:700;color:#f1f5f9;font-family:'JetBrains Mono',monospace">${vuln}</td>
+        <td style="font-weight:700;color:#94a3b8">${count} occurrence${count!==1?"s":""}</td>
+        <td><span class="sev" style="background:${sb2};color:${sc2};border:1px solid ${sc2}44">${sev}</span></td>
+        <td style="color:#60a5fa;font-size:11px">${fix}</td>
+        <td style="color:#22c55e;font-size:11px;font-weight:700">${fips}</td>
+      </tr>`;
+    }).join("")}
+    </tbody>
+  </table>
+</div>
+
+<!-- MIGRATION ROADMAP -->
+<div class="section">
+  <div class="section-label">Section 3</div>
+  <div class="section-title">Migration Roadmap</div>
+  <div class="roadmap">
+    <div class="rm-card" style="border-top:3px solid #ef4444">
+      <div class="rm-header" style="color:#ef4444">P1 — Immediate (0–30 days)</div>
+      <div class="rm-title">${critical} Critical Findings</div>
+      ${p1Findings.slice(0,4).map(f=>`<div class="rm-item"><span style="color:#ef4444;flex-shrink:0">✕</span><span>${f.vulnerability} — ${f.file.split("/").pop()} line ${f.line}</span></div>`).join("")}
+      ${p1Findings.length>4?`<div class="rm-item" style="color:#475569">+ ${p1Findings.length-4} more critical findings</div>`:""}
+      ${!p1Findings.length?`<div style="color:#22c55e;font-size:11px">✓ No critical findings</div>`:""}
+    </div>
+    <div class="rm-card" style="border-top:3px solid #f59e0b">
+      <div class="rm-header" style="color:#f59e0b">P2 — Short-term (30–90 days)</div>
+      <div class="rm-title">${high} High Findings</div>
+      ${p2Findings.slice(0,4).map(f=>`<div class="rm-item"><span style="color:#f59e0b;flex-shrink:0">⚠</span><span>${f.vulnerability} — ${f.file.split("/").pop()} line ${f.line}</span></div>`).join("")}
+      ${p2Findings.length>4?`<div class="rm-item" style="color:#475569">+ ${p2Findings.length-4} more</div>`:""}
+      ${!p2Findings.length?`<div style="color:#22c55e;font-size:11px">✓ No high findings</div>`:""}
+    </div>
+    <div class="rm-card" style="border-top:3px solid #eab308">
+      <div class="rm-header" style="color:#eab308">P3 — Medium-term (90–180 days)</div>
+      <div class="rm-title">${medium} Medium Findings</div>
+      ${p3Findings.slice(0,4).map(f=>`<div class="rm-item"><span style="color:#eab308;flex-shrink:0">–</span><span>${f.vulnerability} — ${f.file.split("/").pop()} line ${f.line}</span></div>`).join("")}
+      ${p3Findings.length>4?`<div class="rm-item" style="color:#475569">+ ${p3Findings.length-4} more</div>`:""}
+      ${!p3Findings.length?`<div style="color:#22c55e;font-size:11px">✓ No medium findings</div>`:""}
+    </div>
+  </div>
+</div>
+
+<!-- BUSINESS IMPACT -->
+<div class="section">
+  <div class="section-label">Section 4</div>
+  <div class="section-title">Business Impact Summary</div>
+  <div class="biz-grid">
+    <div class="biz-card"><div class="biz-icon">⚡</div><div class="biz-title">Harvest Now, Decrypt Later</div><div class="biz-body">Adversaries are capturing encrypted traffic today. Data protected by RSA or ECC is at risk of decryption once cryptographically-relevant quantum computers are available — estimated 5–15 years. ${critical>0?"This codebase has "+critical+" critical findings in this category.":"No critical findings detected."}</div></div>
+    <div class="biz-card"><div class="biz-icon">📅</div><div class="biz-title">NIST 2030 Compliance Deadline</div><div class="biz-body">NIST is deprecating RSA and ECC for most uses by 2030. Organizations that have not completed migration by this date will face compliance failures, audit findings, and potential regulatory exposure. ${score<50?"This codebase requires significant migration work.":"Migration complexity is manageable."}</div></div>
+    <div class="biz-card"><div class="biz-icon">🔐</div><div class="biz-title">Cryptographic Agility</div><div class="biz-body">Many findings indicate hardcoded algorithm strings, which reduces your ability to respond rapidly to new vulnerabilities. Parameterized crypto configuration reduces future migration costs and improves security posture.</div></div>
+    <div class="biz-card"><div class="biz-icon">📋</div><div class="biz-title">Board-Level Risk Position</div><div class="biz-body">Score ${score}/100 places this codebase in the <strong style="color:${sc}">${status}</strong> category. ${score<40?"Recommend escalation to CISO and board risk committee.":score<70?"Recommend inclusion in next quarterly security review.":"No immediate escalation required — maintain current monitoring cadence."}</div></div>
+  </div>
+</div>
+
+<!-- DETAILED FINDINGS -->
+<div class="section page-break">
+  <div class="section-label">Section 5</div>
+  <div class="section-title">Detailed Findings by File</div>
+  ${Object.entries(grp).map(([fname,findings])=>{
+    const fc=findings.filter(f=>f.severity==="CRITICAL").length;
+    const badgeBg=fc>0?"#3b0f0f":"#3b2800"; const badgeC=fc>0?"#ef4444":"#f59e0b";
+    return `<div class="file-block">
+      <div class="file-hdr"><span>${fname}</span><span style="background:${badgeBg};color:${badgeC};font-size:9px;font-weight:800;padding:2px 10px;border-radius:100px">${findings.length} FINDING${findings.length!==1?"S":""}</span></div>
+      <table class="ft"><thead><tr><th>Severity</th><th>Line</th><th>Algorithm</th><th>Code Detected</th><th>NIST Replacement</th></tr></thead>
+      <tbody>${findings.map(f=>{
+        const sc3=f.severity==="CRITICAL"?"#ef4444":f.severity==="HIGH"?"#f59e0b":"#eab308";
+        const sb3=f.severity==="CRITICAL"?"#3b0f0f":f.severity==="HIGH"?"#3b2800":"#3b2e00";
+        return `<tr>
+          <td><span class="sev" style="background:${sb3};color:${sc3};border:1px solid ${sc3}44">${f.severity}</span></td>
+          <td style="font-family:'JetBrains Mono',monospace;color:#475569;font-weight:600">${f.line}</td>
+          <td style="font-weight:700;color:#f1f5f9">${f.vulnerability}</td>
+          <td><code>${(f.code||"").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</code></td>
+          <td style="color:#60a5fa;font-size:11px">✦ ${f.replacement}</td>
+        </tr>`;}).join("")}
+      </tbody></table></div>`;
+  }).join("")}
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <span>QuantumGuard · NIST SP 800-53 Rev 5 · Mangsri QuantumGuard LLC · Montgomery, Alabama, USA</span>
+  <span>Generated ${new Date().toLocaleDateString()} · CONFIDENTIAL</span>
+</div>
+
+</body></html>`);
+    win.document.close();
+    setTimeout(() => win.print(), 600);
   };
 
   const btnStyle = (active) => ({ padding:"8px 16px", borderRadius:8, border:`1.5px solid ${active?C.green:C.panelBorder}`, background:active?"rgba(34,197,94,0.15)":"transparent", color:active?C.green:C.muted, cursor:"pointer", fontSize:12, fontWeight:active?600:400, transition:"all 0.2s" });
