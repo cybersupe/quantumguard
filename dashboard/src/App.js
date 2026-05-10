@@ -3013,21 +3013,27 @@ function Homepage({ onGetStarted, onOpenAuth }) {
               <div style={{ display:"flex",gap:8,flexWrap:"wrap",marginBottom:22 }}>
                 <span style={{ display:"inline-flex",alignItems:"center",gap:6,background:"rgba(34,197,94,.1)",border:"1px solid rgba(34,197,94,.25)",borderRadius:100,padding:"5px 14px",fontSize:11,fontWeight:700,color:"#15803d" }}>
                   <span style={{ width:6,height:6,borderRadius:"50%",background:"#22c55e",animation:"qg-pulse 2s infinite",display:"inline-block" }} />
-                  Post-Quantum Crypto Scanner for Code & TLS
+                  Post-Quantum Cryptography Scanner
                 </span>
-                <span style={{ display:"inline-flex",alignItems:"center",gap:6,background:"rgba(59,130,246,.07)",border:"1px solid rgba(59,130,246,.18)",borderRadius:100,padding:"5px 14px",fontSize:11,fontWeight:700,color:"#1d4ed8" }}>
-                  🏛 NIST FIPS 203 / 204 / 205
+                <span style={{ display:"inline-flex",alignItems:"center",gap:5,background:"rgba(59,130,246,.08)",border:"1.5px solid rgba(59,130,246,.25)",borderRadius:100,padding:"5px 12px",fontSize:10,fontWeight:800,color:"#1d4ed8" }}>
+                  🏛 NIST FIPS 203
+                </span>
+                <span style={{ display:"inline-flex",alignItems:"center",gap:5,background:"rgba(59,130,246,.08)",border:"1.5px solid rgba(59,130,246,.25)",borderRadius:100,padding:"5px 12px",fontSize:10,fontWeight:800,color:"#1d4ed8" }}>
+                  🏛 NIST FIPS 204
+                </span>
+                <span style={{ display:"inline-flex",alignItems:"center",gap:5,background:"rgba(59,130,246,.08)",border:"1.5px solid rgba(59,130,246,.25)",borderRadius:100,padding:"5px 12px",fontSize:10,fontWeight:800,color:"#1d4ed8" }}>
+                  🏛 NIST FIPS 205
                 </span>
               </div>
 
               {/* Headline */}
               <h1 style={{ fontSize:"clamp(34px,4.5vw,58px)",fontWeight:900,lineHeight:1.07,letterSpacing:"-.04em",color:"#0f172a",marginBottom:18 }}>
-                Find quantum-vulnerable<br/>encryption in your<br/><span style={{ color:"#22c55e" }}>codebase — in seconds.</span>
+                Developer-focused<br/>post-quantum cryptography<br/><span style={{ color:"#22c55e" }}>risk analysis platform.</span>
               </h1>
 
               {/* Subheadline */}
               <p style={{ fontSize:"clamp(15px,1.6vw,18px)",color:"#475569",lineHeight:1.75,marginBottom:32,maxWidth:500 }}>
-                QuantumGuard scans codebases and TLS configurations for RSA, ECC, SHA-1, weak crypto, and legacy encryption. Get a <strong style={{ color:"#0f172a" }}>Quantum Readiness Score</strong> with NIST-aligned migration guidance instantly.
+                QuantumGuard scans codebases and TLS configurations for RSA, ECC, SHA-1, and legacy encryption. Produces a <strong style={{ color:"#0f172a" }}>Quantum Readiness Score</strong> with NIST FIPS 203/204/205-aligned migration guidance.
               </p>
 
               {/* CTA */}
@@ -3059,7 +3065,7 @@ function Homepage({ onGetStarted, onOpenAuth }) {
       <section style={{ background:"#fff",borderTop:"1px solid #e8edf3",borderBottom:"1px solid #e8edf3",padding:"36px 32px" }}>
         <div className="qg-wrap qg-stats-g" style={{ display:"grid",gridTemplateColumns:"repeat(5,1fr)",textAlign:"center",gap:20 }}>
           {[
-            ["50+","Vulnerability patterns"],["8","Languages"],["~30s","Scan time"],["NIST 2024","FIPS 203/204/205"],["Free","No credit card"],
+            ["50+","Vulnerability patterns"],["8","Languages supported"],["3","Scan modes"],["NIST 2024","FIPS 203/204/205"],["Free","No credit card"],
           ].map(([val,lbl]) => (
             <div key={lbl}>
               <div style={{ fontSize:"1.75rem",fontWeight:900,color:"#22c55e",lineHeight:1,letterSpacing:"-.03em" }}>{val}</div>
@@ -3165,7 +3171,7 @@ function Homepage({ onGetStarted, onOpenAuth }) {
                 </div>
               ))}
               <div style={{ marginTop:18,padding:"12px 14px",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,fontSize:12,color:"#15803d",fontWeight:600 }}>
-                QuantumGuard answers all of these in seconds.
+                QuantumGuard produces a complete cryptographic inventory for all of these.
               </div>
             </div>
           </div>
@@ -3204,28 +3210,42 @@ function Homepage({ onGetStarted, onOpenAuth }) {
         <div className="qg-wrap">
           <div style={{ textAlign:"center",marginBottom:52 }}>
             <div className="qg-label">How It Works</div>
-            <h2 style={{ fontSize:"clamp(24px,3.2vw,40px)",fontWeight:800,letterSpacing:"-.03em" }}>Five steps. Thirty seconds.</h2>
+            <h2 style={{ fontSize:"clamp(24px,3.2vw,40px)",fontWeight:800,letterSpacing:"-.03em",marginBottom:12 }}>Three steps to quantum readiness</h2>
+            <p style={{ fontSize:15,color:"#6b7280",maxWidth:500,margin:"0 auto",lineHeight:1.7 }}>No agents to install. No credentials to configure. Paste a repo URL or upload code and get actionable results.</p>
           </div>
           <div className="qg-g3">
             {[
-              { n:"1", icon:"📎", title:"Upload code or scan repo",     desc:"Paste a GitHub URL or upload a ZIP. No installation. Public repos work instantly." },
-              { n:"2", icon:"⚙", title:"Detect crypto patterns",        desc:"AST-level analysis across 8 languages. Dependency manifests checked. TLS configuration analyzed." },
-              { n:"3", icon:"📄", title:"Review file-level findings",   desc:"Every finding shows file path, line number, severity, confidence, and NIST fix." },
-              { n:"4", icon:"📊", title:"Get your readiness score",     desc:"A 0–100 Quantum Readiness Score with full severity breakdown and business impact context." },
-              { n:"5", icon:"📋", title:"Export report or CBOM",        desc:"PDF, CSV, and CBOM JSON export. Ready for audits and board-level reporting." },
+              {
+                n:"1", icon:"🔍", title:"Scan",
+                desc:"Paste a GitHub URL or upload a ZIP archive. QuantumGuard performs AST-level analysis across Python, JavaScript, Java, TypeScript, Go, Rust, C, and C++. TLS domains can be checked in parallel.",
+                detail:"Supports public and private repos · No installation required · Dependency manifests included"
+              },
+              {
+                n:"2", icon:"📊", title:"Analyze",
+                desc:"Receive a 0–100 Quantum Readiness Score with severity-ranked findings grouped by file. Each finding includes the algorithm detected, line number, confidence level, and associated NIST control.",
+                detail:"RSA · ECC · DH · DSA · MD5 · SHA-1 · RC4 · DES · 40+ more patterns"
+              },
+              {
+                n:"3", icon:"🗺", title:"Migrate",
+                desc:"Every finding maps to a specific FIPS 203, 204, or 205 replacement with step-by-step migration guidance. Export a Cryptographic Bill of Materials (CBOM) for audits and board reporting.",
+                detail:"ML-KEM (FIPS 203) · ML-DSA (FIPS 204) · SLH-DSA (FIPS 205)"
+              },
             ].map((step,i) => (
-              <div key={i} style={{ textAlign:"center",padding:"28px 20px",background:"#f8fafc",borderRadius:16,border:"1.5px solid #e2e8f0",transition:"all .25s" }}
-                onMouseEnter={e=>{e.currentTarget.style.borderColor="#22c55e";e.currentTarget.style.background="#f0fdf4";e.currentTarget.style.transform="translateY(-3px)";}}
-                onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.background="#f8fafc";e.currentTarget.style.transform="translateY(0)";}}>
-                <div style={{ width:42,height:42,borderRadius:11,background:"linear-gradient(135deg,#22c55e,#15803d)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,fontWeight:800,margin:"0 auto 14px",boxShadow:"0 4px 12px rgba(34,197,94,.28)" }}>{step.n}</div>
-                <div style={{ fontSize:26,marginBottom:10 }}>{step.icon}</div>
-                <div style={{ fontSize:14,fontWeight:700,color:"#0f172a",marginBottom:6 }}>{step.title}</div>
-                <div style={{ fontSize:12,color:"#6b7280",lineHeight:1.65 }}>{step.desc}</div>
+              <div key={i} style={{ padding:"32px 28px",background:"#f8fafc",borderRadius:18,border:"1.5px solid #e2e8f0",transition:"all .25s",position:"relative",overflow:"hidden" }}
+                onMouseEnter={e=>{e.currentTarget.style.borderColor="#22c55e";e.currentTarget.style.background="#f0fdf4";e.currentTarget.style.transform="translateY(-4px)";e.currentTarget.style.boxShadow="0 12px 32px rgba(34,197,94,.1)";}}
+                onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.background="#f8fafc";e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";}}>
+                <div style={{ display:"flex",alignItems:"center",gap:14,marginBottom:18 }}>
+                  <div style={{ width:46,height:46,borderRadius:13,background:"linear-gradient(135deg,#22c55e,#15803d)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:900,flexShrink:0,boxShadow:"0 4px 14px rgba(34,197,94,.3)" }}>{step.n}</div>
+                  <div style={{ fontSize:20 }}>{step.icon}</div>
+                  <div style={{ fontSize:18,fontWeight:800,color:"#0f172a",letterSpacing:"-.02em" }}>{step.title}</div>
+                </div>
+                <div style={{ fontSize:14,color:"#475569",lineHeight:1.75,marginBottom:14 }}>{step.desc}</div>
+                <div style={{ fontSize:11,color:"#9ca3af",fontWeight:600,lineHeight:1.6,borderTop:"1px solid #e2e8f0",paddingTop:12 }}>{step.detail}</div>
               </div>
             ))}
           </div>
-          <div style={{ textAlign:"center",marginTop:36 }}>
-            <button className="qg-btn qg-primary" onClick={() => onGetStarted("scan")}>Try It Now — Free →</button>
+          <div style={{ textAlign:"center",marginTop:40 }}>
+            <button className="qg-btn qg-primary" onClick={() => onGetStarted("scan")}>Start a Scan →</button>
           </div>
         </div>
       </section>
