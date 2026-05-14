@@ -126,7 +126,9 @@ API_KEY      = os.getenv("API_KEY", "quantumguard-secret-2026")
 MAX_ZIP_SIZE = 10 * 1024 * 1024
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 
-SECRET_KEY                  = os.getenv("JWT_SECRET_KEY", "CHANGE_THIS_IN_PRODUCTION")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("JWT_SECRET_KEY environment variable must be set")
 ALGORITHM                   = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
 ENVIRONMENT                 = os.getenv("ENVIRONMENT", "production")
