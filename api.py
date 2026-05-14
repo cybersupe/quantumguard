@@ -122,7 +122,9 @@ logger.addFilter(TokenScrubFilter())
 # CONFIG
 # ============================================================
 
-API_KEY      = os.getenv("API_KEY", "quantumguard-secret-2026")
+API_KEY = os.getenv("API_KEY")
+if not API_KEY:
+    raise RuntimeError("API_KEY environment variable must be set")
 MAX_ZIP_SIZE = 10 * 1024 * 1024
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 
